@@ -11,6 +11,8 @@ import (
  "os"
  "strconv"
  "time"
+ "os/signal"
+ "syscall"
 
  "github.com/dinhvansh/dataflow-engine/internal/connectors/clickhouse"
  "github.com/dinhvansh/dataflow-engine/internal/connectors/sqlserver"
@@ -30,7 +32,7 @@ type RunRequest struct {
  LowerCursor string `json:"lower_cursor"`
  AtomicReplace bool `json:"atomic_replace"`
 }
-type server struct {pg *pgxpool.Pool; sql *sql.DB; chURL,chUser,chPass,token string; managedSlots chan struct{}}
+type server struct {pg *pgxpool.Pool; sql *sql.DB; chURL,chUser,chPass,token string; managedSlots chan struct{}; sqlDAGSlots chan struct{}}
 func (s *server) run(w http.ResponseWriter,r *http.Request){
  if r.Method!=http.MethodPost{http.Error(w,"POST required",405);return}
  if !s.validBearer(r){http.Error(w,"unauthorized",401);return}
@@ -107,7 +109,7 @@ func main(){
  db,err:=sql.Open("sqlserver",os.Getenv("DATAFLOW_SQLSERVER_DSN"));if err!=nil{log.Fatal(err)};defer db.Close()
  db.SetMaxOpenConns(4);db.SetMaxIdleConns(2)
  if err=db.PingContext(ctx);err!=nil{log.Fatal(err)}
- svc:=&server{pg:pg,sql:db,chURL:os.Getenv("DATAFLOW_CH_URL"),chUser:os.Getenv("DATAFLOW_CH_USER"),chPass:os.Getenv("DATAFLOW_CH_PASSWORD"),token:os.Getenv("DATAFLOW_API_TOKEN"),managedSlots:make(chan struct{},2)}
+ svc:=&server{pg:pg,sql:db,chURL:os.Getenv("DATAFLOW_CH_URL"),chUser:os.Getenv("DATAFLOW_CH_USER"),chPass:os.Getenv("DATAFLOW_CH_PASSWORD"),token:os.Getenv("DATAFLOW_API_TOKEN"),managedSlots:make(chan struct{},2),sqlDAGSlots:make(chan struct{},2)}
  mux:=http.NewServeMux()
  mux.HandleFunc("/healthz",func(w http.ResponseWriter,r *http.Request){_,_=w.Write([]byte("ok"))})
  mux.HandleFunc("/api/v1/bootstrap/runs",svc.run)
@@ -126,7 +128,20 @@ func main(){
  mux.HandleFunc("/api/v1/sql/dag-runs",svc.sqlDagRunsAPI)
  port:=8080;if p:=os.Getenv("PORT");p!=""{if v,e:=strconv.Atoi(p);e==nil&&v>0&&v<65536{port=v}}
  srv:=&http.Server{Addr:fmt.Sprintf(":%d",port),Handler:mux,ReadHeaderTimeout:5*time.Second}
+ checkCtx,checkCancel:=context.WithTimeout(context.Background(),10*time.Second)
+ schemaErr:=svc.checkSQLDAGSchema(checkCtx)
+ checkCancel()
+ if schemaErr!=nil{log.Fatal(schemaErr)}
+ root,stop:=signal.NotifyContext(context.Background(),os.Interrupt,syscall.SIGTERM)
+ defer stop()
  svc.startManagedScheduler()
+ svc.startSQLDAGDispatcher(root)
+ go func(){
+  <-root.Done()
+  shutdownCtx,done:=context.WithTimeout(context.Background(),15*time.Second)
+  defer done()
+  if err:=srv.Shutdown(shutdownCtx);err!=nil{log.Printf("HTTP server shutdown: %v",err)}
+ }()
  log.Printf("DataFlow bootstrap listening on :%d",port)
- log.Fatal(srv.ListenAndServe())
+ if err:=srv.ListenAndServe();err!=nil&&!errors.Is(err,http.ErrServerClosed){log.Fatal(err)}
 }

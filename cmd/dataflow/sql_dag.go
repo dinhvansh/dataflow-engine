@@ -13,7 +13,6 @@ import (
 
  "github.com/dinhvansh/dataflow-engine/internal/connectors/clickhouse"
  "github.com/dinhvansh/dataflow-engine/internal/jobs/dag"
- "github.com/dinhvansh/dataflow-engine/internal/jobs/executor"
  "github.com/jackc/pgx/v5"
 )
 
@@ -128,12 +127,12 @@ func(s *server)sqlDagRunsAPI(w http.ResponseWriter,r *http.Request){
   dec:=json.NewDecoder(r.Body);dec.DisallowUnknownFields()
   var input struct{DAGID string `json:"dag_id"`}
   if dec.Decode(&input)!=nil||!validUUID.MatchString(input.DAGID){http.Error(w,"valid dag_id required",400);return}
-  select{case s.managedSlots<-struct{}{}:default:http.Error(w,"runner is busy",429);return}
+  // Enqueue transactionally. A separately running PostgreSQL dispatcher
+  // claims queued tasks after restart; no API-owned background goroutine.
   ctx,cancel:=context.WithTimeout(r.Context(),15*time.Second)
+  defer cancel()
   runID,err:=s.queueSQLDag(ctx,input.DAGID)
-  cancel()
-  if err!=nil{<-s.managedSlots;http.Error(w,"pipeline not enabled or one of its SQL jobs is disabled: "+err.Error(),422);return}
-  go func(){defer func(){<-s.managedSlots}();s.executeSQLDag(runID)}()
+  if err!=nil{http.Error(w,"pipeline not enabled or one of its SQL jobs is disabled: "+err.Error(),422);return}
   jsonResponse(w,202,map[string]any{"run_id":runID,"status":"queued"})
  case http.MethodGet:
   ctx,cancel:=context.WithTimeout(r.Context(),10*time.Second);defer cancel()
@@ -187,32 +186,12 @@ func(s *server)queueSQLDag(ctx context.Context,dagID string)(string,error){
  if err=tx.Commit(ctx);err!=nil{return "",err}
  return runID,nil
 }
+// executeSQLDag is retained for integration tests. Production dispatch is
+// handled by the leased PostgreSQL queue and does not call this directly.
 func(s *server)executeSQLDag(runID string){
- ctx,cancel:=context.WithTimeout(context.Background(),30*time.Minute)
- defer cancel()
- var snapshotRaw []byte
- var err error
- err=s.pg.QueryRow(ctx,`UPDATE dag_runs SET status='running',started_at=now()
-  WHERE id=$1::uuid AND status='queued' RETURNING snapshot`,runID).Scan(&snapshotRaw)
- if err!=nil{log.Printf("sql dag %s failed to start: %v",runID,err);return}
- var frozen frozenDAG
- if err=json.Unmarshal(snapshotRaw,&frozen);err!=nil{
-  log.Printf("sql dag %s corrupt snapshot: %v",runID,err);return
- }
- opts:=executor.Options{Concurrency:2,Retries:1,Timeout:35*time.Second}
- result,execErr:=executor.Run(ctx,frozen.Plan,func(stepCtx context.Context,jobID string)error{
-  job,ok:=frozen.Jobs[jobID];if !ok{return fmt.Errorf("missing frozen job %s",jobID)}
-  reader:=clickhouse.QueryJob{Endpoint:s.chURL,Database:job.Database,
-   Username:os.Getenv("DATAFLOW_CH_READONLY_USER"),
-   Password:os.Getenv("DATAFLOW_CH_READONLY_PASSWORD")}
-  _,err:=reader.Execute(stepCtx,job.Query)
-  return err
- },opts)
- status:="succeeded";message:=""
- if execErr!=nil{status="failed";message=execErr.Error()}
- body,e:=json.Marshal(result);if e!=nil{log.Printf("SQL DAG result marshal: %v",e);return}
- persistedCtx,stop:=context.WithTimeout(context.Background(),10*time.Second);defer stop()
- _,err=s.pg.Exec(persistedCtx,`UPDATE dag_runs SET status=$2,result=$3::jsonb,error_message=$4,finished_at=now()
-   WHERE id=$1::uuid`,runID,status,string(body),message)
- if err!=nil{log.Printf("SQL DAG %s persist failure: %v",runID,err)}
+ ctx,stop:=context.WithTimeout(context.Background(),10*time.Second)
+ claim,err:=s.claimSQLDAG(ctx,runID)
+ stop()
+ if err!=nil{log.Printf("sql dag %s claim failed: %v",runID,err);return}
+ s.runClaimedSQLDAG(context.Background(),claim)
 }
