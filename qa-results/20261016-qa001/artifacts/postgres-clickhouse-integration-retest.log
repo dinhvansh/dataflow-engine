@@ -1,0 +1,39 @@
+go: downloading github.com/jackc/pgx/v5 v5.7.2
+go: downloading github.com/microsoft/go-mssqldb v1.8.2
+go: downloading github.com/jackc/puddle/v2 v2.2.2
+go: downloading github.com/jackc/pgpassfile v1.0.0
+go: downloading github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761
+go: downloading golang.org/x/crypto v0.31.0
+go: downloading golang.org/x/text v0.21.0
+go: downloading github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9
+go: downloading github.com/golang-sql/sqlexp v0.1.0
+go: downloading github.com/google/uuid v1.6.0
+go: downloading golang.org/x/sync v0.10.0
+=== RUN   TestAutoBuildRealDBTIntegration
+    auto_build_integration_test.go:114: PASS real dbt A → B → C, View DQ gate, restart-safe state and output
+    auto_build_integration_test.go:138: PASS upstream SQL drift blocks downstream B
+    auto_build_integration_test.go:155: PASS failure stops downstream
+    auto_build_integration_test.go:165: PASS stale model SQL rejects auto build
+--- PASS: TestAutoBuildRealDBTIntegration (9.00s)
+=== RUN   TestDBTRunAPIIntegration
+    dbt_run_integration_test.go:32: ERROR: duplicate key value violates unique constraint "transform_models_name_key" (SQLSTATE 23505)
+--- FAIL: TestDBTRunAPIIntegration (0.01s)
+=== RUN   TestSafeIncrementalAPIIntegration
+--- PASS: TestSafeIncrementalAPIIntegration (0.02s)
+=== RUN   TestLineageAPIIntegration
+--- PASS: TestLineageAPIIntegration (0.02s)
+=== RUN   TestManagedQueueIntegration
+    managed_queue_integration_test.go:43: ERROR: duplicate key value violates unique constraint "sync_streams_source_schema_source_table_target_database_tar_key" (SQLSTATE 23505)
+--- FAIL: TestManagedQueueIntegration (0.02s)
+=== RUN   TestStreamTuningMigrationIdempotentIntegration
+--- PASS: TestStreamTuningMigrationIdempotentIntegration (0.02s)
+=== RUN   TestSQLDAGIntegration
+    sql_dag_integration_test.go:45: ERROR: duplicate key value violates unique constraint "sql_jobs_name_key" (SQLSTATE 23505)
+--- FAIL: TestSQLDAGIntegration (0.01s)
+=== RUN   TestSafeTableAPIIntegration
+--- PASS: TestSafeTableAPIIntegration (0.02s)
+=== RUN   TestTransformStudioIntegration
+--- PASS: TestTransformStudioIntegration (0.01s)
+FAIL
+FAIL	github.com/dinhvansh/dataflow-engine/cmd/dataflow	9.113s
+FAIL

@@ -1,0 +1,50 @@
+git
+## test/local-qa-v14-20261016
+ M cmd/dataflow/dbt_run_integration_test.go
+ M cmd/dataflow/managed_queue_integration_test.go
+ M cmd/dataflow/sql_dag_integration_test.go
+ M go.mod
+ M internal/connectors/sqlserver/incremental.go
+ M internal/connectors/sqlserver/key_snapshot.go
+ M internal/connectors/sqlserver/reader.go
+ M internal/connectors/sqlserver/reader_test.go
+ M migrations/postgres/004_stream_tuning.sql
+?? .gitignore
+?? cmd/dataflow/migrations_integration_test.go
+?? deploy/local-qa/
+?? go.sum
+?? internal/connectors/sqlserver/reader_integration_test.go
+?? web/dist/
+?? web/node_modules/
+?? web/package-lock.json
+?? web/tsconfig.tsbuildinfo
+c97d424d049673a1d045eb8c9fb7e2cc383cf9f7
+c97d424d049673a1d045eb8c9fb7e2cc383cf9f7
+0	0
+runtime
+Linux d17fc1917fc3 6.18.44 #1 SMP Sat Sep 26 20:02:31 UTC 2026 x86_64 GNU/Linux
+3
+               total        used        free      shared  buff/cache   available
+Mem:           9.7Gi       2.6Gi       3.3Gi        22Mi       4.2Gi       7.1Gi
+Swap:             0B          0B          0B
+Filesystem      Size  Used Avail Use% Mounted on
+overlay          32G   25G  5.5G  82% /
+Docker version 28.4.0, build d8eb465
+Docker Compose version v2.40.3
+v24.19.0
+11.9.0
+Python 3.12.14
+containers
+dataflow-localqa-api|dataflow-localqa-test-runner|Up 4 minutes|127.0.0.1:18080->8080/tcp
+dataflow-localqa-dbt-worker-1|dataflow-localqa-dbt-worker|Up 23 minutes|
+dataflow-localqa-postgres|postgres:16-alpine|Up 2 minutes (healthy)|127.0.0.1:15433->5432/tcp
+dataflow-localqa-mssql|mcr.microsoft.com/mssql/server:2022-latest|Up 32 minutes (healthy)|127.0.0.1:11433->1433/tcp
+dataflow-localqa-clickhouse|clickhouse/clickhouse-server:25.3|Up 3 minutes (healthy)|9000/tcp, 9009/tcp, 127.0.0.1:18123->8123/tcp
+labels
+/dataflow-localqa-api|local-qa|dataflow-localqa
+/dataflow-localqa-dbt-worker-1|local-qa|dataflow-localqa
+/dataflow-localqa-clickhouse-init-1|local-qa|dataflow-localqa
+/dataflow-localqa-mssql-init-1|local-qa|dataflow-localqa
+/dataflow-localqa-postgres|local-qa|dataflow-localqa
+/dataflow-localqa-mssql|local-qa|dataflow-localqa
+/dataflow-localqa-clickhouse|local-qa|dataflow-localqa

@@ -1,0 +1,382 @@
+#1 [internal] load local bake definitions
+#1 reading from stdin 859B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile.dbt-worker
+#2 transferring dockerfile: 886B done
+#2 DONE 0.0s
+
+#3 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#3 DONE 5.6s
+
+#4 docker-image://docker.io/docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
+#4 resolve docker.io/docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e done
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 0B / 14.28MB 0.1s
+#4 sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e 9.08kB / 9.08kB done
+#4 sha256:7b32114e84ca21aeb2d6f871a0b62b3a0762193f75d9afd048ee4cbe889f3148 1.13kB / 1.13kB done
+#4 sha256:528c92d70d7e39dbb3dd1c6681f6750c565c7e45b70527cda47c1a61495c1b6a 1.41kB / 1.41kB done
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 1.05MB / 14.28MB 2.0s
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 2.10MB / 14.28MB 2.4s
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 3.15MB / 14.28MB 2.8s
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 4.19MB / 14.28MB 3.3s
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 5.24MB / 14.28MB 3.7s
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 6.29MB / 14.28MB 4.2s
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 7.34MB / 14.28MB 4.5s
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 8.39MB / 14.28MB 4.9s
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 9.44MB / 14.28MB 5.3s
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 10.49MB / 14.28MB 5.7s
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 11.53MB / 14.28MB 6.2s
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 12.58MB / 14.28MB 6.5s
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 13.63MB / 14.28MB 6.9s
+#4 sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 14.28MB / 14.28MB 7.2s done
+#4 extracting sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 0.1s
+#4 extracting sha256:9d2b4f57f9e20f33279375ce25c6ff14f30f64270ed5c7b613b2b30256754f62 0.1s done
+#4 DONE 7.4s
+
+#5 [internal] load metadata for docker.io/library/python:3.12-slim
+#5 DONE 4.7s
+
+#6 [internal] load metadata for docker.io/library/golang:1.23-alpine
+#6 DONE 5.2s
+
+#7 [internal] load .dockerignore
+#7 transferring context: 2B done
+#7 DONE 0.0s
+
+#8 [build 1/6] FROM docker.io/library/golang:1.23-alpine@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f
+#8 resolve docker.io/library/golang:1.23-alpine@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f 0.0s done
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 0B / 74.07MB 0.1s
+#8 sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f 10.30kB / 10.30kB done
+#8 sha256:a7ecaac5efda22510d8c903bdc6b19026543f1eac3317d47363680df22161bd8 1.92kB / 1.92kB done
+#8 sha256:72fd06a5dd05d7cb31d0fa2a125e89eecc16fbff26acf95bbd2762cdcfb5af38 2.08kB / 2.08kB done
+#8 sha256:9824c27679d3b27c5e1cb00a73adb6f4f8d556994111c12db3c5d61a0c843df8 0B / 3.80MB 0.1s
+#8 sha256:8371a51cbc44c1323f96695eaeaeeb1c44b2d30d138a279b348af5c18b2c5e24 0B / 282.45kB 0.1s
+#8 ...
+
+#9 [internal] load build context
+#9 transferring context: 109.59MB 1.2s done
+#9 DONE 1.3s
+
+#8 [build 1/6] FROM docker.io/library/golang:1.23-alpine@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f
+#8 sha256:9824c27679d3b27c5e1cb00a73adb6f4f8d556994111c12db3c5d61a0c843df8 1.05MB / 3.80MB 1.9s
+#8 sha256:9824c27679d3b27c5e1cb00a73adb6f4f8d556994111c12db3c5d61a0c843df8 2.10MB / 3.80MB 2.3s
+#8 sha256:9824c27679d3b27c5e1cb00a73adb6f4f8d556994111c12db3c5d61a0c843df8 3.15MB / 3.80MB 2.7s
+#8 sha256:8371a51cbc44c1323f96695eaeaeeb1c44b2d30d138a279b348af5c18b2c5e24 282.45kB / 282.45kB 2.6s done
+#8 sha256:d3178a7b27090e22bc2464346d1cdc8f59d0fd7a241452e8148342edf3d0b1e9 0B / 126B 2.7s
+#8 sha256:9824c27679d3b27c5e1cb00a73adb6f4f8d556994111c12db3c5d61a0c843df8 3.80MB / 3.80MB 2.9s done
+#8 extracting sha256:9824c27679d3b27c5e1cb00a73adb6f4f8d556994111c12db3c5d61a0c843df8 0.1s done
+#8 extracting sha256:8371a51cbc44c1323f96695eaeaeeb1c44b2d30d138a279b348af5c18b2c5e24 0.1s done
+#8 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 0B / 32B 3.0s
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 4.19MB / 74.07MB 4.4s
+#8 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 4.5s done
+#8 sha256:d3178a7b27090e22bc2464346d1cdc8f59d0fd7a241452e8148342edf3d0b1e9 126B / 126B 4.6s done
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 8.39MB / 74.07MB 6.7s
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 12.58MB / 74.07MB 9.1s
+#8 ...
+
+#10 [stage-1 1/4] FROM docker.io/library/python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+#10 resolve docker.io/library/python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 0.0s done
+#10 sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 10.37kB / 10.37kB done
+#10 sha256:2b4f19dae3a777dfc3b76730bda1e82e1f66ab2a2686fa93ca78edbfb4f04ffe 1.75kB / 1.75kB done
+#10 sha256:df18428df8a0f9189c84e7424d214b4c50092af1f9dca5842a00c41c39bda316 5.66kB / 5.66kB done
+#10 sha256:ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e 9.44MB / 29.84MB 10.0s
+#10 sha256:75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8 1.29MB / 1.29MB 7.1s done
+#10 sha256:6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4 1.05MB / 12.12MB 10.0s
+#10 sha256:6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4 2.10MB / 12.12MB 10.1s
+#10 ...
+
+#8 [build 1/6] FROM docker.io/library/golang:1.23-alpine@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 16.78MB / 74.07MB 11.4s
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 20.97MB / 74.07MB 13.6s
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 25.17MB / 74.07MB 16.0s
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 29.36MB / 74.07MB 18.3s
+#8 ...
+
+#10 [stage-1 1/4] FROM docker.io/library/python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+#10 sha256:ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e 29.84MB / 29.84MB 17.8s done
+#10 sha256:6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4 12.12MB / 12.12MB 13.5s done
+#10 sha256:bbc5a12237474ec0b23b5051260d56d6436a24d70d9cad961adebe7a037ed813 249B / 249B 14.0s done
+#10 extracting sha256:ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e 0.8s done
+#10 extracting sha256:75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8
+#10 ...
+
+#8 [build 1/6] FROM docker.io/library/golang:1.23-alpine@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 33.55MB / 74.07MB 20.4s
+#8 ...
+
+#10 [stage-1 1/4] FROM docker.io/library/python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+#10 extracting sha256:75b6a36c64a1cf3520fc4b4aae4739d5caa8a6a05c27835a920a61784c9c32f8 0.5s done
+#10 extracting sha256:6912e23eb44595b44dc6d9882b34f305ad6f6e9667cec70b13e5dbc4f8cd97f4 0.9s done
+#10 extracting sha256:bbc5a12237474ec0b23b5051260d56d6436a24d70d9cad961adebe7a037ed813 done
+#10 DONE 20.7s
+
+#8 [build 1/6] FROM docker.io/library/golang:1.23-alpine@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 37.75MB / 74.07MB 22.7s
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 41.94MB / 74.07MB 25.2s
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 46.14MB / 74.07MB 27.5s
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 50.33MB / 74.07MB 29.7s
+#8 ...
+
+#11 [stage-1 2/4] RUN --mount=type=secret,id=proxy_ca,required=true PIP_CERT=/run/secrets/proxy_ca python -m pip install --no-cache-dir dbt-core==1.11.0 dbt-clickhouse==1.10.3 && useradd --create-home --uid 10001 --shell /usr/sbin/nologin dataflow
+#11 2.094 Collecting dbt-core==1.11.0
+#11 2.913   Downloading dbt_core-1.11.0-py3-none-any.whl.metadata (4.4 kB)
+#11 3.508 Collecting dbt-clickhouse==1.10.3
+#11 4.268   Downloading dbt_clickhouse-1.10.3-py3-none-any.whl.metadata (4.2 kB)
+#11 4.914 Collecting agate<1.10,>=1.7.0 (from dbt-core==1.11.0)
+#11 5.109   Downloading agate-1.9.1-py2.py3-none-any.whl.metadata (3.2 kB)
+#11 5.616 Collecting click<9.0,>=8.0.2 (from dbt-core==1.11.0)
+#11 5.801   Downloading click-8.5.0-py3-none-any.whl.metadata (2.6 kB)
+#11 5.987 Collecting daff>=1.3.46 (from dbt-core==1.11.0)
+#11 6.477   Downloading daff-1.4.2-py3-none-any.whl.metadata (10 kB)
+#11 6.658 Collecting dbt-adapters<2.0,>=1.15.5 (from dbt-core==1.11.0)
+#11 6.816   Downloading dbt_adapters-1.24.5-py3-none-any.whl.metadata (4.6 kB)
+#11 6.984 Collecting dbt-common<2.0,>=1.37.2 (from dbt-core==1.11.0)
+#11 7.567   Downloading dbt_common-1.39.0-py3-none-any.whl.metadata (5.1 kB)
+#11 7.753 Collecting dbt-extractor<=0.6,>=0.5.0 (from dbt-core==1.11.0)
+#11 7.922   Downloading dbt_extractor-0.6.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.6 kB)
+#11 8.095 Collecting dbt-protos<2.0,>=1.0.405 (from dbt-core==1.11.0)
+#11 8.282   Downloading dbt_protos-1.0.594-py3-none-any.whl.metadata (859 bytes)
+#11 8.474 Collecting dbt-semantic-interfaces<0.10,>=0.9.0 (from dbt-core==1.11.0)
+#11 8.666   Downloading dbt_semantic_interfaces-0.9.0-py3-none-any.whl.metadata (2.6 kB)
+#11 8.849 Collecting jinja2<4,>=3.1.3 (from dbt-core==1.11.0)
+#11 9.005   Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+#11 9.195 Collecting jsonschema<5.0,>=4.19.1 (from dbt-core==1.11.0)
+#11 9.358   Downloading jsonschema-4.26.0-py3-none-any.whl.metadata (7.6 kB)
+#11 9.540 Collecting mashumaro<3.15,>=3.9 (from mashumaro[msgpack]<3.15,>=3.9->dbt-core==1.11.0)
+#11 9.726   Downloading mashumaro-3.14-py3-none-any.whl.metadata (114 kB)
+#11 10.14 Collecting networkx<4.0,>=2.3 (from dbt-core==1.11.0)
+#11 ...
+
+#8 [build 1/6] FROM docker.io/library/golang:1.23-alpine@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 54.53MB / 74.07MB 32.1s
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 58.72MB / 74.07MB 34.4s
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 62.91MB / 74.07MB 36.8s
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 67.11MB / 74.07MB 39.1s
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 71.30MB / 74.07MB 41.2s
+#8 ...
+
+#11 [stage-1 2/4] RUN --mount=type=secret,id=proxy_ca,required=true PIP_CERT=/run/secrets/proxy_ca python -m pip install --no-cache-dir dbt-core==1.11.0 dbt-clickhouse==1.10.3 && useradd --create-home --uid 10001 --shell /usr/sbin/nologin dataflow
+#11 10.31   Downloading networkx-3.7-py3-none-any.whl.metadata (6.7 kB)
+#11 10.51 Collecting packaging>20.9 (from dbt-core==1.11.0)
+#11 10.67   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+#11 10.84 Collecting pathspec<0.13,>=0.9 (from dbt-core==1.11.0)
+#11 11.01   Downloading pathspec-0.12.1-py3-none-any.whl.metadata (21 kB)
+#11 11.58 Collecting protobuf<7.0,>=6.0 (from dbt-core==1.11.0)
+#11 11.78   Downloading protobuf-6.33.6-cp39-abi3-manylinux2014_x86_64.whl.metadata (593 bytes)
+#11 12.25 Collecting pydantic<3 (from dbt-core==1.11.0)
+#11 12.41   Downloading pydantic-2.14.1-py3-none-any.whl.metadata (133 kB)
+#11 12.90 Collecting pytz>=2015.7 (from dbt-core==1.11.0)
+#11 13.09   Downloading pytz-2026.5-py2.py3-none-any.whl.metadata (22 kB)
+#11 13.31 Collecting pyyaml>=6.0 (from dbt-core==1.11.0)
+#11 13.50   Downloading pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+#11 13.71 Collecting requests<3.0.0 (from dbt-core==1.11.0)
+#11 13.86   Downloading requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+#11 14.03 Collecting snowplow-tracker<2.0,>=1.0.2 (from dbt-core==1.11.0)
+#11 14.18   Downloading snowplow_tracker-1.1.0-py3-none-any.whl.metadata (5.7 kB)
+#11 14.50 Collecting sqlparse<0.6.0,>=0.5.0 (from dbt-core==1.11.0)
+#11 14.70   Downloading sqlparse-0.5.5-py3-none-any.whl.metadata (4.7 kB)
+#11 14.87 Collecting typing-extensions>=4.4 (from dbt-core==1.11.0)
+#11 15.06   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+#11 15.93 Collecting clickhouse-connect>=0.10.0 (from dbt-clickhouse==1.10.3)
+#11 16.13   Downloading clickhouse_connect-1.10.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (9.0 kB)
+#11 16.32 Collecting clickhouse-driver>=0.2.10 (from dbt-clickhouse==1.10.3)
+#11 16.49   Downloading clickhouse_driver-0.2.11-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (6.5 kB)
+#11 16.65 Collecting Babel>=2.0 (from agate<1.10,>=1.7.0->dbt-core==1.11.0)
+#11 16.85   Downloading babel-2.18.0-py3-none-any.whl.metadata (2.2 kB)
+#11 17.03 Collecting isodate>=0.5.4 (from agate<1.10,>=1.7.0->dbt-core==1.11.0)
+#11 17.19   Downloading isodate-0.7.2-py3-none-any.whl.metadata (11 kB)
+#11 17.37 Collecting leather>=0.3.2 (from agate<1.10,>=1.7.0->dbt-core==1.11.0)
+#11 17.52   Downloading leather-0.4.1-py3-none-any.whl.metadata (3.0 kB)
+#11 17.67 Collecting parsedatetime!=2.5,>=2.1 (from agate<1.10,>=1.7.0->dbt-core==1.11.0)
+#11 17.87   Downloading parsedatetime-2.6-py3-none-any.whl.metadata (4.7 kB)
+#11 18.06 Collecting python-slugify>=1.2.1 (from agate<1.10,>=1.7.0->dbt-core==1.11.0)
+#11 18.28   Downloading python_slugify-9.1.3-py3-none-any.whl.metadata (12 kB)
+#11 18.43 Collecting pytimeparse>=1.1.5 (from agate<1.10,>=1.7.0->dbt-core==1.11.0)
+#11 18.62   Downloading pytimeparse-1.1.9-py3-none-any.whl.metadata (3.6 kB)
+#11 18.79 Collecting certifi (from clickhouse-connect>=0.10.0->dbt-clickhouse==1.10.3)
+#11 18.99   Downloading certifi-2026.7.22-py3-none-any.whl.metadata (2.5 kB)
+#11 19.15 Collecting urllib3>=1.26 (from clickhouse-connect>=0.10.0->dbt-clickhouse==1.10.3)
+#11 19.33   Downloading urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+#11 19.57 Collecting backports.zstd>=1.3.0 (from clickhouse-connect>=0.10.0->dbt-clickhouse==1.10.3)
+#11 19.74   Downloading backports_zstd-1.8.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (6.8 kB)
+#11 20.05 Collecting lz4 (from clickhouse-connect>=0.10.0->dbt-clickhouse==1.10.3)
+#11 20.20   Downloading lz4-4.4.5-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (3.8 kB)
+#11 20.37 Collecting tzlocal (from clickhouse-driver>=0.2.10->dbt-clickhouse==1.10.3)
+#11 20.52   Downloading tzlocal-5.4.4-py3-none-any.whl.metadata (7.7 kB)
+#11 ...
+
+#8 [build 1/6] FROM docker.io/library/golang:1.23-alpine@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f
+#8 sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 74.07MB / 74.07MB 42.7s done
+#8 extracting sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 0.1s
+#8 extracting sha256:d5791340ef181f05ef1e99760e4be81cb2008d99b2bc1e56b2faa9b6295d0ac3 3.7s done
+#8 extracting sha256:d3178a7b27090e22bc2464346d1cdc8f59d0fd7a241452e8148342edf3d0b1e9
+#8 extracting sha256:d3178a7b27090e22bc2464346d1cdc8f59d0fd7a241452e8148342edf3d0b1e9 done
+#8 extracting sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1
+#8 extracting sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 done
+#8 DONE 48.8s
+
+#11 [stage-1 2/4] RUN --mount=type=secret,id=proxy_ca,required=true PIP_CERT=/run/secrets/proxy_ca python -m pip install --no-cache-dir dbt-core==1.11.0 dbt-clickhouse==1.10.3 && useradd --create-home --uid 10001 --shell /usr/sbin/nologin dataflow
+#11 20.70 Collecting colorama<0.5,>=0.3.9 (from dbt-common<2.0,>=1.37.2->dbt-core==1.11.0)
+#11 20.87   Downloading colorama-0.4.6-py2.py3-none-any.whl.metadata (17 kB)
+#11 21.06 Collecting deepdiff<9.0,>=7.0 (from dbt-common<2.0,>=1.37.2->dbt-core==1.11.0)
+#11 21.26   Downloading deepdiff-8.6.2-py3-none-any.whl.metadata (8.8 kB)
+#11 21.48 Collecting opentelemetry-api<3.0,>=1.26 (from dbt-common<2.0,>=1.37.2->dbt-core==1.11.0)
+#11 21.68   Downloading opentelemetry_api-1.45.1-py3-none-any.whl.metadata (1.4 kB)
+#11 21.85 Collecting python-dateutil<3.0,>=2.0 (from dbt-common<2.0,>=1.37.2->dbt-core==1.11.0)
+#11 22.04   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+#11 22.27 Collecting importlib-metadata<9,>=6.0 (from dbt-semantic-interfaces<0.10,>=0.9.0->dbt-core==1.11.0)
+#11 22.43   Downloading importlib_metadata-8.9.0-py3-none-any.whl.metadata (4.5 kB)
+#11 22.60 Collecting more-itertools<11.0,>=8.0 (from dbt-semantic-interfaces<0.10,>=0.9.0->dbt-core==1.11.0)
+#11 22.78   Downloading more_itertools-10.8.0-py3-none-any.whl.metadata (39 kB)
+#11 23.03 Collecting MarkupSafe>=2.0 (from jinja2<4,>=3.1.3->dbt-core==1.11.0)
+#11 23.21   Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.7 kB)
+#11 23.37 Collecting attrs>=22.2.0 (from jsonschema<5.0,>=4.19.1->dbt-core==1.11.0)
+#11 23.54   Downloading attrs-26.1.0-py3-none-any.whl.metadata (8.8 kB)
+#11 23.73 Collecting jsonschema-specifications>=2023.03.6 (from jsonschema<5.0,>=4.19.1->dbt-core==1.11.0)
+#11 23.92   Downloading jsonschema_specifications-2025.9.1-py3-none-any.whl.metadata (2.9 kB)
+#11 24.10 Collecting referencing>=0.28.4 (from jsonschema<5.0,>=4.19.1->dbt-core==1.11.0)
+#11 24.30   Downloading referencing-0.37.0-py3-none-any.whl.metadata (2.8 kB)
+#11 24.66 Collecting rpds-py>=0.25.0 (from jsonschema<5.0,>=4.19.1->dbt-core==1.11.0)
+#11 24.85   Downloading rpds_py-2026.9.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.1 kB)
+#11 25.19 Collecting msgpack>=0.5.6 (from mashumaro[msgpack]<3.15,>=3.9->dbt-core==1.11.0)
+#11 25.35   Downloading msgpack-1.2.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (8.3 kB)
+#11 25.53 Collecting annotated-types>=0.6.0 (from pydantic<3->dbt-core==1.11.0)
+#11 25.72   Downloading annotated_types-0.8.0-py3-none-any.whl.metadata (15 kB)
+#11 27.15 Collecting pydantic-core==2.50.1 (from pydantic<3->dbt-core==1.11.0)
+#11 27.32   Downloading pydantic_core-2.50.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.5 kB)
+#11 27.52 Collecting typing-inspection>=0.4.4 (from pydantic<3->dbt-core==1.11.0)
+#11 27.71   Downloading typing_inspection-0.4.4-py3-none-any.whl.metadata (2.6 kB)
+#11 28.00 Collecting charset_normalizer<4,>=2 (from requests<3.0.0->dbt-core==1.11.0)
+#11 28.16   Downloading charset_normalizer-3.5.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (46 kB)
+#11 28.37 Collecting idna<4,>=2.5 (from requests<3.0.0->dbt-core==1.11.0)
+#11 28.54   Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+#11 ...
+
+#12 [build 2/6] WORKDIR /src
+#12 DONE 0.4s
+
+#13 [build 3/6] COPY go.mod go.sum ./
+#13 DONE 0.4s
+
+#14 [build 4/6] RUN --mount=type=secret,id=proxy_ca,required=true SSL_CERT_FILE=/run/secrets/proxy_ca go mod download
+#14 ...
+
+#11 [stage-1 2/4] RUN --mount=type=secret,id=proxy_ca,required=true PIP_CERT=/run/secrets/proxy_ca python -m pip install --no-cache-dir dbt-core==1.11.0 dbt-clickhouse==1.10.3 && useradd --create-home --uid 10001 --shell /usr/sbin/nologin dataflow
+#11 28.72 Collecting orderly-set<6,>=5.4.1 (from deepdiff<9.0,>=7.0->dbt-common<2.0,>=1.37.2->dbt-core==1.11.0)
+#11 28.91   Downloading orderly_set-5.5.0-py3-none-any.whl.metadata (6.6 kB)
+#11 29.09 Collecting zipp>=3.20 (from importlib-metadata<9,>=6.0->dbt-semantic-interfaces<0.10,>=0.9.0->dbt-core==1.11.0)
+#11 29.29   Downloading zipp-4.1.1-py3-none-any.whl.metadata (3.6 kB)
+#11 29.49 Collecting six>=1.5 (from python-dateutil<3.0,>=2.0->dbt-common<2.0,>=1.37.2->dbt-core==1.11.0)
+#11 29.64   Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+#11 29.83 Collecting text-unidecode>=1.3 (from python-slugify>=1.2.1->agate<1.10,>=1.7.0->dbt-core==1.11.0)
+#11 29.99   Downloading text_unidecode-1.3-py2.py3-none-any.whl.metadata (2.4 kB)
+#11 30.01 WARNING: The candidate selected for download or install is a yanked version: 'dbt-core' candidate (version 1.11.0 at https://files.pythonhosted.org/packages/af/91/71f6852b54d9c2504e82b57a1d66045ce2728e85d009488b089d12439b6c/dbt_core-1.11.0-py3-none-any.whl (from https://pypi.org/simple/dbt-core/) (requires-python:>=3.10))
+#11 30.01 Reason for being yanked: Some install issues with required dependency bounds
+#11 30.21 Downloading dbt_core-1.11.0-py3-none-any.whl (1.0 MB)
+#11 30.92    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.0/1.0 MB 2.5 MB/s eta 0:00:00
+#11 31.13 Downloading dbt_clickhouse-1.10.3-py3-none-any.whl (74 kB)
+#11 31.29 Downloading agate-1.9.1-py2.py3-none-any.whl (95 kB)
+#11 31.83 Downloading click-8.5.0-py3-none-any.whl (125 kB)
+#11 32.03 Downloading clickhouse_connect-1.10.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (1.5 MB)
+#11 32.52    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.5/1.5 MB 4.0 MB/s eta 0:00:00
+#11 32.72 Downloading clickhouse_driver-0.2.11-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (1.1 MB)
+#11 32.97    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.1/1.1 MB 3.8 MB/s eta 0:00:00
+#11 33.15 Downloading daff-1.4.2-py3-none-any.whl (144 kB)
+#11 33.45 Downloading dbt_adapters-1.24.5-py3-none-any.whl (177 kB)
+#11 33.62 Downloading dbt_common-1.39.0-py3-none-any.whl (89 kB)
+#11 33.78 Downloading dbt_extractor-0.6.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (442 kB)
+#11 33.97 Downloading dbt_protos-1.0.594-py3-none-any.whl (277 kB)
+#11 34.17 Downloading dbt_semantic_interfaces-0.9.0-py3-none-any.whl (147 kB)
+#11 34.43 Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)
+#11 34.77 Downloading jsonschema-4.26.0-py3-none-any.whl (90 kB)
+#11 35.01 Downloading mashumaro-3.14-py3-none-any.whl (92 kB)
+#11 35.26 Downloading networkx-3.7-py3-none-any.whl (2.1 MB)
+#11 36.09    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 2.8 MB/s eta 0:00:00
+#11 36.27 Downloading packaging-26.3-py3-none-any.whl (129 kB)
+#11 36.46 Downloading pathspec-0.12.1-py3-none-any.whl (31 kB)
+#11 36.64 Downloading protobuf-6.33.6-cp39-abi3-manylinux2014_x86_64.whl (323 kB)
+#11 36.99 Downloading pydantic-2.14.1-py3-none-any.whl (488 kB)
+#11 37.33 Downloading pydantic_core-2.50.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.2 MB)
+#11 37.95    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.2/2.2 MB 3.3 MB/s eta 0:00:00
+#11 38.11 Downloading pytz-2026.5-py2.py3-none-any.whl (506 kB)
+#11 38.35 Downloading pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (807 kB)
+#11 38.43    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 807.9/807.9 kB 12.3 MB/s eta 0:00:00
+#11 38.61 Downloading requests-2.34.2-py3-none-any.whl (73 kB)
+#11 38.81 Downloading snowplow_tracker-1.1.0-py3-none-any.whl (44 kB)
+#11 38.97 Downloading sqlparse-0.5.5-py3-none-any.whl (46 kB)
+#11 39.17 Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+#11 39.33 Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+#11 39.52 Downloading attrs-26.1.0-py3-none-any.whl (67 kB)
+#11 39.71 Downloading babel-2.18.0-py3-none-any.whl (10.2 MB)
+#11 42.52    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.2/10.2 MB 3.6 MB/s eta 0:00:00
+#11 42.71 Downloading backports_zstd-1.8.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (496 kB)
+#11 42.90 Downloading certifi-2026.7.22-py3-none-any.whl (136 kB)
+#11 43.13 Downloading charset_normalizer-3.5.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (257 kB)
+#11 43.40 Downloading colorama-0.4.6-py2.py3-none-any.whl (25 kB)
+#11 43.59 Downloading deepdiff-8.6.2-py3-none-any.whl (91 kB)
+#11 44.07 Downloading idna-3.20-py3-none-any.whl (69 kB)
+#11 44.32 Downloading importlib_metadata-8.9.0-py3-none-any.whl (27 kB)
+#11 44.55 Downloading isodate-0.7.2-py3-none-any.whl (22 kB)
+#11 44.78 Downloading jsonschema_specifications-2025.9.1-py3-none-any.whl (18 kB)
+#11 44.98 Downloading leather-0.4.1-py3-none-any.whl (30 kB)
+#11 45.27 Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (22 kB)
+#11 45.50 Downloading more_itertools-10.8.0-py3-none-any.whl (69 kB)
+#11 45.67 Downloading msgpack-1.2.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (472 kB)
+#11 ...
+
+#14 [build 4/6] RUN --mount=type=secret,id=proxy_ca,required=true SSL_CERT_FILE=/run/secrets/proxy_ca go mod download
+#14 DONE 16.8s
+
+#11 [stage-1 2/4] RUN --mount=type=secret,id=proxy_ca,required=true PIP_CERT=/run/secrets/proxy_ca python -m pip install --no-cache-dir dbt-core==1.11.0 dbt-clickhouse==1.10.3 && useradd --create-home --uid 10001 --shell /usr/sbin/nologin dataflow
+#11 45.88 Downloading opentelemetry_api-1.45.1-py3-none-any.whl (60 kB)
+#11 46.05 Downloading parsedatetime-2.6-py3-none-any.whl (42 kB)
+#11 46.21 Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+#11 46.42 Downloading python_slugify-9.1.3-py3-none-any.whl (16 kB)
+#11 46.60 Downloading pytimeparse-1.1.9-py3-none-any.whl (10.0 kB)
+#11 46.77 Downloading referencing-0.37.0-py3-none-any.whl (26 kB)
+#11 46.97 Downloading rpds_py-2026.9.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (371 kB)
+#11 47.18 Downloading typing_inspection-0.4.4-py3-none-any.whl (14 kB)
+#11 ...
+
+#15 [build 5/6] COPY . .
+#15 DONE 1.5s
+
+#11 [stage-1 2/4] RUN --mount=type=secret,id=proxy_ca,required=true PIP_CERT=/run/secrets/proxy_ca python -m pip install --no-cache-dir dbt-core==1.11.0 dbt-clickhouse==1.10.3 && useradd --create-home --uid 10001 --shell /usr/sbin/nologin dataflow
+#11 47.37 Downloading urllib3-2.8.0-py3-none-any.whl (135 kB)
+#11 47.53 Downloading lz4-4.4.5-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (1.4 MB)
+#11 47.74    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 5.9 MB/s eta 0:00:00
+#11 47.94 Downloading tzlocal-5.4.4-py3-none-any.whl (18 kB)
+#11 48.14 Downloading orderly_set-5.5.0-py3-none-any.whl (13 kB)
+#11 48.33 Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+#11 48.52 Downloading text_unidecode-1.3-py2.py3-none-any.whl (78 kB)
+#11 48.70 Downloading zipp-4.1.1-py3-none-any.whl (10 kB)
+#11 49.03 Installing collected packages: text-unidecode, pytz, parsedatetime, leather, daff, zipp, urllib3, tzlocal, typing-extensions, sqlparse, six, rpds-py, pyyaml, pytimeparse, python-slugify, protobuf, pathspec, packaging, orderly-set, networkx, msgpack, more-itertools, MarkupSafe, lz4, isodate, idna, dbt-extractor, colorama, click, charset_normalizer, certifi, backports.zstd, Babel, attrs, annotated-types, typing-inspection, requests, referencing, python-dateutil, pydantic-core, opentelemetry-api, mashumaro, jinja2, importlib-metadata, deepdiff, dbt-protos, clickhouse-driver, clickhouse-connect, agate, snowplow-tracker, pydantic, jsonschema-specifications, jsonschema, dbt-semantic-interfaces, dbt-common, dbt-adapters, dbt-core, dbt-clickhouse
+#11 ...
+
+#16 [build 6/6] RUN CGO_ENABLED=0 go build -buildvcs=false -trimpath -o /out/dataflow-dbt-worker ./cmd/dataflow-dbt-worker
+#16 ...
+
+#11 [stage-1 2/4] RUN --mount=type=secret,id=proxy_ca,required=true PIP_CERT=/run/secrets/proxy_ca python -m pip install --no-cache-dir dbt-core==1.11.0 dbt-clickhouse==1.10.3 && useradd --create-home --uid 10001 --shell /usr/sbin/nologin dataflow
+#11 57.53 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#11 57.53 Successfully installed Babel-2.18.0 MarkupSafe-3.0.4 agate-1.9.1 annotated-types-0.8.0 attrs-26.1.0 backports.zstd-1.8.0 certifi-2026.7.22 charset_normalizer-3.5.2 click-8.5.0 clickhouse-connect-1.10.1 clickhouse-driver-0.2.11 colorama-0.4.6 daff-1.4.2 dbt-adapters-1.24.5 dbt-clickhouse-1.10.3 dbt-common-1.39.0 dbt-core-1.11.0 dbt-extractor-0.6.0 dbt-protos-1.0.594 dbt-semantic-interfaces-0.9.0 deepdiff-8.6.2 idna-3.20 importlib-metadata-8.9.0 isodate-0.7.2 jinja2-3.1.6 jsonschema-4.26.0 jsonschema-specifications-2025.9.1 leather-0.4.1 lz4-4.4.5 mashumaro-3.14 more-itertools-10.8.0 msgpack-1.2.3 networkx-3.7 opentelemetry-api-1.45.1 orderly-set-5.5.0 packaging-26.3 parsedatetime-2.6 pathspec-0.12.1 protobuf-6.33.6 pydantic-2.14.1 pydantic-core-2.50.1 python-dateutil-2.9.0.post0 python-slugify-9.1.3 pytimeparse-1.1.9 pytz-2026.5 pyyaml-6.0.3 referencing-0.37.0 requests-2.34.2 rpds-py-2026.9.1 six-1.17.0 snowplow-tracker-1.1.0 sqlparse-0.5.5 text-unidecode-1.3 typing-extensions-4.16.0 typing-inspection-0.4.4 tzlocal-5.4.4 urllib3-2.8.0 zipp-4.1.1
+#11 DONE 58.3s
+
+#16 [build 6/6] RUN CGO_ENABLED=0 go build -buildvcs=false -trimpath -o /out/dataflow-dbt-worker ./cmd/dataflow-dbt-worker
+#16 DONE 21.8s
+
+#17 [stage-1 3/4] COPY --from=build /out/dataflow-dbt-worker /usr/local/bin/dataflow-dbt-worker
+#17 DONE 1.3s
+
+#18 [stage-1 4/4] WORKDIR /home/dataflow
+#18 DONE 0.5s
+
+#19 exporting to image
+#19 exporting layers
+#19 exporting layers 1.2s done
+#19 writing image sha256:0f56eeeac169e0c29f8e6b9fa6e7fbb156246651a8e36b223d5c893ec2edab4a done
+#19 naming to docker.io/library/dataflow-localqa-dbt-worker done
+#19 DONE 1.2s
+
+#20 resolving provenance for metadata file
+#20 DONE 0.0s
+ dataflow-localqa-dbt-worker  Built

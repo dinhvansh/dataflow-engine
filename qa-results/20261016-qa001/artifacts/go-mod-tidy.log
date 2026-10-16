@@ -1,0 +1,9 @@
+go version go1.23.12 linux/amd64
+go: downloading github.com/microsoft/go-mssqldb v1.8.2
+go: downloading github.com/jackc/pgx/v5 v5.7.2
+go: github.com/dinhvansh/dataflow-engine/cmd/dataflow imports
+	github.com/jackc/pgx/v5: github.com/jackc/pgx/v5@v5.7.2: Get "https://proxy.golang.org/github.com/jackc/pgx/v5/@v/v5.7.2.zip": tls: failed to verify certificate: x509: certificate signed by unknown authority
+go: github.com/dinhvansh/dataflow-engine/cmd/dataflow imports
+	github.com/jackc/pgx/v5/pgxpool: github.com/jackc/pgx/v5@v5.7.2: Get "https://proxy.golang.org/github.com/jackc/pgx/v5/@v/v5.7.2.zip": tls: failed to verify certificate: x509: certificate signed by unknown authority
+go: github.com/dinhvansh/dataflow-engine/internal/connectors/sqlserver imports
+	github.com/microsoft/go-mssqldb: github.com/microsoft/go-mssqldb@v1.8.2: Get "https://proxy.golang.org/github.com/microsoft/go-mssqldb/@v/v1.8.2.zip": tls: failed to verify certificate: x509: certificate signed by unknown authority

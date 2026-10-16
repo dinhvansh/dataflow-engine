@@ -1,0 +1,1 @@
+{"batches_written":0,"elapsed_seconds":0.007978042,"error":"consistent full refresh requires SQL Server SNAPSHOT isolation: read-only transactions are not supported","rows_written":0,"run_id":"00d5f77e-5d6d-4b18-bc99-45a929aaff59","status":"failed","upper_exclusive":""}

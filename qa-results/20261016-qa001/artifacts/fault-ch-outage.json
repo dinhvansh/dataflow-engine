@@ -1,0 +1,1 @@
+{"batches_written":0,"elapsed_seconds":0.022606579,"error":"Post \"http://clickhouse:8123?query=CREATE+TABLE+%60scratch%60.%60qa_parttran_10k_df_fc4322658f62413b%60+AS+%60scratch%60.%60qa_parttran_10k%60\": dial tcp: lookup clickhouse on 127.0.0.11:53: no such host","rows_written":0,"run_id":"fc432265-8f62-413b-8111-f40e97b61569","status":"failed","upper_exclusive":""}

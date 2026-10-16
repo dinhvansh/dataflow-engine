@@ -1,0 +1,23 @@
+=== RUN   TestSnapshotDiffIntegration
+--- PASS: TestSnapshotDiffIntegration (0.08s)
+=== RUN   TestReadOnlySQLIntegration
+--- PASS: TestReadOnlySQLIntegration (0.00s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/connectors/clickhouse	0.082s
+=== RUN   TestVisualTransformClickHouseIntegration
+--- PASS: TestVisualTransformClickHouseIntegration (0.01s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/transform	0.014s
+=== RUN   TestDeltaUpdateDeleteReplayIntegration
+--- PASS: TestDeltaUpdateDeleteReplayIntegration (0.09s)
+=== RUN   TestDeltaRejectDuplicateVersionIntegration
+--- PASS: TestDeltaRejectDuplicateVersionIntegration (0.01s)
+=== RUN   TestAtomicPublishAndRollbackIntegration
+--- PASS: TestAtomicPublishAndRollbackIntegration (0.04s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/safetable	0.152s
+=== RUN   TestDBTRealClickHouseIntegration
+    project_integration_test.go:46: dbt created real scratch view and exposed it through ClickHouse
+--- PASS: TestDBTRealClickHouseIntegration (2.73s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/dbtworker	2.735s

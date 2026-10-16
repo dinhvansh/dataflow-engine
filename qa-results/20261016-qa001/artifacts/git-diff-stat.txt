@@ -1,0 +1,10 @@
+ cmd/dataflow/dbt_run_integration_test.go       |  5 ++++-
+ cmd/dataflow/managed_queue_integration_test.go | 17 ++++-----------
+ cmd/dataflow/sql_dag_integration_test.go       |  9 +++++---
+ go.mod                                         | 16 ++++++++++++--
+ internal/connectors/sqlserver/incremental.go   | 28 +++++++++++++-----------
+ internal/connectors/sqlserver/key_snapshot.go  |  2 +-
+ internal/connectors/sqlserver/reader.go        | 30 ++++++++++++++++++++------
+ internal/connectors/sqlserver/reader_test.go   | 13 ++++++++++-
+ migrations/postgres/004_stream_tuning.sql      | 14 +++++++++---
+ 9 files changed, 91 insertions(+), 43 deletions(-)

@@ -1,0 +1,32 @@
+go: downloading github.com/jackc/pgx/v5 v5.7.2
+go: downloading github.com/microsoft/go-mssqldb v1.8.2
+go: downloading github.com/jackc/puddle/v2 v2.2.2
+go: downloading github.com/jackc/pgpassfile v1.0.0
+go: downloading github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761
+go: downloading golang.org/x/crypto v0.31.0
+go: downloading golang.org/x/text v0.21.0
+go: downloading github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9
+go: downloading github.com/golang-sql/sqlexp v0.1.0
+go: downloading github.com/google/uuid v1.6.0
+go: downloading golang.org/x/sync v0.10.0
+=== RUN   TestAutoBuildRealDBTIntegration
+    auto_build_integration_test.go:49: clickhouse HTTP 500 (query rejected)
+--- FAIL: TestAutoBuildRealDBTIntegration (0.02s)
+=== RUN   TestDBTRunAPIIntegration
+--- PASS: TestDBTRunAPIIntegration (0.01s)
+=== RUN   TestSafeIncrementalAPIIntegration
+--- PASS: TestSafeIncrementalAPIIntegration (0.02s)
+=== RUN   TestLineageAPIIntegration
+--- PASS: TestLineageAPIIntegration (0.01s)
+=== RUN   TestManagedQueueIntegration
+    managed_queue_integration_test.go:42: migration 004_stream_tuning.sql failed: ERROR: constraint "batch_size_bounds" for relation "sync_streams" already exists (SQLSTATE 42710)
+--- FAIL: TestManagedQueueIntegration (0.01s)
+=== RUN   TestSQLDAGIntegration
+--- PASS: TestSQLDAGIntegration (0.03s)
+=== RUN   TestSafeTableAPIIntegration
+--- PASS: TestSafeTableAPIIntegration (0.02s)
+=== RUN   TestTransformStudioIntegration
+--- PASS: TestTransformStudioIntegration (0.01s)
+FAIL
+FAIL	github.com/dinhvansh/dataflow-engine/cmd/dataflow	0.130s
+FAIL

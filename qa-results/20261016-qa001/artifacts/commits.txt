@@ -1,0 +1,2 @@
+f37ee30 (HEAD -> test/local-qa-v14-20261016) test(local-qa): harden result secret scan
+4eb0e79 test(local-qa): add isolated acceptance stack and fix SQL Server E2E

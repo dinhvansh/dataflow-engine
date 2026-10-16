@@ -1,0 +1,18 @@
+go: downloading github.com/microsoft/go-mssqldb v1.8.2
+go: downloading github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9
+go: downloading github.com/golang-sql/sqlexp v0.1.0
+go: downloading github.com/google/uuid v1.6.0
+go: downloading golang.org/x/text v0.21.0
+go: downloading golang.org/x/crypto v0.31.0
+=== RUN   TestBuildPageQuery
+--- PASS: TestBuildPageQuery (0.00s)
+=== RUN   TestKeySnapshotRequiresDB
+--- PASS: TestKeySnapshotRequiresDB (0.00s)
+=== RUN   TestSnapshotReaderSQLServerIntegration
+--- PASS: TestSnapshotReaderSQLServerIntegration (0.01s)
+=== RUN   TestQuoteIdentifier
+--- PASS: TestQuoteIdentifier (0.00s)
+=== RUN   TestNormalizeSQLServerValues
+--- PASS: TestNormalizeSQLServerValues (0.00s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/connectors/sqlserver	0.011s

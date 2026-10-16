@@ -1,0 +1,62 @@
+Unable to find image 'golang:1.23-bookworm' locally
+1.23-bookworm: Pulling from library/golang
+f014853ae203: Pulling fs layer
+6d6401b7636b: Pulling fs layer
+cffef7dc6f99: Pulling fs layer
+d64c83132511: Pulling fs layer
+d5791340ef18: Pulling fs layer
+01b3c4a0d5c8: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+d5791340ef18: Waiting
+01b3c4a0d5c8: Waiting
+4f4fb700ef54: Waiting
+d64c83132511: Waiting
+6d6401b7636b: Verifying Checksum
+6d6401b7636b: Download complete
+f014853ae203: Verifying Checksum
+f014853ae203: Download complete
+f014853ae203: Pull complete
+6d6401b7636b: Pull complete
+cffef7dc6f99: Verifying Checksum
+cffef7dc6f99: Download complete
+01b3c4a0d5c8: Verifying Checksum
+01b3c4a0d5c8: Download complete
+cffef7dc6f99: Pull complete
+4f4fb700ef54: Verifying Checksum
+4f4fb700ef54: Download complete
+d5791340ef18: Verifying Checksum
+d5791340ef18: Download complete
+d64c83132511: Verifying Checksum
+d64c83132511: Download complete
+d64c83132511: Pull complete
+d5791340ef18: Pull complete
+01b3c4a0d5c8: Pull complete
+4f4fb700ef54: Pull complete
+Digest: sha256:167053a2bb901972bf2c1611f8f52c44d5fe7e762e5cab213708d82c421614db
+Status: Downloaded newer image for golang:1.23-bookworm
+go: downloading github.com/jackc/pgx/v5 v5.7.2
+go: downloading github.com/microsoft/go-mssqldb v1.8.2
+go: downloading github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9
+go: downloading github.com/golang-sql/sqlexp v0.1.0
+go: downloading github.com/google/uuid v1.6.0
+go: downloading golang.org/x/text v0.21.0
+go: downloading github.com/jackc/puddle/v2 v2.2.2
+go: downloading golang.org/x/crypto v0.31.0
+go: downloading github.com/jackc/pgpassfile v1.0.0
+go: downloading github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761
+go: downloading golang.org/x/sync v0.10.0
+?   	github.com/dinhvansh/dataflow-engine/cmd/dataflow-mcp	[no test files]
+?   	github.com/dinhvansh/dataflow-engine/cmd/dataflowctl	[no test files]
+ok  	github.com/dinhvansh/dataflow-engine/cmd/dataflow	1.014s
+ok  	github.com/dinhvansh/dataflow-engine/cmd/dataflow-dbt-worker	1.010s
+ok  	github.com/dinhvansh/dataflow-engine/internal/connectors/clickhouse	1.026s
+ok  	github.com/dinhvansh/dataflow-engine/internal/connectors/sqlserver	1.008s
+ok  	github.com/dinhvansh/dataflow-engine/internal/cursor	1.017s
+ok  	github.com/dinhvansh/dataflow-engine/internal/dbtworker	1.011s
+ok  	github.com/dinhvansh/dataflow-engine/internal/engine	1.008s
+ok  	github.com/dinhvansh/dataflow-engine/internal/jobs/dag	1.007s
+ok  	github.com/dinhvansh/dataflow-engine/internal/jobs/executor	1.308s
+?   	github.com/dinhvansh/dataflow-engine/internal/state/postgres	[no test files]
+ok  	github.com/dinhvansh/dataflow-engine/internal/lineage	1.009s
+ok  	github.com/dinhvansh/dataflow-engine/internal/safetable	1.008s
+ok  	github.com/dinhvansh/dataflow-engine/internal/transform	1.007s
