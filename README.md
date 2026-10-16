@@ -161,3 +161,14 @@ Transform Studio can now **Build Staging Table → inspect Data Quality → Appr
 - [Passing dbt + ClickHouse + PostgreSQL tests](https://github.com/dinhvansh/dataflow-engine/actions/runs/38905418989)
 
 **Warning:** apply migration `012_safe_table.sql` and opt in only on isolated TEST `scratch`. This is **full Table rebuild**, not Incremental and not production-ready.
+
+
+## v1.2 — Auto Build dependencies, one-click View-only flow
+
+Select final model C in **Data Lineage** and click **Run Model + Dependencies**. DataFlow snapshots the upstream A → B → C Visual model chain to PostgreSQL, queues each model into the existing durable dbt View worker, and only advances after a successful dbt View build **and read-only output row-count DQ**. The UI shows every step's status and verified row count. Parent state survives API restarts, and ancestor edits mid-flow cause a safe stop.
+
+- [v1.2 release/CI status](implementation/release-status-v12.md)
+- [Auto Build guide and limitations](implementation/auto-build-v12.md)
+- [Passing real dbt + ClickHouse + PostgreSQL CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38911890898)
+
+**Test-only:** migration `013_auto_build_flows.sql`; set `DATAFLOW_ENABLE_AUTO_BUILD_TEST=true` only in isolated scratch TEST. Individual Views are built one at a time; there is no global atomic multi-model publish, nor Table/Incremental auto-build.
