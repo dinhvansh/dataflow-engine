@@ -63,7 +63,7 @@ func(c Client)UpperCursor(ctx context.Context,delta string)(uint64,error){
 func(c Client)DeltaStats(ctx context.Context,p DeltaPlan)(uint64,error){
  if _,err:=c.ValidateDeltaSchema(ctx,p.Target,p.Delta,p.Key);err!=nil{return 0,err}
  if p.Upper<=p.Lower{return 0,errors.New("delta window has no new version")}
- q:=fmt.Sprintf("SELECT count(),uniqExact(tuple(%s,_df_version)),countIf(_df_deleted NOT IN (0,1)) FROM scratch.%s WHERE _df_version>%d AND _df_version<=%d FORMAT TabSeparatedRaw",
+ q:=fmt.Sprintf("SELECT count(),uniqExact(_df_version),countIf(_df_deleted NOT IN (0,1)) FROM scratch.%s WHERE _df_version>%d AND _df_version<=%d FORMAT TabSeparatedRaw",
  p.Key,p.Delta,p.Lower,p.Upper)
  raw,err:=c.Query(ctx,q);if err!=nil{return 0,err}
  fields:=strings.Split(raw,"\t");if len(fields)!=3{return 0,errors.New("invalid delta stats")}
@@ -72,7 +72,7 @@ func(c Client)DeltaStats(ctx context.Context,p DeltaPlan)(uint64,error){
  bad,e:=strconv.ParseUint(fields[2],10,64);if e!=nil{return 0,e}
  if total==0{return 0,errors.New("delta window empty")}
  if total>50000{return 0,errors.New("TEST delta cap exceeded (50k events)")}
- if unique!=total{return 0,errors.New("two events share same key and version")}
+ if unique!=total{return 0,errors.New("CDC version must be globally unique within the cursor window")}
  if bad!=0{return 0,errors.New("invalid deletion marker")}
  return total,nil
 }
@@ -111,6 +111,11 @@ func(c Client)BuildDeltaStage(ctx context.Context,p DeltaPlan)(DeltaStats,error)
  result.Rows,e=strconv.ParseUint(fields[0],10,64);if e!=nil{return result,e}
  distinct,e:=strconv.ParseUint(fields[1],10,64);if e!=nil{return result,e}
  if result.Rows>1000000||result.Rows!=distinct{return result,errors.New("staging output has duplicate keys or exceeds 1m TEST cap")}
+ // No late arriving events with versions <= the captured upper watermark
+ // may be silently skipped between the two INSERT SELECT statements.
+ afterEvents,e:=c.DeltaStats(ctx,p)
+ if e!=nil{return result,e}
+ if afterEvents!=result.Events{return result,errors.New("delta changed during staging; refuse publish")}
  // Empty result is valid if the whole dataset was deleted.
  return result,nil
 }
