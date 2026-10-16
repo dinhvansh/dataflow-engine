@@ -34,15 +34,17 @@ type managedClaim struct{
 func(s *server)claimManagedRun(ctx context.Context,onlyID string)(managedClaim,error){
  var c managedClaim
  if onlyID!=""&&!validUUID.MatchString(onlyID){return c,errors.New("invalid managed run ID")}
- tx,err:=s.pg.Begin(ctx);if err!=nil{return c,err}
- defer tx.Rollback(ctx)
- // Only exhausted, expired runs are terminally failed. Never move cursor.
- _,err=tx.Exec(ctx,`UPDATE managed_runs SET status='failed',
+ // Finalize expired runs that exhausted crash recovery attempts in a
+ // separate, committed statement. If this shared claim transaction finds no
+ // candidate and rolls back, these terminal failures must NOT roll back.
+ _,err:=s.pg.Exec(ctx,`UPDATE managed_runs SET status='failed',
     error_message='Maximum restart attempts exceeded; checkpoint unchanged',
     finished_at=clock_timestamp(),lease_owner=NULL,lease_expires_at=NULL
     WHERE status='running' AND lease_expires_at<clock_timestamp()
     AND dispatch_attempts >= $1`,managedMaxAttempts)
  if err!=nil{return c,err}
+ tx,err:=s.pg.Begin(ctx);if err!=nil{return c,err}
+ defer tx.Rollback(ctx)
  var oldFence int64
  var raw []byte
  err=tx.QueryRow(ctx,`
