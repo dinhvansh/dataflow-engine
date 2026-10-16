@@ -29,3 +29,8 @@ Current backend's API bearer token is coarse-grained, not production RBAC. Do no
 
 ## Contract gaps
 MCP tools for list jobs, schema discovery, pipeline controls and metrics must wait for genuine backend APIs; no stub tools that claim operational success.
+
+
+## v0.2 MCP additions
+
+Read-only tools: `dataflow_list_tables`, `dataflow_inspect_columns`, `dataflow_rowversion_upper`, `dataflow_list_recent_runs`. Definition-only validation: `dataflow_validate_pipeline`. These tools call the same authenticated Go REST API as UI/CLI. No automatic cursor mutation, scheduled pipelines, or production writes are enabled by this adapter.
