@@ -61,12 +61,13 @@ func run(args []string)error{
   batch:=f.Int("batch",1000,"rows per batch")
   workers:=f.Int("workers",2,"worker count")
   queue:=f.Int("queue",4,"bounded queue")
+  atomicReplace:=f.Bool("atomic-replace",true,"stage and atomically EXCHANGE the scratch target (requires CH Atomic database and SQL Server SNAPSHOT)")
   confirm:=f.Bool("confirm-disposable",false,"acknowledge APPEND duplicates and disposable target")
   if err:=f.Parse(args[1:]);err!=nil{return err}
   if !*confirm{return errors.New("test-load requires --confirm-disposable")}
   if *table==""||*target==""{return errors.New("--table and --target required")}
   if c.token==""{return errors.New("DATAFLOW_API_TOKEN required")}
-  payload:=map[string]any{"source_schema":*schema,"source_table":*table,"target_database":*database,"target_table":*target,"batch_size":*batch,"workers":*workers,"queue_capacity":*queue}
+  payload:=map[string]any{"source_schema":*schema,"source_table":*table,"target_database":*database,"target_table":*target,"batch_size":*batch,"workers":*workers,"queue_capacity":*queue,"mode":"full","atomic_replace":*atomicReplace}
   return c.request("POST","/api/v1/bootstrap/runs",payload)
  default:return fmt.Errorf("unknown command %q",args[0])
  }
