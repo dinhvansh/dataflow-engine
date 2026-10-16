@@ -58,7 +58,25 @@ jobs:
           DATAFLOW_INTEGRATION_CH_PASSWORD: ci-read-password
           DATAFLOW_INTEGRATION_CH_WRITER_USER: default
           DATAFLOW_INTEGRATION_CH_WRITER_PASSWORD: ci-test-password
-        run: go test ./cmd/dataflow -run 'Test(ManagedQueueIntegration|SQLDAGIntegration)$' -count=1 -v
+        run: go test ./cmd/dataflow -run 'Test(ManagedQueueIntegration|SQLDAGIntegration|TransformStudioIntegration)
+      - name: Container logs on failure
+        if: failure()
+        run: |
+          docker logs df-clickhouse --tail 100 || true
+          docker logs df-postgres --tail 100 || true
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+ -count=1 -v
       - name: Container logs on failure
         if: failure()
         run: |
