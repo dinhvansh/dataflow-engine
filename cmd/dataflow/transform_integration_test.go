@@ -37,19 +37,19 @@ func TestTransformStudioIntegration(t *testing.T){
   handler(recorder,req)
   return recorder
  }
- savedBody:=\`{"model":{"name":"ci_visual_model","mode":"visual","source":{"database":"scratch","table":"dataflow_raw_events"},"steps":[{"id":"a","type":"filter","column":"_pk","operator":"contains","value":"abc"}]}}\`
+ savedBody:=`{"model":{"name":"ci_visual_model","mode":"visual","source":{"database":"scratch","table":"dataflow_raw_events"},"steps":[{"id":"a","type":"filter","column":"_pk","operator":"contains","value":"abc"}]}}`
  saved:=call(s.transformModels,"/api/v1/transform/models","POST",savedBody)
  if saved.Code!=201{t.Fatalf("save returned %d: %s",saved.Code,saved.Body.String())}
  list:=call(s.transformModels,"/api/v1/transform/models","GET","")
  if list.Code!=200||!strings.Contains(list.Body.String(),"ci_visual_model"){t.Fatalf("list failed %d %s",list.Code,list.Body.String())}
  compile:=call(s.transformCompile,"/api/v1/transform/compile","POST",savedBody)
  if compile.Code!=200||!strings.Contains(compile.Body.String(),"positionUTF8"){t.Fatalf("compile failed %d %s",compile.Code,compile.Body.String())}
- preview:=call(s.transformPreview,"/api/v1/transform/preview","POST",\`{"model":{"name":"ci_sql","mode":"sql","source":{"database":"scratch","table":"dataflow_raw_events"},"steps":[],"sql":"SELECT 42 AS answer"},"limit":5}\`)
+ preview:=call(s.transformPreview,"/api/v1/transform/preview","POST",`{"model":{"name":"ci_sql","mode":"sql","source":{"database":"scratch","table":"dataflow_raw_events"},"steps":[],"sql":"SELECT 42 AS answer"},"limit":5}`)
  if preview.Code!=200{t.Fatalf("ClickHouse read-only preview failed %d %s",preview.Code,preview.Body.String())}
- var data struct{Rows int \`json:"rows"\`;Data []map[string]any \`json:"data"\`}
+ var data struct{Rows int `json:"rows"`;Data []map[string]any `json:"data"`}
  if err=json.Unmarshal(preview.Body.Bytes(),&data);err!=nil{t.Fatal(err)}
  if data.Rows!=1||len(data.Data)!=1{t.Fatalf("preview: %+v",data)}
- invalid:=call(s.transformCompile,"/api/v1/transform/compile","POST",\`{"model":{"name":"bad","mode":"visual","source":{"database":"prod","table":"secret"}}}\`)
+ invalid:=call(s.transformCompile,"/api/v1/transform/compile","POST",`{"model":{"name":"bad","mode":"visual","source":{"database":"prod","table":"secret"}}}`)
  if invalid.Code!=422{t.Fatalf("production table should be blocked, got %d",invalid.Code)}
  noAuth:=httptest.NewRecorder()
  s.transformModels(noAuth,httptest.NewRequest(http.MethodGet,"/api/v1/transform/models",nil))
