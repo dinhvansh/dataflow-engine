@@ -149,7 +149,17 @@ func(s *server)checkManagedSchema(ctx context.Context)error{
    fence_token FROM managed_runs LIMIT 0`)
  if err!=nil{return fmt.Errorf("managed runner requires PostgreSQL migration 009: %w",err)}
  defer rows.Close()
- return rows.Err()
+ if err:=rows.Err();err!=nil{return err}
+ var valid bool
+ err=s.pg.QueryRow(ctx,`SELECT EXISTS(
+  SELECT 1 FROM pg_class idx
+  JOIN pg_index ix ON ix.indexrelid=idx.oid
+  WHERE idx.relname='managed_runs_one_active_stream'
+    AND ix.indisunique AND ix.indisvalid
+ )`).Scan(&valid)
+ if err!=nil{return fmt.Errorf("managed active-stream index inspection: %w",err)}
+ if !valid{return errors.New("managed runner requires valid single-active-stream index from migration 009")}
+ return nil
 }
 func(s *server)runClaimedManaged(parent context.Context,c managedClaim){
  ctx,cancel:=context.WithTimeout(parent,2*time.Hour);defer cancel()
