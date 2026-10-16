@@ -86,8 +86,8 @@ func TestManagedQueueIntegration(t *testing.T){
   u:=*endpoint;q:=u.Query();q.Set("query",sql);u.RawQuery=q.Encode()
   req,requestErr:=http.NewRequestWithContext(ctx,http.MethodPost,u.String(),nil)
   if requestErr!=nil{t.Fatal(requestErr)}
-  if user:=os.Getenv("DATAFLOW_INTEGRATION_CH_USER");user!=""{
-   req.SetBasicAuth(user,os.Getenv("DATAFLOW_INTEGRATION_CH_PASSWORD"))
+  if user:=os.Getenv("DATAFLOW_INTEGRATION_CH_WRITER_USER");user!=""{
+   req.SetBasicAuth(user,os.Getenv("DATAFLOW_INTEGRATION_CH_WRITER_PASSWORD"))
   }
   res,reqErr:=httpClient.Do(req);if reqErr!=nil{t.Fatal(reqErr)}
   res.Body.Close()
@@ -98,7 +98,7 @@ func TestManagedQueueIntegration(t *testing.T){
  _batch_seq UInt64,_ingested_at DateTime64(3,'UTC') DEFAULT now64(3))
  ENGINE=MergeTree ORDER BY (_stream_id,_pk,_sysrevid)`)
  writer:=&clickhouse.Writer{Endpoint:chURL,Database:"scratch",Table:"dataflow_raw_events",
-  Username:os.Getenv("DATAFLOW_INTEGRATION_CH_USER"),Password:os.Getenv("DATAFLOW_INTEGRATION_CH_PASSWORD")}
+  Username:os.Getenv("DATAFLOW_INTEGRATION_CH_WRITER_USER"),Password:os.Getenv("DATAFLOW_INTEGRATION_CH_WRITER_PASSWORD")}
  makeEvent:=func(attempt string)engine.Batch{return engine.Batch{Rows:[]map[string]any{{
   "_stream_id":streamID,"_pk":"00000000-0000-0000-0000-000000000001",
   "_sysrevid":"0x0000000000000009","_payload":"{\"v\":9}",
