@@ -167,7 +167,7 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
  };
  return <div className="space-y-4">
   <section className="section flex flex-wrap items-center justify-between gap-4">
-   <div><h2 className="flex items-center gap-2 text-lg font-semibold"><Layers3 size={19}/>Transform Studio <span className="rounded border border-amber-700/50 px-2 py-0.5 text-xs text-amber-300">v0.8 Preview</span></h2><p className="muted mt-1 text-sm">Giống Power Query: thêm từng bước, kéo đổi thứ tự, xem dữ liệu, hoặc tự viết SQL.</p></div>
+   <div><h2 className="flex items-center gap-2 text-lg font-semibold"><Layers3 size={19}/>Transform Studio <span className="rounded border border-amber-700/50 px-2 py-0.5 text-xs text-amber-300">v1.0 Lineage Preview</span></h2><p className="muted mt-1 text-sm">Giống Power Query: thêm từng bước, kéo đổi thứ tự, xem dữ liệu, hoặc tự viết SQL.</p></div>
    <div className="flex flex-wrap gap-2">
     <Button variant="outline" disabled={busy||!token} onClick={loadSaved}><RefreshCw size={14}/>Models</Button>
     <Button variant="outline" disabled={busy||!token} onClick={doPreview}><Eye size={15}/>Preview bước</Button>
@@ -181,6 +181,18 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
    <TextField label="Tên model" value={model.name} onChange={name=>patchModel({name})} placeholder="revenue_by_part"/>
    <TextField label="ClickHouse database (scratch)" value={model.source.database} onChange={database=>patchModel({source:{...model.source,database}})}/>
    <TextField label="Bảng nguồn" value={model.source.table} onChange={table=>{patchModel({source:{...model.source,table}});setColumns([])}}/>
+   <label className="block space-y-1 md:col-span-3">
+    <span className="text-xs text-slate-400">Hoặc chọn View đầu ra của model khác để nối Flow (tự tạo dependency)</span>
+    <select className="field" value={model.source.table.startsWith("dfv_")?model.source.table:""} onChange={e=>{
+      if(!e.target.value)return;
+      patchModel({source:{database:"scratch",table:e.target.value}});
+      setColumns([]);
+      setInfo("Nguồn mới: scratch."+e.target.value+". Lưu Model để cập nhật Lineage. Build upstream trước khi chạy downstream.");
+    }}>
+     <option value="">— Chọn model đã lưu (bấm Models để tải danh sách) —</option>
+     {saved.filter(s=>s.name!==model.name&&s.model.mode==="visual"&&/^[a-z][a-z0-9_]{0,85}$/.test(s.name)).map(s=><option key={s.id} value={"dfv_"+s.name}>{s.name} → scratch.dfv_{s.name}</option>)}
+    </select>
+   </label>
    <label className="block space-y-1 md:col-span-2"><span className="text-xs text-slate-400">API token · lưu trong bộ nhớ trình duyệt</span><input type="password" autoComplete="off" className="field" value={token} onChange={e=>onTokenChange(e.target.value)} placeholder="Bearer token"/></label>
    <div className="flex items-end"><Button variant="outline" disabled={!token||busy} onClick={fetchColumns}><Database size={15}/>Lấy danh sách cột</Button></div>
    {saved.length>0&&<div className="md:col-span-3 flex flex-wrap gap-2"><span className="muted text-xs self-center">Model đã lưu:</span>{saved.map(entry=><button key={entry.id} className="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs hover:border-sky-500" onClick={()=>{setModel(entry.model);setSelected("source");setPreview(null);setCompiled(null);setColumns([]);setSavedModelID(entry.id);setUnsaved(false);setDbtRun(null);setInfo("Đã tải model "+entry.name)}}>{entry.name}</button>)}</div>}
