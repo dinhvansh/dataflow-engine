@@ -45,4 +45,9 @@ func TestDBTRunAPIIntegration(t *testing.T){
  req:=httptest.NewRequest(http.MethodGet,"/api/v1/transform/dbt/runs",nil)
  noAuth:=httptest.NewRecorder();s.dbtRunsAPI(noAuth,req)
  if noAuth.Code!=401{t.Fatalf("unauthenticated access %d",noAuth.Code)}
+ // Remove the intentionally QUEUED API test run so the following worker
+ // package test in the same CI PostgreSQL database claims only its own jobs.
+ // This changes TEST fixtures only, never production queue behavior.
+ if _,err=pg.Exec(ctx,"DELETE FROM dbt_runs WHERE model_id=$1::uuid",id);err!=nil{t.Fatal(err)}
+
 }
