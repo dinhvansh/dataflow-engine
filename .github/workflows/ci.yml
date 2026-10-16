@@ -2,6 +2,7 @@ name: CI
 on:
   push:
   pull_request:
+
 jobs:
   go:
     runs-on: ubuntu-latest
@@ -23,7 +24,7 @@ jobs:
             sleep 2
           done
           curl -fsS -u default:ci-test-password http://127.0.0.1:8123/ping
-      - name: ClickHouse snapshot + read-only SQL integration
+      - name: ClickHouse snapshot and read-only SQL integration
         env:
           DATAFLOW_INTEGRATION_CH_URL: http://127.0.0.1:8123
           DATAFLOW_INTEGRATION_CH_USER: default
@@ -42,14 +43,16 @@ jobs:
           curl --fail-with-body -sS -u default:ci-test-password --data-binary "CREATE USER IF NOT EXISTS dataflow_reader IDENTIFIED WITH sha256_password BY 'ci-read-password'" http://127.0.0.1:8123/
           curl --fail-with-body -sS -u default:ci-test-password --data-binary "GRANT SELECT ON scratch.* TO dataflow_reader" http://127.0.0.1:8123/
           curl -fsS -u dataflow_reader:ci-read-password --data-binary "SELECT 1" http://127.0.0.1:8123/
-      - name: PostgreSQL + ClickHouse SQL DAG integration
+      - name: PostgreSQL and ClickHouse managed recovery + SQL DAG integration
         env:
           DATAFLOW_INTEGRATION_POSTGRES_DSN: postgres://dataflow_ci:ci-postgres-password@127.0.0.1:5433/dataflow_ci?sslmode=disable
           DATAFLOW_INTEGRATION_PG_ISOLATED: "true"
           DATAFLOW_INTEGRATION_CH_URL: http://127.0.0.1:8123
           DATAFLOW_INTEGRATION_CH_USER: dataflow_reader
           DATAFLOW_INTEGRATION_CH_PASSWORD: ci-read-password
-        run: go test ./cmd/dataflow -run TestSQLDAGIntegration -count=1 -v
+          DATAFLOW_INTEGRATION_CH_WRITER_USER: default
+          DATAFLOW_INTEGRATION_CH_WRITER_PASSWORD: ci-test-password
+        run: go test ./cmd/dataflow -run 'Test(ManagedQueueIntegration|SQLDAGIntegration)$' -count=1 -v
       - name: Container logs on failure
         if: failure()
         run: |
