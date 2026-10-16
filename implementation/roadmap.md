@@ -100,3 +100,17 @@ See [v0.9 release status](release-status-v09.md).
 - [ ] Real Epicor SQL Server TEST end-to-end performance and correctness acceptance.
 
 See [v1.0 release status](release-status-v10.md).
+
+
+## v1.1 — Safe Table Materialization (2026-10-16)
+
+- [x] dbt physical table staging (TEST scratch only).
+- [x] DQ: count >0, <=1m TEST rows and optional exact unique-key check.
+- [x] Explicit Publish confirmation and stale-model SQL guard.
+- [x] Atomic ClickHouse EXCHANGE with retained previous table and UUID-prepared, idempotent replay after crash.
+- [x] Explicit Rollback of previous version; rejects backup UUID mismatch.
+- [x] PostgreSQL durable queue, fenced worker and transaction row locking during publish.
+- [x] CI: Go race/vet/build, React, real dbt/ClickHouse staging+publish+rollback, Postgres API and Docker image PASS.
+- [ ] Production-ready Incremental materialization (including update/delete semantics and idempotent partition/key strategy).
+- [ ] Epicor SQL Server TEST end-to-end correctness, large-scale performance, full RBAC and operational monitoring.
+See [v1.1 release status](release-status-v11.md).
