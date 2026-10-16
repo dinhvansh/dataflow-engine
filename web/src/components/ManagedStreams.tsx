@@ -5,7 +5,7 @@ import {Button} from "./ui/button";
 import {managedApi,type ManagedStream,type ManagedRun} from "../lib/api";
 
 type Settings=Omit<ManagedStream,"id"|"lower_cursor">;
-const initial:Settings={source_schema:"Erp",source_table:"PartTran",target_database:"scratch",target_table:"dataflow_raw_events",batch_size:10000,workers:2,queue_capacity:4};
+const initial:Settings={source_schema:"Erp",source_table:"Part",target_database:"scratch",target_table:"dataflow_raw_events",batch_size:10000,workers:2,queue_capacity:4};
 export function ManagedStreams({token}:{token:string}){
  const[config,setConfig]=useState<Settings>(initial);
  const[streams,setStreams]=useState<ManagedStream[]>([]);
