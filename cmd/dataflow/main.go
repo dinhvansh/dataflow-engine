@@ -41,6 +41,10 @@ func (s *server) run(w http.ResponseWriter,r *http.Request){
  }
  if req.Mode!="" && req.Mode!="full" && req.Mode!="rowversion"{http.Error(w,"unsupported mode",400);return}
  if req.Mode=="rowversion" {if _,err:=cursor.ParseRowVersion(req.LowerCursor);err!=nil{http.Error(w,"invalid lower_cursor: "+err.Error(),400);return}}
+ // Only an explicitly designated scratch database may be mutated by the bootstrap.
+ allowedDB:=os.Getenv("DATAFLOW_TEST_TARGET_DATABASE")
+ if allowedDB==""{allowedDB="scratch"}
+ if req.TargetDatabase!=allowedDB{http.Error(w,"bootstrap destination must use the configured disposable database",403);return}
  // This bootstrap only supports intentionally isolated TEST targets.
  if os.Getenv("DATAFLOW_ALLOW_TEST_LOAD")!="true"{http.Error(w,"test load disabled",403);return}
  ctx:=r.Context()
