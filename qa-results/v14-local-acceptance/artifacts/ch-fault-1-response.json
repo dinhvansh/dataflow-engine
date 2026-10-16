@@ -1,0 +1,1 @@
+{"batches_written":71,"elapsed_seconds":0.357604696,"error":"batch 71: ClickHouse HTTP 503","rows_written":7100,"run_id":"af0cdf5b-7365-43ca-a890-90b43d6624e1","status":"failed","upper_exclusive":""}

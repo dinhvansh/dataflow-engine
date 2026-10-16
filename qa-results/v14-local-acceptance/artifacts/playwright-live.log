@@ -1,0 +1,268 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-8.4.2, pluggy-1.7.0 -- /tmp/dataflow-qa-tools.Ys3msi/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /workspace/dataflow-engine
+collecting ... collected 6 items
+
+qa/browser/test_console_live.py::test_live_ui01_source_explorer ERROR    [ 16%]
+qa/browser/test_console_live.py::test_live_ui02_visual_preview ERROR     [ 33%]
+qa/browser/test_console_live.py::test_live_ui03_save_reload ERROR        [ 50%]
+qa/browser/test_console_live.py::test_live_ui04_lineage ERROR            [ 66%]
+qa/browser/test_console_live.py::test_live_ui05_auto_build ERROR         [ 83%]
+qa/browser/test_console_live.py::test_live_ui06_incremental_publish_rollback ERROR [100%]
+
+==================================== ERRORS ====================================
+_______________ ERROR at setup of test_live_ui01_source_explorer _______________
+
+    @pytest.fixture(scope="session", autouse=True)
+    def live_fixtures():
+        if not TOKEN or not CH_PASSWORD:
+            pytest.fail("live QA credentials are required through environment variables")
+        ch("CREATE TABLE IF NOT EXISTS scratch.dataflow_raw_events (_pk String, Qty UInt64) ENGINE=MergeTree ORDER BY _pk")
+        ch("TRUNCATE TABLE scratch.dataflow_raw_events")
+>       ch("INSERT INTO scratch.dataflow_raw_events VALUES ('P1',3),('P2',5)")
+
+qa/browser/test_console_live.py:54: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+qa/browser/test_console_live.py:37: in ch
+    with urllib.request.urlopen(req, timeout=30) as response:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:215: in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:521: in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:630: in http_response
+    response = self.parent.error(
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:559: in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:492: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPDefaultErrorHandler object at 0x7feb77befd10>
+req = <urllib.request.Request object at 0x7feb778f6780>
+fp = <http.client.HTTPResponse object at 0x7feb77bedd80>, code = 400
+msg = 'Bad Request', hdrs = <http.client.HTTPMessage object at 0x7feb77c19d00>
+
+    def http_error_default(self, req, fp, code, msg, hdrs):
+>       raise HTTPError(req.full_url, code, msg, hdrs, fp)
+E       urllib.error.HTTPError: HTTP Error 400: Bad Request
+
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:639: HTTPError
+_______________ ERROR at setup of test_live_ui02_visual_preview ________________
+
+    @pytest.fixture(scope="session", autouse=True)
+    def live_fixtures():
+        if not TOKEN or not CH_PASSWORD:
+            pytest.fail("live QA credentials are required through environment variables")
+        ch("CREATE TABLE IF NOT EXISTS scratch.dataflow_raw_events (_pk String, Qty UInt64) ENGINE=MergeTree ORDER BY _pk")
+        ch("TRUNCATE TABLE scratch.dataflow_raw_events")
+>       ch("INSERT INTO scratch.dataflow_raw_events VALUES ('P1',3),('P2',5)")
+
+qa/browser/test_console_live.py:54: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+qa/browser/test_console_live.py:37: in ch
+    with urllib.request.urlopen(req, timeout=30) as response:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:215: in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:521: in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:630: in http_response
+    response = self.parent.error(
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:559: in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:492: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPDefaultErrorHandler object at 0x7feb77befd10>
+req = <urllib.request.Request object at 0x7feb778f6780>
+fp = <http.client.HTTPResponse object at 0x7feb77bedd80>, code = 400
+msg = 'Bad Request', hdrs = <http.client.HTTPMessage object at 0x7feb77c19d00>
+
+    def http_error_default(self, req, fp, code, msg, hdrs):
+>       raise HTTPError(req.full_url, code, msg, hdrs, fp)
+E       urllib.error.HTTPError: HTTP Error 400: Bad Request
+
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:639: HTTPError
+_________________ ERROR at setup of test_live_ui03_save_reload _________________
+
+    @pytest.fixture(scope="session", autouse=True)
+    def live_fixtures():
+        if not TOKEN or not CH_PASSWORD:
+            pytest.fail("live QA credentials are required through environment variables")
+        ch("CREATE TABLE IF NOT EXISTS scratch.dataflow_raw_events (_pk String, Qty UInt64) ENGINE=MergeTree ORDER BY _pk")
+        ch("TRUNCATE TABLE scratch.dataflow_raw_events")
+>       ch("INSERT INTO scratch.dataflow_raw_events VALUES ('P1',3),('P2',5)")
+
+qa/browser/test_console_live.py:54: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+qa/browser/test_console_live.py:37: in ch
+    with urllib.request.urlopen(req, timeout=30) as response:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:215: in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:521: in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:630: in http_response
+    response = self.parent.error(
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:559: in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:492: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPDefaultErrorHandler object at 0x7feb77befd10>
+req = <urllib.request.Request object at 0x7feb778f6780>
+fp = <http.client.HTTPResponse object at 0x7feb77bedd80>, code = 400
+msg = 'Bad Request', hdrs = <http.client.HTTPMessage object at 0x7feb77c19d00>
+
+    def http_error_default(self, req, fp, code, msg, hdrs):
+>       raise HTTPError(req.full_url, code, msg, hdrs, fp)
+E       urllib.error.HTTPError: HTTP Error 400: Bad Request
+
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:639: HTTPError
+___________________ ERROR at setup of test_live_ui04_lineage ___________________
+
+    @pytest.fixture(scope="session", autouse=True)
+    def live_fixtures():
+        if not TOKEN or not CH_PASSWORD:
+            pytest.fail("live QA credentials are required through environment variables")
+        ch("CREATE TABLE IF NOT EXISTS scratch.dataflow_raw_events (_pk String, Qty UInt64) ENGINE=MergeTree ORDER BY _pk")
+        ch("TRUNCATE TABLE scratch.dataflow_raw_events")
+>       ch("INSERT INTO scratch.dataflow_raw_events VALUES ('P1',3),('P2',5)")
+
+qa/browser/test_console_live.py:54: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+qa/browser/test_console_live.py:37: in ch
+    with urllib.request.urlopen(req, timeout=30) as response:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:215: in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:521: in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:630: in http_response
+    response = self.parent.error(
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:559: in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:492: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPDefaultErrorHandler object at 0x7feb77befd10>
+req = <urllib.request.Request object at 0x7feb778f6780>
+fp = <http.client.HTTPResponse object at 0x7feb77bedd80>, code = 400
+msg = 'Bad Request', hdrs = <http.client.HTTPMessage object at 0x7feb77c19d00>
+
+    def http_error_default(self, req, fp, code, msg, hdrs):
+>       raise HTTPError(req.full_url, code, msg, hdrs, fp)
+E       urllib.error.HTTPError: HTTP Error 400: Bad Request
+
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:639: HTTPError
+_________________ ERROR at setup of test_live_ui05_auto_build __________________
+
+    @pytest.fixture(scope="session", autouse=True)
+    def live_fixtures():
+        if not TOKEN or not CH_PASSWORD:
+            pytest.fail("live QA credentials are required through environment variables")
+        ch("CREATE TABLE IF NOT EXISTS scratch.dataflow_raw_events (_pk String, Qty UInt64) ENGINE=MergeTree ORDER BY _pk")
+        ch("TRUNCATE TABLE scratch.dataflow_raw_events")
+>       ch("INSERT INTO scratch.dataflow_raw_events VALUES ('P1',3),('P2',5)")
+
+qa/browser/test_console_live.py:54: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+qa/browser/test_console_live.py:37: in ch
+    with urllib.request.urlopen(req, timeout=30) as response:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:215: in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:521: in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:630: in http_response
+    response = self.parent.error(
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:559: in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:492: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPDefaultErrorHandler object at 0x7feb77befd10>
+req = <urllib.request.Request object at 0x7feb778f6780>
+fp = <http.client.HTTPResponse object at 0x7feb77bedd80>, code = 400
+msg = 'Bad Request', hdrs = <http.client.HTTPMessage object at 0x7feb77c19d00>
+
+    def http_error_default(self, req, fp, code, msg, hdrs):
+>       raise HTTPError(req.full_url, code, msg, hdrs, fp)
+E       urllib.error.HTTPError: HTTP Error 400: Bad Request
+
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:639: HTTPError
+________ ERROR at setup of test_live_ui06_incremental_publish_rollback _________
+
+    @pytest.fixture(scope="session", autouse=True)
+    def live_fixtures():
+        if not TOKEN or not CH_PASSWORD:
+            pytest.fail("live QA credentials are required through environment variables")
+        ch("CREATE TABLE IF NOT EXISTS scratch.dataflow_raw_events (_pk String, Qty UInt64) ENGINE=MergeTree ORDER BY _pk")
+        ch("TRUNCATE TABLE scratch.dataflow_raw_events")
+>       ch("INSERT INTO scratch.dataflow_raw_events VALUES ('P1',3),('P2',5)")
+
+qa/browser/test_console_live.py:54: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+qa/browser/test_console_live.py:37: in ch
+    with urllib.request.urlopen(req, timeout=30) as response:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:215: in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:521: in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:630: in http_response
+    response = self.parent.error(
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:559: in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:492: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPDefaultErrorHandler object at 0x7feb77befd10>
+req = <urllib.request.Request object at 0x7feb778f6780>
+fp = <http.client.HTTPResponse object at 0x7feb77bedd80>, code = 400
+msg = 'Bad Request', hdrs = <http.client.HTTPMessage object at 0x7feb77c19d00>
+
+    def http_error_default(self, req, fp, code, msg, hdrs):
+>       raise HTTPError(req.full_url, code, msg, hdrs, fp)
+E       urllib.error.HTTPError: HTTP Error 400: Bad Request
+
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/urllib/request.py:639: HTTPError
+=========================== short test summary info ============================
+ERROR qa/browser/test_console_live.py::test_live_ui01_source_explorer - urlli...
+ERROR qa/browser/test_console_live.py::test_live_ui02_visual_preview - urllib...
+ERROR qa/browser/test_console_live.py::test_live_ui03_save_reload - urllib.er...
+ERROR qa/browser/test_console_live.py::test_live_ui04_lineage - urllib.error....
+ERROR qa/browser/test_console_live.py::test_live_ui05_auto_build - urllib.err...
+ERROR qa/browser/test_console_live.py::test_live_ui06_incremental_publish_rollback
+============================== 6 errors in 0.36s ===============================

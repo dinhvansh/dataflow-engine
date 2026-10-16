@@ -1,0 +1,3 @@
+{"scenario":"clickhouse_mid_sync","trial":1,"terminal":"failed","recovery_ms":4683,"published_rows":1,"expected_rows":1}
+{"scenario":"clickhouse_mid_sync","trial":2,"terminal":"failed","recovery_ms":4634,"published_rows":1,"expected_rows":1}
+{"scenario":"clickhouse_mid_sync","trial":3,"terminal":"failed","recovery_ms":4869,"published_rows":1,"expected_rows":1}

@@ -1,0 +1,9 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-8.4.2, pluggy-1.7.0 -- /tmp/dataflow-qa-tools.Ys3msi/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /workspace/dataflow-engine
+collecting ... collected 1 item
+
+qa/browser/test_console_live.py::test_live_ui05_auto_build PASSED        [100%]
+
+============================== 1 passed in 19.94s ==============================

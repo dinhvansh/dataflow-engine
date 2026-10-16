@@ -1,0 +1,195 @@
+go: downloading github.com/jackc/pgx/v5 v5.7.2
+go: downloading github.com/microsoft/go-mssqldb v1.8.2
+go: downloading github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9
+go: downloading github.com/golang-sql/sqlexp v0.1.0
+go: downloading github.com/google/uuid v1.6.0
+go: downloading golang.org/x/text v0.21.0
+go: downloading github.com/jackc/puddle/v2 v2.2.2
+go: downloading golang.org/x/crypto v0.31.0
+go: downloading github.com/jackc/pgpassfile v1.0.0
+go: downloading github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761
+go: downloading golang.org/x/sync v0.10.0
+?   	github.com/dinhvansh/dataflow-engine/cmd/dataflow-mcp	[no test files]
+?   	github.com/dinhvansh/dataflow-engine/cmd/dataflowctl	[no test files]
+=== RUN   TestAutoBuildRealDBTIntegration
+    auto_build_integration_test.go:49: clickhouse HTTP 403 (query rejected)
+--- FAIL: TestAutoBuildRealDBTIntegration (0.03s)
+=== RUN   TestDBTRunAPIIntegration
+--- PASS: TestDBTRunAPIIntegration (0.04s)
+=== RUN   TestSafeIncrementalAPIIntegration
+--- PASS: TestSafeIncrementalAPIIntegration (0.02s)
+=== RUN   TestLineageAPIIntegration
+--- PASS: TestLineageAPIIntegration (0.04s)
+=== RUN   TestManagedQueueIntegration
+    managed_queue_integration_test.go:87: ClickHouse DDL status 403
+--- FAIL: TestManagedQueueIntegration (0.13s)
+=== RUN   TestStreamTuningMigrationIdempotentIntegration
+--- PASS: TestStreamTuningMigrationIdempotentIntegration (0.03s)
+=== RUN   TestSQLDAGIntegration
+    sql_dag_integration_test.go:59: DAG did not succeed: failed {"state": {"first": "failed", "second": "skipped"}, "errors": {"first": "job \"600c10a8-3f25-49b2-a868-51c43fa393e3\" failed after 2 attempts: ClickHouse read query failed (HTTP 403): No approved upstream IPv4 address", "second": "upstream dependency failed/skipped/cancelled"}, "attempts": {"first": 2}, "started_at": "2026-10-16T23:07:00.993723782Z", "finished_at": "2026-10-16T23:07:01.188113563Z"}
+--- FAIL: TestSQLDAGIntegration (0.27s)
+=== RUN   TestSafeTableAPIIntegration
+--- PASS: TestSafeTableAPIIntegration (0.01s)
+=== RUN   TestTransformStudioIntegration
+2026/10/16 23:07:01 transform preview failed: ClickHouse read query failed (HTTP 403): No approved upstream IPv4 address
+    transform_integration_test.go:48: ClickHouse read-only preview failed 422 preview query failed; check source, column names and SQL syntax
+--- FAIL: TestTransformStudioIntegration (0.02s)
+FAIL
+FAIL	github.com/dinhvansh/dataflow-engine/cmd/dataflow	0.602s
+?   	github.com/dinhvansh/dataflow-engine/internal/state/postgres	[no test files]
+=== RUN   TestDBTFullQueueIntegration
+    full_integration_test.go:38: materialization failed: failed {}
+--- FAIL: TestDBTFullQueueIntegration (4.38s)
+=== RUN   TestSafeIncrementalFullIntegration
+    incremental_integration_test.go:44: Post "http://127.0.0.1:8123?query=CREATE+TABLE+scratch.dft_incfull1792192025141485715+%28ID+String%2C+Revenue+UInt64%29+ENGINE%3DMergeTree+ORDER+BY+ID": dial tcp 127.0.0.1:8123: connect: connection refused
+--- FAIL: TestSafeIncrementalFullIntegration (0.01s)
+=== RUN   TestDBTQueueIntegration
+    main_test.go:29: ERROR: duplicate key value violates unique constraint "transform_models_name_key" (SQLSTATE 23505)
+--- FAIL: TestDBTQueueIntegration (0.01s)
+=== RUN   TestSafeTableFullIntegration
+    table_integration_test.go:52: expected staging ready, got failed
+--- FAIL: TestSafeTableFullIntegration (3.58s)
+FAIL
+FAIL	github.com/dinhvansh/dataflow-engine/cmd/dataflow-dbt-worker	7.984s
+=== RUN   TestEventEnvelope
+--- PASS: TestEventEnvelope (0.00s)
+=== RUN   TestEventInvalidVersion
+--- PASS: TestEventInvalidVersion (0.00s)
+=== RUN   TestSnapshotDiffIntegration
+    key_snapshot_integration_test.go:24: create ClickHouse fixture: ClickHouse DDL 403: No approved upstream IPv4 address
+--- FAIL: TestSnapshotDiffIntegration (0.14s)
+=== RUN   TestKeySnapshotWriterValidation
+--- PASS: TestKeySnapshotWriterValidation (0.00s)
+=== RUN   TestSnapshotStatsAndDiffQueries
+--- PASS: TestSnapshotStatsAndDiffQueries (0.01s)
+=== RUN   TestSnapshotRejectsIdentifiers
+--- PASS: TestSnapshotRejectsIdentifiers (0.00s)
+=== RUN   TestReadOnlySQLIntegration
+    query_integration_test.go:15: real ClickHouse SELECT failed: ClickHouse read query failed (HTTP 403): No approved upstream IPv4 address
+--- FAIL: TestReadOnlySQLIntegration (0.01s)
+=== RUN   TestValidateReadQuery
+--- PASS: TestValidateReadQuery (0.00s)
+=== RUN   TestReadQueryRestrictedHTTP
+--- PASS: TestReadQueryRestrictedHTTP (0.00s)
+=== RUN   TestReadQueryRejectUnsafe
+--- PASS: TestReadQueryRejectUnsafe (0.00s)
+=== RUN   TestStageName
+--- PASS: TestStageName (0.00s)
+=== RUN   TestStageExchange
+--- PASS: TestStageExchange (0.00s)
+=== RUN   TestDDLFailure
+--- PASS: TestDDLFailure (0.00s)
+=== RUN   TestCountRunRows
+--- PASS: TestCountRunRows (0.00s)
+=== RUN   TestWriterSendsJSONEachRow
+--- PASS: TestWriterSendsJSONEachRow (0.00s)
+=== RUN   TestRejectUnsafeTarget
+--- PASS: TestRejectUnsafeTarget (0.00s)
+FAIL
+FAIL	github.com/dinhvansh/dataflow-engine/internal/connectors/clickhouse	0.165s
+=== RUN   TestBuildPageQuery
+--- PASS: TestBuildPageQuery (0.00s)
+=== RUN   TestKeySnapshotRequiresDB
+--- PASS: TestKeySnapshotRequiresDB (0.00s)
+=== RUN   TestSnapshotReaderSQLServerIntegration
+--- PASS: TestSnapshotReaderSQLServerIntegration (0.02s)
+=== RUN   TestQuoteIdentifier
+--- PASS: TestQuoteIdentifier (0.00s)
+=== RUN   TestNormalizeSQLServerValues
+--- PASS: TestNormalizeSQLServerValues (0.00s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/connectors/sqlserver	0.019s
+=== RUN   TestRowVersion
+--- PASS: TestRowVersion (0.00s)
+=== RUN   TestWindow
+--- PASS: TestWindow (0.00s)
+=== RUN   TestContiguousAck
+--- PASS: TestContiguousAck (0.00s)
+=== RUN   TestConcurrentAck
+--- PASS: TestConcurrentAck (0.00s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/cursor	0.004s
+=== RUN   TestDBTRealClickHouseIntegration
+    project_integration_test.go:34: ClickHouse status 403: No approved upstream IPv4 address
+--- FAIL: TestDBTRealClickHouseIntegration (0.12s)
+=== RUN   TestDBTTemplateGuard
+--- PASS: TestDBTTemplateGuard (0.00s)
+=== RUN   TestProjectAndValidation
+--- PASS: TestProjectAndValidation (0.00s)
+=== RUN   TestFakeDBTRunner
+--- PASS: TestFakeDBTRunner (0.01s)
+FAIL
+FAIL	github.com/dinhvansh/dataflow-engine/internal/dbtworker	0.131s
+=== RUN   TestRun
+--- PASS: TestRun (0.00s)
+=== RUN   TestWriterFailure
+--- PASS: TestWriterFailure (0.00s)
+=== RUN   TestInvalidSettings
+--- PASS: TestInvalidSettings (0.00s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/engine	0.004s
+=== RUN   TestForkJoin
+--- PASS: TestForkJoin (0.00s)
+=== RUN   TestCycleAndMissing
+--- PASS: TestCycleAndMissing (0.00s)
+=== RUN   TestBlocked
+--- PASS: TestBlocked (0.00s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/jobs/dag	0.002s
+=== RUN   TestForkJoinAndExecute
+--- PASS: TestForkJoinAndExecute (0.00s)
+=== RUN   TestRetries
+--- PASS: TestRetries (0.30s)
+=== RUN   TestFailuresSkipDependents
+--- PASS: TestFailuresSkipDependents (0.00s)
+=== RUN   TestCancelled
+--- PASS: TestCancelled (0.00s)
+=== RUN   TestBadOptions
+--- PASS: TestBadOptions (0.00s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/jobs/executor	0.306s
+=== RUN   TestLineageChainAndImpact
+--- PASS: TestLineageChainAndImpact (0.00s)
+=== RUN   TestMissingAndCycle
+--- PASS: TestMissingAndCycle (0.00s)
+=== RUN   TestSQLUntracked
+--- PASS: TestSQLUntracked (0.00s)
+=== RUN   TestAutoBuildChainPlan
+--- PASS: TestAutoBuildChainPlan (0.00s)
+=== RUN   TestAutoBuildRejectsBrokenDAG
+--- PASS: TestAutoBuildRejectsBrokenDAG (0.00s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/lineage	0.001s
+=== RUN   TestDeltaPerformanceQAIntegration
+    delta_benchmark_test.go:39: explicit disposable delta benchmark opt-in required
+--- SKIP: TestDeltaPerformanceQAIntegration (0.00s)
+=== RUN   TestDeltaUpdateDeleteReplayIntegration
+    incremental_integration_test.go:11: clickhouse HTTP 403 (query rejected)
+--- FAIL: TestDeltaUpdateDeleteReplayIntegration (0.14s)
+=== RUN   TestDeltaRejectDuplicateVersionIntegration
+    incremental_integration_test.go:39: clickhouse HTTP 403 (query rejected)
+--- FAIL: TestDeltaRejectDuplicateVersionIntegration (0.06s)
+=== RUN   TestDeltaHistoryDetectsOldVersionAppendIntegration
+    incremental_integration_test.go:57: clickhouse HTTP 403 (query rejected)
+--- FAIL: TestDeltaHistoryDetectsOldVersionAppendIntegration (0.11s)
+=== RUN   TestAtomicPublishAndRollbackIntegration
+    publish_integration_test.go:22: clickhouse HTTP 403 (query rejected)
+--- FAIL: TestAtomicPublishAndRollbackIntegration (0.01s)
+=== RUN   TestNaming
+--- PASS: TestNaming (0.00s)
+FAIL
+FAIL	github.com/dinhvansh/dataflow-engine/internal/safetable	0.316s
+=== RUN   TestVisualTransformClickHouseIntegration
+    compiler_integration_test.go:33: ClickHouse DDL HTTP 403
+--- FAIL: TestVisualTransformClickHouseIntegration (0.01s)
+=== RUN   TestVisualStepsCompile
+--- PASS: TestVisualStepsCompile (0.00s)
+=== RUN   TestBlockedInputs
+--- PASS: TestBlockedInputs (0.00s)
+=== RUN   TestStepDisableAndRename
+--- PASS: TestStepDisableAndRename (0.00s)
+=== RUN   TestSQLModeAndPreviewLimit
+--- PASS: TestSQLModeAndPreviewLimit (0.00s)
+FAIL
+FAIL	github.com/dinhvansh/dataflow-engine/internal/transform	0.010s
+FAIL

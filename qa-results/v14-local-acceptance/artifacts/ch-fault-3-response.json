@@ -1,0 +1,1 @@
+{"batches_written":83,"elapsed_seconds":0.426589612,"error":"batch 83: Post \"http://127.0.0.1:18123?query=INSERT+INTO+%60scratch%60.%60fault_recovery_v14_df_4bc9efcecf2e47ed%60+FORMAT+JSONEachRow\": EOF","rows_written":8300,"run_id":"4bc9efce-cf2e-47ed-9530-4ea7b63ccd20","status":"failed","upper_exclusive":""}

@@ -1,0 +1,13 @@
+
+> dataflow-console@0.1.0 build
+> tsc -b && vite build
+
+vite v6.4.4 building for production...
+transforming...
+✓ 1597 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.36 kB │ gzip:  0.26 kB
+dist/assets/index-Baw4RYo7.css   20.40 kB │ gzip:  4.69 kB
+dist/assets/index-mFt356QJ.js   272.85 kB │ gzip: 80.60 kB
+✓ built in 1.48s

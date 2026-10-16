@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-8.4.2, pluggy-1.7.0 -- /tmp/dataflow-qa-tools.Ys3msi/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /workspace/dataflow-engine
+collecting ... collected 6 items
+
+qa/browser/test_console_live.py::test_live_ui01_source_explorer PASSED   [ 16%]
+qa/browser/test_console_live.py::test_live_ui02_visual_preview PASSED    [ 33%]
+qa/browser/test_console_live.py::test_live_ui03_save_reload PASSED       [ 50%]
+qa/browser/test_console_live.py::test_live_ui04_lineage PASSED           [ 66%]
+qa/browser/test_console_live.py::test_live_ui05_auto_build PASSED        [ 83%]
+qa/browser/test_console_live.py::test_live_ui06_incremental_publish_rollback PASSED [100%]
+
+============================== 6 passed in 37.49s ==============================

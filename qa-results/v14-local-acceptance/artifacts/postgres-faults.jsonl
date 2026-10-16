@@ -1,0 +1,3 @@
+{"scenario":"postgres_mid_workflow","trial":1,"terminal":"failed","recovery_ms":9913,"published_rows":1}
+{"scenario":"postgres_mid_workflow","trial":2,"terminal":"failed","recovery_ms":5053,"published_rows":1}
+{"scenario":"postgres_mid_workflow","trial":3,"terminal":"failed","recovery_ms":5057,"published_rows":1}

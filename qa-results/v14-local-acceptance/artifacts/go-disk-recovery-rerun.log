@@ -1,0 +1,75 @@
+=== RUN   TestDBTFullQueueIntegration
+    full_integration_test.go:83: PASS dbt queue -> worker -> materialized ClickHouse View -> PostgreSQL terminal status
+--- PASS: TestDBTFullQueueIntegration (2.01s)
+=== RUN   TestSafeIncrementalFullIntegration
+    incremental_integration_test.go:212: PASS insert/update/delete, two cursor commits, preserved backup and cursor rollback
+2026/10/16 23:20:12 incremental publish 277e6ab8-d06b-40db-a289-9e3f522c568a refused or ambiguous: LATE_EVENT_OR_HISTORY_MUTATION: CDC changed after staging; publish/rollback refused
+    incremental_integration_test.go:236: PASS INC-11: late event blocks publish and subsequent incremental run
+--- PASS: TestSafeIncrementalFullIntegration (0.42s)
+=== RUN   TestDBTQueueIntegration
+--- PASS: TestDBTQueueIntegration (0.02s)
+=== RUN   TestSafeTableFullIntegration
+--- PASS: TestSafeTableFullIntegration (4.08s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/cmd/dataflow-dbt-worker	6.528s
+=== RUN   TestEventEnvelope
+--- PASS: TestEventEnvelope (0.00s)
+=== RUN   TestEventInvalidVersion
+--- PASS: TestEventInvalidVersion (0.00s)
+=== RUN   TestSnapshotDiffIntegration
+--- PASS: TestSnapshotDiffIntegration (0.03s)
+=== RUN   TestKeySnapshotWriterValidation
+--- PASS: TestKeySnapshotWriterValidation (0.00s)
+=== RUN   TestSnapshotStatsAndDiffQueries
+--- PASS: TestSnapshotStatsAndDiffQueries (0.00s)
+=== RUN   TestSnapshotRejectsIdentifiers
+--- PASS: TestSnapshotRejectsIdentifiers (0.00s)
+=== RUN   TestReadOnlySQLIntegration
+--- PASS: TestReadOnlySQLIntegration (0.00s)
+=== RUN   TestValidateReadQuery
+--- PASS: TestValidateReadQuery (0.00s)
+=== RUN   TestReadQueryRestrictedHTTP
+--- PASS: TestReadQueryRestrictedHTTP (0.00s)
+=== RUN   TestReadQueryRejectUnsafe
+--- PASS: TestReadQueryRejectUnsafe (0.00s)
+=== RUN   TestStageName
+--- PASS: TestStageName (0.00s)
+=== RUN   TestStageExchange
+--- PASS: TestStageExchange (0.00s)
+=== RUN   TestDDLFailure
+--- PASS: TestDDLFailure (0.00s)
+=== RUN   TestCountRunRows
+--- PASS: TestCountRunRows (0.00s)
+=== RUN   TestWriterSendsJSONEachRow
+--- PASS: TestWriterSendsJSONEachRow (0.00s)
+=== RUN   TestRejectUnsafeTarget
+--- PASS: TestRejectUnsafeTarget (0.00s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/connectors/clickhouse	0.037s
+=== RUN   TestDeltaPerformanceQAIntegration
+    delta_benchmark_test.go:39: explicit disposable delta benchmark opt-in required
+--- SKIP: TestDeltaPerformanceQAIntegration (0.00s)
+=== RUN   TestDeltaUpdateDeleteReplayIntegration
+--- PASS: TestDeltaUpdateDeleteReplayIntegration (0.08s)
+=== RUN   TestDeltaRejectDuplicateVersionIntegration
+--- PASS: TestDeltaRejectDuplicateVersionIntegration (0.01s)
+=== RUN   TestDeltaHistoryDetectsOldVersionAppendIntegration
+--- PASS: TestDeltaHistoryDetectsOldVersionAppendIntegration (0.02s)
+=== RUN   TestAtomicPublishAndRollbackIntegration
+--- PASS: TestAtomicPublishAndRollbackIntegration (0.05s)
+=== RUN   TestNaming
+--- PASS: TestNaming (0.00s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/safetable	0.168s
+=== RUN   TestVisualTransformClickHouseIntegration
+--- PASS: TestVisualTransformClickHouseIntegration (0.01s)
+=== RUN   TestVisualStepsCompile
+--- PASS: TestVisualStepsCompile (0.00s)
+=== RUN   TestBlockedInputs
+--- PASS: TestBlockedInputs (0.00s)
+=== RUN   TestStepDisableAndRename
+--- PASS: TestStepDisableAndRename (0.00s)
+=== RUN   TestSQLModeAndPreviewLimit
+--- PASS: TestSQLModeAndPreviewLimit (0.00s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/transform	0.016s

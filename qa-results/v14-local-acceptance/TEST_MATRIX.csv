@@ -1,0 +1,57 @@
+test_id,area,expected,actual,status,evidence
+GIT-01,git,"main equals known commit","origin/main=61cfd7a7",PASS,git-fetch
+GIT-02,git,"PR16 merged","b545297 ancestor with SQL Server E2E harness",PASS,git-log
+GIT-03,git,"PR17 merged","1cbe56a ancestor with migration 015/history guard",PASS,git-log
+GIT-04,git,"PR18 merged","7082e4a ancestor with browser suite",PASS,git-log
+GIT-05,git,"PR19 merged","61cfd7a includes delta benchmark",PASS,git-log
+ENV-01,isolation,"synthetic SQL Server only","DataFlowFixtureQA; reader mutation denied",PASS,verify-isolation
+ENV-02,isolation,"PostgreSQL 16 QA","healthy; 17 public tables",PASS,verify-isolation
+ENV-03,isolation,"ClickHouse 25.3 scratch Atomic","healthy and isolated",PASS,verify-isolation
+ENV-04,isolation,"dbt worker available","dbt 1.11.0 and dbt-clickhouse 1.10.3",PASS,worker-build
+ENV-05,isolation,"React console available","Vite served loopback and production build passed",PASS,npm-build.log
+ENV-06,isolation,"Chromium/Playwright available","Chromium 141 Playwright 1.56",PASS,playwright-logs
+FUN-01,full-sync,"all 10009 rows copied","10009 rows in 11 batches",PASS,fault-baseline.json
+FUN-02,reconciliation,"count and PK distinct match","count=10009 uniq(SysRowID)=10009",PASS,fault-baseline-count.tsv
+FUN-03,sqlserver,"real snapshot/type reader works","integration passed",PASS,go-integration-host.log
+FUN-04,migration-015,"migration is idempotent","two repeat applications succeeded",PASS,migration-015-pass2.log
+FUN-05,incremental,"insert/update/delete tombstones apply","exact expected rows passed",PASS,go-disk-recovery-rerun.log
+FUN-06,checkpoint,"cursor advances only on publish","two cursor commits passed",PASS,go-disk-recovery-rerun.log
+FUN-07,resume-retry,"lease retry is fenced and bounded","three claims and stale fence rejection passed",PASS,go-integration-final.log
+FUN-08,visual-preview,"real compile and SELECT preview","ClickHouse integration passed",PASS,go-disk-recovery-rerun.log
+FUN-09,dbt-view,"real View materializes","View queried successfully",PASS,harness-regression.log
+FUN-10,safe-table-stage,"target unchanged before approval","staging integration passed",PASS,go-disk-recovery-rerun.log
+FUN-11,safe-table-publish,"atomic publish works","published value matched",PASS,go-disk-recovery-rerun.log
+FUN-12,safe-table-rollback,"old data and cursor restored","rollback passed",PASS,go-disk-recovery-rerun.log
+FUN-13,auto-build,"A then B then C","real dbt chain and DQ passed",PASS,go-integration-final.log
+FUN-14,lineage,"dependency and impact graph","real API integration passed",PASS,go-integration-final.log
+FUN-15,late-arrival,"history mutation blocks publish","LATE_EVENT_OR_HISTORY_MUTATION",PASS,go-disk-recovery-rerun.log
+FUN-16,history-guard,"cannot silently disable after use","downgrade regression passed",PASS,go-disk-recovery-rerun.log
+FUN-17,physical-source-delete,"deleted SQL row emits tombstone","rowversion cannot observe vanished row",BLOCKED,BUG_REGISTER.md
+MOCK-01,browser-mock,"Source Explorer interaction","passed",PASS,playwright-mock.log
+MOCK-02,browser-mock,"Visual Preview interaction","passed",PASS,playwright-mock.log
+MOCK-03,browser-mock,"Save Reload interaction","passed",PASS,playwright-mock.log
+MOCK-04,browser-mock,"Lineage interaction","passed",PASS,playwright-mock.log
+MOCK-05,browser-mock,"Auto Build interaction","passed",PASS,playwright-mock.log
+MOCK-06,browser-mock,"Publish Rollback interaction","passed",PASS,playwright-mock.log
+UI-01,browser-live,"real Source Explorer metadata","Erp.PartTran and SysRowID displayed",PASS,playwright-live
+UI-02,browser-live,"real Visual Preview","ClickHouse preview and count=2",PASS,playwright-live
+UI-03,browser-live,"save and reload persists","PostgreSQL count=1",PASS,playwright-live
+UI-04,browser-live,"real Lineage graph","three-model graph verified",PASS,playwright-live
+UI-05,browser-live,"real Auto Build A-B-C","flow succeeded and output rows=2",PASS,playwright-live-ui05-rerun.log
+UI-06,browser-live,"real publish and rollback","2 rows/50 then 1 row/10; state rolled_back",PASS,playwright-live
+PERF-01,benchmark,"1k delta x3 mismatch zero","median 46.356 ms; mismatch 0",PASS,delta_samples.jsonl
+PERF-02,benchmark,"10k delta x3 mismatch zero","median 45.523 ms; mismatch 0",PASS,delta_samples.jsonl
+PERF-03,benchmark,"50k delta x3 mismatch zero","median 53.077 ms; mismatch 0",PASS,delta_samples.jsonl
+PERF-04,benchmark,"copy-on-write disclosed","100k output rebuilt every sample",PASS,BENCHMARK_RESULTS.md
+PERF-05,benchmark,"CPU peak measured reliably","sampler not present",N/A,BENCHMARK_RESULTS.md
+PERF-06,benchmark,"RAM peak measured reliably","sampler not present",N/A,BENCHMARK_RESULTS.md
+PERF-07,benchmark,"ClickHouse I/O measured reliably","query byte counters not captured",N/A,BENCHMARK_RESULTS.md
+REC-01,recovery,"ClickHouse stop fails closed x3","3 failed; target stayed 1 row",PASS,clickhouse-faults.jsonl
+REC-02,recovery,"PostgreSQL stop fails closed x3","3 failed; target stayed 1 row",PASS,postgres-faults.jsonl
+REC-03,recovery,"worker restart completes x3","3 succeeded; 8 rows each",PASS,worker-restarts.jsonl
+REC-04,recovery,"no duplicate after retry","counts exact in all trials",PASS,worker-restarts.jsonl
+REC-05,recovery,"checkpoint/published data protected","fencing and rollback integrations passed",PASS,go-disk-recovery-rerun.log
+CI-01,ci,"Go race suite passes","passed",PASS,go-race.log
+CI-02,ci,"go vet passes","passed",PASS,go-vet.log
+CI-03,ci,"Go build passes","passed",PASS,go-build.log
+CI-04,ci,"React production build passes","1597 modules built",PASS,npm-build.log

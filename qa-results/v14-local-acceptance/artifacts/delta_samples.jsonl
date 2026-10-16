@@ -1,0 +1,9 @@
+{"kind":"copy_on_write_stage","changed_rows":1000,"trial":1,"baseline_rows":100000,"events":1000,"output_rows":100000,"stage_ms":46.356,"changed_rows_per_second":21571.830571736344,"reconciliation":"PASS"}
+{"kind":"copy_on_write_stage","changed_rows":1000,"trial":2,"baseline_rows":100000,"events":1000,"output_rows":100000,"stage_ms":47.73,"changed_rows_per_second":20951.055568652293,"reconciliation":"PASS"}
+{"kind":"copy_on_write_stage","changed_rows":1000,"trial":3,"baseline_rows":100000,"events":1000,"output_rows":100000,"stage_ms":43.213,"changed_rows_per_second":23140.720619627045,"reconciliation":"PASS"}
+{"kind":"copy_on_write_stage","changed_rows":10000,"trial":1,"baseline_rows":100000,"events":10000,"output_rows":100000,"stage_ms":50.396,"changed_rows_per_second":198425.46614656178,"reconciliation":"PASS"}
+{"kind":"copy_on_write_stage","changed_rows":10000,"trial":2,"baseline_rows":100000,"events":10000,"output_rows":100000,"stage_ms":45.523,"changed_rows_per_second":219668.2951629283,"reconciliation":"PASS"}
+{"kind":"copy_on_write_stage","changed_rows":10000,"trial":3,"baseline_rows":100000,"events":10000,"output_rows":100000,"stage_ms":44.905,"changed_rows_per_second":222688.06586150976,"reconciliation":"PASS"}
+{"kind":"copy_on_write_stage","changed_rows":50000,"trial":1,"baseline_rows":100000,"events":50000,"output_rows":100000,"stage_ms":59.34,"changed_rows_per_second":842590.2687598384,"reconciliation":"PASS"}
+{"kind":"copy_on_write_stage","changed_rows":50000,"trial":2,"baseline_rows":100000,"events":50000,"output_rows":100000,"stage_ms":50.088,"changed_rows_per_second":998241.557566684,"reconciliation":"PASS"}
+{"kind":"copy_on_write_stage","changed_rows":50000,"trial":3,"baseline_rows":100000,"events":50000,"output_rows":100000,"stage_ms":53.077,"changed_rows_per_second":942020.8226920307,"reconciliation":"PASS"}

@@ -1,0 +1,52 @@
+=== RUN   TestDBTFullQueueIntegration
+    full_integration_test.go:83: PASS dbt queue -> worker -> materialized ClickHouse View -> PostgreSQL terminal status
+--- PASS: TestDBTFullQueueIntegration (3.24s)
+=== RUN   TestSafeIncrementalFullIntegration
+    incremental_integration_test.go:212: PASS insert/update/delete, two cursor commits, preserved backup and cursor rollback
+2026/10/16 23:10:42 incremental publish 2f654b0e-a509-46a4-a0c6-f5cb1cb6fe69 refused or ambiguous: LATE_EVENT_OR_HISTORY_MUTATION: CDC changed after staging; publish/rollback refused
+    incremental_integration_test.go:236: PASS INC-11: late event blocks publish and subsequent incremental run
+--- PASS: TestSafeIncrementalFullIntegration (0.78s)
+=== RUN   TestDBTQueueIntegration
+    main_test.go:70: unexpected claim {ID:6b039df0-a17b-4970-bb23-1d78387b5f6e Owner:54731f51-e716-4a98-a447-1558e8f960da Name:flowci1792192238826102851b SQL:SELECT *, (`Revenue` * 2) AS `Adjusted` FROM (SELECT * FROM `scratch`.`dfv_flowci1792192238826102851a`) AS _df_step Target:dfv_flowci1792192238826102851b Fence:1 Attempts:1}
+--- FAIL: TestDBTQueueIntegration (0.01s)
+=== RUN   TestSafeTableFullIntegration
+--- PASS: TestSafeTableFullIntegration (4.59s)
+FAIL
+FAIL	github.com/dinhvansh/dataflow-engine/cmd/dataflow-dbt-worker	8.630s
+=== RUN   TestAutoBuildRealDBTIntegration
+    auto_build_integration_test.go:185: PASS real dbt A → B → C, View DQ gate, restart-safe state and output
+    auto_build_integration_test.go:235: PASS upstream SQL drift blocks downstream B
+    auto_build_integration_test.go:271: PASS failure stops downstream
+    auto_build_integration_test.go:291: PASS stale model SQL rejects auto build
+--- PASS: TestAutoBuildRealDBTIntegration (8.03s)
+=== RUN   TestDBTRunAPIIntegration
+--- PASS: TestDBTRunAPIIntegration (0.01s)
+=== RUN   TestSafeIncrementalAPIIntegration
+--- PASS: TestSafeIncrementalAPIIntegration (0.02s)
+=== RUN   TestLineageAPIIntegration
+--- PASS: TestLineageAPIIntegration (0.02s)
+=== RUN   TestManagedQueueIntegration
+    managed_queue_integration_test.go:134: PASS: claims 3, cursor fence, isolated attempts, count validation, atomic checkpoint and bounded recovery
+--- PASS: TestManagedQueueIntegration (0.05s)
+=== RUN   TestStreamTuningMigrationIdempotentIntegration
+--- PASS: TestStreamTuningMigrationIdempotentIntegration (0.01s)
+=== RUN   TestSQLDAGIntegration
+--- PASS: TestSQLDAGIntegration (0.04s)
+=== RUN   TestSafeTableAPIIntegration
+--- PASS: TestSafeTableAPIIntegration (0.02s)
+=== RUN   TestTransformStudioIntegration
+--- PASS: TestTransformStudioIntegration (0.01s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/cmd/dataflow	8.233s
+=== RUN   TestDBTRealClickHouseIntegration
+    project_integration_test.go:94: dbt created real scratch view and exposed it through ClickHouse
+--- PASS: TestDBTRealClickHouseIntegration (3.27s)
+=== RUN   TestDBTTemplateGuard
+--- PASS: TestDBTTemplateGuard (0.00s)
+=== RUN   TestProjectAndValidation
+--- PASS: TestProjectAndValidation (0.00s)
+=== RUN   TestFakeDBTRunner
+--- PASS: TestFakeDBTRunner (0.00s)
+PASS
+ok  	github.com/dinhvansh/dataflow-engine/internal/dbtworker	3.280s
+FAIL
