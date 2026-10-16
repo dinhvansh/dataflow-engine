@@ -3,6 +3,20 @@
 > Status: **Proposed / Design baseline** · Version: **0.1.0** · Date: 2026-10-16
 > Goal: replace required SQL Server/Epicor → ClickHouse Airbyte workloads with a Go streaming engine.
 
+
+## Implementation status (2026-10-16)
+
+**Code has started; this is NOT an Airbyte replacement yet.** The Go bootstrap adds:
+- `cmd/dataflow/main.go`: authenticated experimental HTTP full-load endpoint and run logging.
+- `internal/engine/`: bounded-channel worker pool with tests, cancellation and backpressure.
+- `internal/connectors/sqlserver/`: read-only streaming `SELECT` reader.
+- `internal/connectors/clickhouse/`: JSONEachRow HTTP batch writer.
+- `migrations/postgres/001_bootstrap.sql` and `docker-compose.yml`: PostgreSQL run state bootstrap.
+
+Read [Bootstrap usage and known limitations](implementation/bootstrap-run.md) before attempting to run. No integration benchmark has been executed here. This starter is **FULL READ + APPEND**, not crash-safe full refresh or incremental. Do not run it against production ClickHouse tables. The next engineering gate is reproducible `go mod tidy && go test ./...` plus a disposable SQL Server/ClickHouse/PostgreSQL integration test.
+
+---
+
 ## Documentation map
 
 - [System context](architecture/01-system-context.md)
