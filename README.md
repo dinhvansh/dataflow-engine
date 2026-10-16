@@ -90,3 +90,13 @@ DataFlow now offers an experimental SELECT-only ClickHouse SQL Job registry, an 
 - [Passing real PostgreSQL + ClickHouse CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38866264338)
 
 **Not yet present:** SQL transformation DML jobs, restart-safe queue, production auth/RBAC and validated live Epicor synchronization at scale.
+
+## v0.6 — Stability pass: leased SELECT-DAG recovery
+
+SQL DAGs now use an opt-in PostgreSQL-backed worker queue instead of API-owned goroutines. Queue entries survive Go restarts; workers use heartbeat, fencing tokens and a finite replay cap. No automatic DML is enabled.
+
+- [Release status v0.6](implementation/release-status-v06.md)
+- [Migration and recovery test guide](implementation/sql-dag-durable-queue-v06.md)
+- [Passing Go + frontend + PostgreSQL/ClickHouse CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38868112698)
+
+**Upgrade note:** existing PostgreSQL databases must apply migration `008_dag_leases.sql` before enabling SQL Job test execution. This is still a developer preview, not a production ETL release.
