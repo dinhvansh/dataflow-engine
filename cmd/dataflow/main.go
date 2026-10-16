@@ -120,6 +120,7 @@ func main(){
  mux.HandleFunc("/api/v1/managed/streams",svc.streamAPI)
  mux.HandleFunc("/api/v1/managed/runs",svc.managedRunAPI)
  mux.HandleFunc("/api/v1/managed/schedules",svc.scheduleAPI)
+ mux.HandleFunc("/api/v1/reconcile/runs",svc.reconciliationAPI)
  port:=8080;if p:=os.Getenv("PORT");p!=""{if v,e:=strconv.Atoi(p);e==nil&&v>0&&v<65536{port=v}}
  srv:=&http.Server{Addr:fmt.Sprintf(":%d",port),Handler:mux,ReadHeaderTimeout:5*time.Second}
  svc.startManagedScheduler()
