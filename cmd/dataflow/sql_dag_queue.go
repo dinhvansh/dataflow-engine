@@ -116,6 +116,9 @@ func(s *server)runClaimedSQLDAG(parent context.Context,claim sqlDAGClaim){
   _,err:=reader.Execute(stepCtx,job.Query)
   return err
  },opts)
+ // On shutdown or lost lease leave the run eligible for fenced replay,
+ // instead of incorrectly persisting a cancelled pipeline as complete.
+ if ctx.Err()!=nil{return}
  status:="succeeded";message:=""
  if runErr!=nil{status="failed";message=runErr.Error()}
  persistCtx,stop:=context.WithTimeout(context.Background(),10*time.Second)
