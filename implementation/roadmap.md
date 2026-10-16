@@ -84,3 +84,19 @@ See [v0.8 release status](release-status-v08.md).
 - [ ] Safe Table/Incremental materialization with staged publish, DQ and rollback.
 - [ ] Production secrets/RBAC, browser E2E, Epicor TEST 7m-row end-to-end benchmark.
 See [v0.9 release status](release-status-v09.md).
+
+
+## v1.0 — Lineage / Impact Analysis (2026-10-16)
+
+- [x] Visual dependency graph from saved model scratch View references.
+- [x] React inspector with direct parents/children and transitive downstream impact.
+- [x] Model-source selector in Transform Studio.
+- [x] Concurrent-safe cycle rejection on model Save.
+- [x] Reject dbt View Build if any ancestor is unbuilt or stale.
+- [x] PostgreSQL integration test and complete Go/Web/dbt/ClickHouse CI passed.
+- [ ] Automatic dbt `ref()` dependency build and snapshot-consistent multi-model execution.
+- [ ] Multi-source joins / column-level lineage, curated data quality contracts.
+- [ ] Approved staging/rollback-backed Table and Incremental materializations.
+- [ ] Real Epicor SQL Server TEST end-to-end performance and correctness acceptance.
+
+See [v1.0 release status](release-status-v10.md).
