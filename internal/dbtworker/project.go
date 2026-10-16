@@ -30,6 +30,7 @@ type Plan struct{
  Name string
  SQL string
  Target string
+ Materialization string // defaults to view, explicitly table for versioned staging
 }
 type Outcome struct{
  Success bool `json:"success"`
@@ -38,7 +39,15 @@ type Outcome struct{
  ElapsedSeconds float64 `json:"elapsed_seconds"`
 }
 func ValidatePlan(p Plan,c Config)error{
- if !safe.MatchString(p.Name)||p.Target!="dfv_"+p.Name{return errors.New("unsafe dbt model or target name")}
+ if !safe.MatchString(p.Name){return errors.New("invalid dbt model name")}
+ mat:=p.Materialization;if mat==""{mat="view"}
+ switch mat{
+ case "view":
+  if p.Target!="dfv_"+p.Name{return errors.New("unsafe dbt view target")}
+ case "table":
+  if !regexp.MustCompile("^dft_stage_[a-f0-9]{32}$").MatchString(p.Target){return errors.New("unsafe dbt table staging target")}
+ default:return errors.New("materialization must be view or staging table")
+ }
  if c.Database!="scratch"{return errors.New("dbt worker requires scratch database")}
  if c.Host==""||c.Port<1||c.Port>65535||c.Username==""{return errors.New("dbt connection incomplete")}
  sql:=strings.TrimSpace(p.SQL)
@@ -59,7 +68,8 @@ func createProject(root string,p Plan,c Config)error{
  if err:=os.WriteFile(filepath.Join(root,"dbt_project.yml"),[]byte(project),0600);err!=nil{return err}
  if err:=os.WriteFile(filepath.Join(root,"profiles.yml"),[]byte(profile),0600);err!=nil{return err}
  // No untrusted Jinja: dbt evaluates templates inside SQL models.
- model:="{{ config(materialized='view') }}\n"+strings.TrimSpace(p.SQL)+"\n"
+ mat:=p.Materialization;if mat==""{mat="view"}
+ model:="{{ config(materialized='"+mat+"') }}\n"+strings.TrimSpace(p.SQL)+"\n"
  return os.WriteFile(filepath.Join(root,"models",p.Target+".sql"),[]byte(model),0600)
 }
 type boundedBuffer struct{bytes.Buffer;max int}

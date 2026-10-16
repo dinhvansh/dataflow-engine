@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useState,type DragEvent} from "react";
 import {ArrowDown,ArrowUp,Braces,CheckCircle2,ChevronDown,Code2,Database,Eye,Filter,GripVertical,Layers3,Plus,RefreshCw,Save,ShieldAlert,Table2,Trash2,Undo2} from "lucide-react";
 import {Button} from "./ui/button";
-import {transformApi,type DbtRun,type TransformColumn,type TransformKind,type TransformModel,type TransformStep,type SavedTransform,type CompileResult,type PreviewResult} from "../lib/transformApi";
+import {transformApi,type TableRun,type DbtRun,type TransformColumn,type TransformKind,type TransformModel,type TransformStep,type SavedTransform,type CompileResult,type PreviewResult} from "../lib/transformApi";
 
 const operationDetails:{kind:TransformKind;name:string;hint:string}[]=[
  {kind:"filter",name:"Lọc hàng",hint:"Filter rows"},
@@ -78,6 +78,9 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
  const[savedModelID,setSavedModelID]=useState("");
  const[unsaved,setUnsaved]=useState(true);
  const[dbtRun,setDbtRun]=useState<DbtRun|null>(null);
+ const[tableRun,setTableRun]=useState<TableRun|null>(null);
+ const[uniqueKey,setUniqueKey]=useState("");
+ const[tableBusy,setTableBusy]=useState(false);
  const active=useMemo(()=>model.steps.filter(s=>s.enabled!==false),[model.steps]);
  const selectedStep=model.steps.find(s=>s.id===selected);
  const selectedIndex=selected==="source"?0:Math.max(0,active.findIndex(s=>s.id===selected)+1);
@@ -130,6 +133,35 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
   catch(e){setError(String(e))}
   finally{setBusy(false)}
  };
+ useEffect(()=>{
+  if(!tableRun||!token||!["queued","building","publishing","rolling_back"].includes(tableRun.state))return;
+  let live=true;
+  const poll=window.setInterval(()=>{
+   void transformApi.tableStatus(tableRun.run_id,token).then(r=>{if(live&&r.runs[0])setTableRun(r.runs[0])}).catch(()=>{});
+  },3000);
+  return()=>{live=false;window.clearInterval(poll)};
+ },[tableRun?.run_id,tableRun?.state,token]);
+ const stageTable=async()=>{
+  if(!savedModelID||unsaved||model.mode!=="visual"){setError("Save a Visual model before building a table");return}
+  setTableBusy(true);setError("");setInfo("");
+  try{
+   const queued=await transformApi.tableStage(savedModelID,token,uniqueKey.trim());
+   setTableRun(queued);
+   setInfo("Đã xếp hàng dựng staging table. Dữ liệu báo cáo hiện tại chưa bị thay đổi.");
+  }catch(e){setError(String(e))}
+  finally{setTableBusy(false)}
+ };
+ const tableAction=async(action:"publish"|"rollback")=>{
+  if(!tableRun)return;
+  const msg=action==="publish"?"Xác nhận publish bảng đã kiểm tra vào scratch? Bảng đang dùng sẽ được giữ làm bản rollback.":"Xác nhận khôi phục bảng cũ? Chỉ dùng khi bản trước còn nguyên.";
+  if(!window.confirm(msg))return;
+  setTableBusy(true);setError("");
+  try{
+   const result=await transformApi.tableAction(tableRun.run_id,action,token);
+   setTableRun(result);setInfo(action==="publish"?"Đã xếp hàng Publish; đang kiểm tra UUID và thay bảng an toàn.":"Đã xếp hàng Rollback; đang kiểm tra UUID bản cũ.");
+  }catch(e){setError(String(e))}
+  finally{setTableBusy(false)}
+ };
  const fetchColumns=async()=>{
   if(!token){setError("Nhập API token trước");return}
   setBusy(true);setError("");setInfo("");
@@ -152,7 +184,7 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
   setBusy(true);setError("");setInfo("");
   try{
    const r=await transformApi.save(model,token);
-   setInfo("Đã lưu model "+r.name+" (chỉ metadata, chưa tạo bảng)");setSavedModelID(r.id);setUnsaved(false);
+   setInfo("Đã lưu model "+r.name+" (chỉ metadata, chưa tạo bảng)");setSavedModelID(r.id);setUnsaved(false);setTableRun(null);
    setSaved((await transformApi.models(token)).models);
   }catch(e){setError(String(e))}
   finally{setBusy(false)}
@@ -171,11 +203,11 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
    <div className="flex flex-wrap gap-2">
     <Button variant="outline" disabled={busy||!token} onClick={loadSaved}><RefreshCw size={14}/>Models</Button>
     <Button variant="outline" disabled={busy||!token} onClick={doPreview}><Eye size={15}/>Preview bước</Button>
-    <Button disabled={busy||!token} onClick={doSave}><Save size={15}/>Lưu Model</Button><Button variant="outline" disabled={busy||!token||unsaved||!savedModelID||model.mode!=="visual"} onClick={executeView}><Database size={15}/>Build View (dbt)</Button>
+    <Button disabled={busy||!token} onClick={doSave}><Save size={15}/>Lưu Model</Button><Button variant="outline" disabled={busy||!token||unsaved||!savedModelID||model.mode!=="visual"} onClick={executeView}><Database size={15}/>Build View (dbt)</Button><Button variant="outline" disabled={busy||tableBusy||!token||unsaved||!savedModelID||model.mode!=="visual"} onClick={stageTable}><Table2 size={15}/>Build Staging Table</Button>
    </div>
   </section>
   <div className="flex items-start gap-2 rounded-lg border border-amber-800/50 bg-amber-500/10 p-3 text-sm text-amber-200">
-   <ShieldAlert className="shrink-0" size={18}/><span>Giai đoạn thử nghiệm: Preview vẫn chỉ SELECT. Có thể <b>Build View trong scratch</b> bằng dbt worker riêng (bật thủ công); chưa cho Table/Incremental/Mart hoặc production. Build View cần lưu model trước.</span>
+   <ShieldAlert className="shrink-0" size={18}/><span>Giai đoạn thử nghiệm: Preview vẫn chỉ SELECT. Có thể Build View hoặc dựng Safe Staging Table trong scratch, nhưng Table chỉ được Publish khi kiểm tra xong và được xác nhận thủ công; chưa bật Incremental, Mart hoặc production. Build View cần lưu model trước.</span>
   </div>
   <section className="section grid gap-3 md:grid-cols-[1fr_1fr_1fr]">
    <TextField label="Tên model" value={model.name} onChange={name=>patchModel({name})} placeholder="revenue_by_part"/>
@@ -195,7 +227,7 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
    </label>
    <label className="block space-y-1 md:col-span-2"><span className="text-xs text-slate-400">API token · lưu trong bộ nhớ trình duyệt</span><input type="password" autoComplete="off" className="field" value={token} onChange={e=>onTokenChange(e.target.value)} placeholder="Bearer token"/></label>
    <div className="flex items-end"><Button variant="outline" disabled={!token||busy} onClick={fetchColumns}><Database size={15}/>Lấy danh sách cột</Button></div>
-   {saved.length>0&&<div className="md:col-span-3 flex flex-wrap gap-2"><span className="muted text-xs self-center">Model đã lưu:</span>{saved.map(entry=><button key={entry.id} className="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs hover:border-sky-500" onClick={()=>{setModel(entry.model);setSelected("source");setPreview(null);setCompiled(null);setColumns([]);setSavedModelID(entry.id);setUnsaved(false);setDbtRun(null);setInfo("Đã tải model "+entry.name)}}>{entry.name}</button>)}</div>}
+   {saved.length>0&&<div className="md:col-span-3 flex flex-wrap gap-2"><span className="muted text-xs self-center">Model đã lưu:</span>{saved.map(entry=><button key={entry.id} className="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs hover:border-sky-500" onClick={()=>{setModel(entry.model);setSelected("source");setPreview(null);setCompiled(null);setColumns([]);setSavedModelID(entry.id);setUnsaved(false);setDbtRun(null);setTableRun(null);setInfo("Đã tải model "+entry.name)}}>{entry.name}</button>)}</div>}
   </section>
   <div className="grid gap-4 xl:grid-cols-[205px_minmax(0,1fr)_335px]">
    <aside className="section space-y-3">
@@ -218,10 +250,26 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
      {model.steps.map((step,i)=><div key={step.id} className={dragged===step.id?"opacity-40":""} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.stopPropagation();dropped(e,i)}}><div draggable={model.mode==="visual"} onDragStart={e=>{setDragged(step.id);e.dataTransfer.setData("application/x-dataflow-step",step.id)}} onDragEnd={()=>setDragged(null)} className={"flex items-center gap-1 rounded-md border p-1.5 "+(selected===step.id?"border-sky-500 bg-sky-500/10":"border-slate-700 bg-slate-800/50")}><GripVertical className="cursor-grab text-slate-500" size={14}/><input aria-label={"Bật tắt "+labels[step.type]} type="checkbox" checked={step.enabled!==false} onChange={e=>patchStep(step.id,{enabled:e.target.checked})}/><button className={"min-w-0 flex-1 truncate px-1 text-left text-xs "+(step.enabled===false?"text-slate-500 line-through":"")} onClick={()=>{setSelected(step.id);setPreview(null)}}><span className="muted mr-1">{i+1}.</span>{labels[step.type]}</button><button title="Lên" aria-label="Move step up" disabled={i===0} onClick={()=>shift(step.id,-1)}><ArrowUp size={13}/></button><button title="Xuống" aria-label="Move step down" disabled={i===model.steps.length-1} onClick={()=>shift(step.id,1)}><ArrowDown size={13}/></button><button title="Xóa bước" aria-label="Delete step" className="text-rose-300" onClick={()=>{patchModel({steps:model.steps.filter(s=>s.id!==step.id)});setSelected("source")}}><Trash2 size={13}/></button></div></div>)}
     </div>
     {selectedStep&&model.mode==="visual"&&<div className="space-y-3 border-t border-slate-700 pt-3"><div className="flex items-center gap-2 text-sm font-semibold"><ChevronDown size={16}/>{labels[selectedStep.type]}</div><StepFields step={selectedStep} columns={columns} onChange={patch=>patchStep(selectedStep.id,patch)}/></div>}
-    <div className="border-t border-slate-700 pt-3 text-xs"><div className="flex items-center gap-2 text-emerald-300"><CheckCircle2 size={15}/>Step changes are non-destructive</div><p className="muted mt-2">Preview chỉ đọc. Save chỉ lưu công thức. dbt materialization sẽ là giai đoạn tiếp theo sau khi kiểm chứng.</p><button className="muted mt-3 flex items-center gap-1 underline" onClick={()=>{setModel(defaultModel);setSavedModelID("");setUnsaved(true);setDbtRun(null);setColumns([]);setSelected("source");setCompiled(null);setPreview(null);setError("");setInfo("")}}><Undo2 size={13}/>Reset Studio</button></div>
+    <div className="border-t border-slate-700 pt-3 text-xs"><div className="flex items-center gap-2 text-emerald-300"><CheckCircle2 size={15}/>Step changes are non-destructive</div><p className="muted mt-2">Preview chỉ đọc. Save chỉ lưu công thức. dbt materialization sẽ là giai đoạn tiếp theo sau khi kiểm chứng.</p><button className="muted mt-3 flex items-center gap-1 underline" onClick={()=>{setModel(defaultModel);setSavedModelID("");setUnsaved(true);setDbtRun(null);setTableRun(null);setUniqueKey("");setColumns([]);setSelected("source");setCompiled(null);setPreview(null);setError("");setInfo("")}}><Undo2 size={13}/>Reset Studio</button></div>
    </aside>
   </div>
   {error&&<div role="alert" className="rounded-md border border-red-700 bg-red-950/50 p-3 text-sm text-red-300">{error}</div>}
+  <section className="section flex flex-wrap items-end gap-3">
+   <label className="block min-w-48 flex-1 space-y-1"><span className="text-xs text-slate-400">Safe Table v1.1 · Khóa duy nhất (tùy chọn, để phát hiện trùng)</span><input className="field" value={uniqueKey} onChange={e=>setUniqueKey(e.target.value)} placeholder="Ví dụ: InvoiceNum"/></label>
+   <div className="max-w-md text-xs text-slate-400">Build staging → kiểm tra rows + optional unique key → Publish thủ công. Nếu gặp lỗi trước Publish, bảng đang dùng không thay đổi. TEST scratch only.</div>
+  </section>
+  {tableRun&&<section className="section space-y-3 text-sm">
+   <div className="flex items-center justify-between"><b>Safe Table Build</b><span className="rounded border border-slate-600 px-2 py-1 font-mono text-xs">{tableRun.state}</span></div>
+   <div className="text-xs text-slate-400">Run {tableRun.run_id} · Stage {tableRun.stage} · Target {tableRun.target}</div>
+   {tableRun.rows!==undefined&&<div className="text-xs">Data Quality: {tableRun.rows.toLocaleString()} rows verified {tableRun.has_backup?"· Backup available":""}</div>}
+   {tableRun.error&&<div role="alert" className="text-rose-300">{tableRun.error}</div>}
+   {tableRun.log_tail&&<pre className="max-h-36 overflow-auto whitespace-pre-wrap bg-slate-950 p-2 text-xs">{tableRun.log_tail}</pre>}
+   <div className="flex gap-2 flex-wrap">
+    <Button disabled={tableBusy||tableRun.state!=="ready"} onClick={()=>void tableAction("publish")}>Approve & Publish</Button>
+    <Button variant="outline" disabled={tableBusy||tableRun.state!=="published"||!tableRun.has_backup} onClick={()=>void tableAction("rollback")}>Rollback previous table</Button>
+   </div>
+   <p className="text-xs text-amber-200">Chỉ áp dụng cho bản TEST; chưa xác nhận an toàn với dashboard production hoặc Epicor.</p>
+  </section>}
   {dbtRun&&<div className="rounded-lg border border-slate-700 bg-slate-900/70 p-3 text-sm">
   <div className="flex flex-wrap items-center justify-between gap-2"><b>dbt View materialization</b><span className="rounded border border-slate-600 px-2 py-1 font-mono text-xs">{dbtRun.status}</span></div>
   <p className="muted mt-2 text-xs">Run: {dbtRun.run_id} · Destination: {dbtRun.target||("scratch.dfv_"+model.name)}</p>

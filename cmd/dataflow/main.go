@@ -131,6 +131,8 @@ func main(){
  mux.HandleFunc("/api/v1/transform/columns",svc.transformColumns)
  mux.HandleFunc("/api/v1/transform/models",svc.transformModels)
  mux.HandleFunc("/api/v1/transform/dbt/runs",svc.dbtRunsAPI)
+ mux.HandleFunc("/api/v1/transform/table/runs",svc.tableRunsAPI)
+ mux.HandleFunc("/api/v1/transform/table/action",svc.tableActionAPI)
  mux.HandleFunc("/api/v1/transform/lineage",svc.lineageAPI)
  port:=8080;if p:=os.Getenv("PORT");p!=""{if v,e:=strconv.Atoi(p);e==nil&&v>0&&v<65536{port=v}}
  srv:=&http.Server{Addr:fmt.Sprintf(":%d",port),Handler:mux,ReadHeaderTimeout:5*time.Second}

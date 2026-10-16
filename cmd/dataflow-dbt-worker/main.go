@@ -69,10 +69,16 @@ func main(){
  check,done:=context.WithTimeout(ctx,10*time.Second)
  err=pg.Ping(check);if err==nil{err=ensureSchema(check,pg)};done()
  if err!=nil{log.Fatal(err)}
+ if tableEnabled(){
+   chk,done:=context.WithTimeout(ctx,10*time.Second)
+   err=checkTableSchema(chk,pg);done()
+   if err!=nil{log.Fatal(err)}
+ }
  ticker:=time.NewTicker(3*time.Second);defer ticker.Stop()
  log.Print("dbt scratch view worker ready")
  for{
   select{case <-ctx.Done():return;default:}
+  if tableEnabled(){dispatchTable(ctx,pg,config)}
   claimCtx,cancel:=context.WithTimeout(ctx,10*time.Second)
   work,e:=claimNext(claimCtx,pg);cancel()
   if e==nil{executeClaim(ctx,pg,work,config);continue}
