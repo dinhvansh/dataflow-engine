@@ -128,6 +128,10 @@ func main(){
  mux.HandleFunc("/api/v1/sql/dag-runs",svc.sqlDagRunsAPI)
  port:=8080;if p:=os.Getenv("PORT");p!=""{if v,e:=strconv.Atoi(p);e==nil&&v>0&&v<65536{port=v}}
  srv:=&http.Server{Addr:fmt.Sprintf(":%d",port),Handler:mux,ReadHeaderTimeout:5*time.Second}
+ checkCtx,checkCancel:=context.WithTimeout(context.Background(),10*time.Second)
+ schemaErr:=svc.checkSQLDAGSchema(checkCtx)
+ checkCancel()
+ if schemaErr!=nil{log.Fatal(schemaErr)}
  root,stop:=signal.NotifyContext(context.Background(),os.Interrupt,syscall.SIGTERM)
  defer stop()
  svc.startManagedScheduler()
