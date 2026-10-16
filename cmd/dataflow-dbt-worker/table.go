@@ -75,6 +75,22 @@ func updateTable(ctx context.Context,pg *pgxpool.Pool,c tableClaim,status string
  if tag.RowsAffected()!=1{return errors.New("safe table lease lost; state not persisted")}
  return nil
 }
+// A row lock held DURING the ClickHouse exchange serializes old/new worker
+// attempts. The PG fencing check precedes external DDL, avoiding a double
+// EXCHANGE if the old worker's lease expired while a new worker reclaimed it.
+func guardedTableOperation(ctx context.Context,pg *pgxpool.Pool,c tableClaim,operation func()error)error{
+ tx,err:=pg.Begin(ctx);if err!=nil{return err}
+ defer tx.Rollback(ctx)
+ var owner string
+ err=tx.QueryRow(ctx,`SELECT lease_owner::text FROM table_runs
+  WHERE id=$1::uuid AND lease_owner=$2::uuid AND fence_token=$3
+  AND state=$4 AND lease_until>clock_timestamp() FOR UPDATE`,
+  c.ID,c.Owner,c.Fence,c.State).Scan(&owner)
+ if err!=nil{return fmt.Errorf("table fencing rejected operation: %w",err)}
+ if owner!=c.Owner{return errors.New("stale table worker")}
+ if err=operation();err!=nil{return err}
+ return tx.Commit(ctx)
+}
 func(c tableClaim)publication()safetable.Publication{
  return safetable.Publication{Target:c.Target,Stage:c.Stage,StageUUID:c.StageUUID,OldUUID:c.OldUUID}
 }
@@ -111,7 +127,7 @@ func runTableClaim(parent context.Context,pg *pgxpool.Pool,c tableClaim,config d
    if err!=nil||tag.RowsAffected()!=1{return}
    pub.OldUUID=before
   }
-  if err:=client.Publish(ctx,pub);err!=nil{
+  if err:=guardedTableOperation(ctx,pg,c,func()error{return client.Publish(ctx,pub)});err!=nil{
    log.Printf("table publish %s uncertain/rejected: %v (recovery will re-check UUID)",c.ID,err)
    return
   }
@@ -119,7 +135,7 @@ func runTableClaim(parent context.Context,pg *pgxpool.Pool,c tableClaim,config d
   finCtx,cancel:=context.WithTimeout(context.Background(),10*time.Second);defer cancel()
   if err:=updateTable(finCtx,pg,c,"published",c.StageUUID,pub.OldUUID,0,true,"","");err!=nil{log.Printf("table %s publish metadata uncertain: %v",c.ID,err)}
  case "rolling_back":
-  if err:=client.Rollback(ctx,c.publication());err!=nil{
+  if err:=guardedTableOperation(ctx,pg,c,func()error{return client.Rollback(ctx,c.publication())});err!=nil{
    log.Printf("table rollback %s blocked: %v",c.ID,err);return
   }
   if parent.Err()!=nil||ctx.Err()!=nil{return}
