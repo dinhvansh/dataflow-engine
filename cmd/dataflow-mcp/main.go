@@ -43,6 +43,8 @@ func(s *server) handle(r request)any{
   t:=[]any{
    tool("dataflow_health","Check the DataFlow backend health",shape(nil,map[string]any{})),
    tool("dataflow_list_recent_runs","List latest PostgreSQL-backed sync runs (read only)",shape(nil,map[string]any{})),
+   tool("dataflow_list_managed_streams","List registered streams and committed native rowversion checkpoints",shape(nil,map[string]any{})),
+   tool("dataflow_managed_run_status","Inspect an asynchronous managed incremental run by UUID",shape([]string{"run_id"},map[string]any{"run_id":map[string]any{"type":"string"}})),
    tool("dataflow_get_run","Read status of one known run UUID",shape([]string{"run_id"},map[string]any{"run_id":map[string]any{"type":"string"}})),
    tool("dataflow_list_tables","List SQL Server tables in one schema using read-only metadata",shape([]string{"schema"},map[string]any{"schema":map[string]any{"type":"string"}})),
    tool("dataflow_inspect_columns","Read SQL Server column names/types/primary keys and rowversion hints",shape([]string{"schema","table"},map[string]any{"schema":map[string]any{"type":"string"},"table":map[string]any{"type":"string"}})),
@@ -52,6 +54,9 @@ func(s *server) handle(r request)any{
   if s.allowWrites{t=append(t,tool("dataflow_run_test_load","Starts an experimental append-only full load into a disposable ClickHouse target. REQUIRES user approval; never use against production.",shape([]string{"source_schema","source_table","target_database","target_table","batch_size","workers","queue_capacity"},map[string]any{
    "source_schema":map[string]any{"type":"string"},"source_table":map[string]any{"type":"string"},"target_database":map[string]any{"type":"string"},"target_table":map[string]any{"type":"string"},"batch_size":map[string]any{"type":"integer","minimum":100,"maximum":100000},"workers":map[string]any{"type":"integer","minimum":1,"maximum":32},"queue_capacity":map[string]any{"type":"integer","minimum":1,"maximum":100},
   })))}
+  if s.allowWrites {
+   t=append(t,tool("dataflow_run_managed_stream","Start an opt-in scratch-only managed incremental stream; requires explicit user approval.",shape([]string{"stream_id"},map[string]any{"stream_id":map[string]any{"type":"string"}})))
+  }
   return response(r.ID,map[string]any{"tools":t})
  case "tools/call":
   var p struct{Name string `json:"name"`;Arguments json.RawMessage `json:"arguments"`}
@@ -63,6 +68,17 @@ func(s *server) handle(r request)any{
    out,err=s.callAPI(ctx,"GET","/healthz",nil)
   case "dataflow_list_recent_runs":
    out,err=s.callAPI(ctx,"GET","/api/v1/bootstrap/history?limit=20",nil)
+  case "dataflow_list_managed_streams":
+   out,err=s.callAPI(ctx,"GET","/api/v1/managed/streams",nil)
+  case "dataflow_managed_run_status":
+   var a struct{RunID string `json:"run_id"`}
+   if json.Unmarshal(p.Arguments,&a)!=nil||len(a.RunID)!=36||strings.ContainsAny(a.RunID,"/?&#"){return response(r.ID,textResult("invalid run id",true))}
+   out,err=s.callAPI(ctx,"GET","/api/v1/managed/runs?id="+url.QueryEscape(a.RunID),nil)
+  case "dataflow_run_managed_stream":
+   if !s.allowWrites{return response(r.ID,textResult("writes are disabled",true))}
+   var a struct{StreamID string `json:"stream_id"`}
+   if json.Unmarshal(p.Arguments,&a)!=nil||len(a.StreamID)!=36||strings.ContainsAny(a.StreamID,"/?&#"){return response(r.ID,textResult("invalid stream id",true))}
+   out,err=s.callAPI(ctx,"POST","/api/v1/managed/runs",a)
   case "dataflow_list_tables":
    var a struct{Schema string `json:"schema"`}
    if json.Unmarshal(p.Arguments,&a)!=nil||a.Schema==""{return response(r.ID,textResult("schema required",true))}
