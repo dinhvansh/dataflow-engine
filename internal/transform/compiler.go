@@ -45,6 +45,11 @@ type Compiled struct{
  SQL string `json:"sql"`
  Steps []string `json:"steps_sql"`
 }
+// ValidateModelName restricts stored names so later dbt-file exports are safe.
+func ValidateModelName(name string)(string,error){
+ if !identifier.MatchString(name)||len(name)>120{return "",errors.New("model name must be a safe SQL identifier (letters, digits, underscore)")}
+ return name,nil
+}
 func quoted(name string)(string,error){
  if !identifier.MatchString(name){return "",fmt.Errorf("invalid column or table identifier %q",name)}
  return "`"+name+"`",nil
