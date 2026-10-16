@@ -78,7 +78,7 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
  const selectedStep=model.steps.find(s=>s.id===selected);
  const selectedIndex=selected==="source"?0:Math.max(0,active.findIndex(s=>s.id===selected)+1);
  const displayedFields=preview?.meta?.length?preview.meta.map(m=>m.name):Object.keys(preview?.data?.[0]||{});
- const patchModel=(patch:Partial<TransformModel>)=>{setModel(old=>({...old,...patch}));setPreview(null);setSqlDirty(true);setError("");};
+ const patchModel=(patch:Partial<TransformModel>)=>{setModel(old=>({...old,...patch}));setPreview(null);setSQLDirty(true);setError("");};
  const patchStep=(id:string,patch:Partial<TransformStep>)=>patchModel({steps:model.steps.map(s=>s.id===id?{...s,...patch}:s)});
  const addStep=(type:TransformKind,position?:number)=>{
   if(model.steps.length>=30){setError("Chỉ hỗ trợ tối đa 30 bước");return}
