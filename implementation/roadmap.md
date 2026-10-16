@@ -17,3 +17,14 @@
 - [ ] Cron scheduler, SQL jobs, DAG dependencies, webhooks, UI, RBAC and monitoring.
 ## Phase 5
 - [ ] Controlled Airbyte benchmark, shadow runs, per-stream migration and rollback.
+
+## Progress update — v0.4, 2026-10-16
+
+- [x] Snapshot source-PK scanner under read-only SQL Server SNAPSHOT isolation.
+- [x] Verified snapshot generations with ClickHouse count and distinct-PK checks.
+- [x] Detection-only difference report (added/missing/changed); ClickHouse SQL validated in container CI.
+- [ ] Real Epicor + ClickHouse + PostgreSQL end-to-end integration and failure injection.
+- [ ] Tombstone ordering and correct ODS delete application; not enabled.
+- [ ] Durable job queue, true DAG execution and SQL Job runtime.
+
+Refer to [Release Status v0.4](release-status-v04.md) and [Reconciliation Test Guide](reconciliation-v04.md). 
