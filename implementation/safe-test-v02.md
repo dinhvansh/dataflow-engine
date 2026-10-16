@@ -66,3 +66,13 @@ Successful response includes `upper_exclusive`. This is **not** a saved checkpoi
 
 ## Cautions
 A network failure during `EXCHANGE TABLES` may leave publish outcome ambiguous; inspect actual ClickHouse table status before retry. Old target is dropped only after successful confirmation, and cleanup failures are logged. Long SQL Server SNAPSHOT transactions can increase version store and IO use. Current API is synchronous: keep the requesting client connected. This is still development-only.
+
+
+## Newly added API checks
+```bash
+curl -H "Authorization: Bearer $DATAFLOW_API_TOKEN" 'http://localhost:8080/api/v1/bootstrap/history?limit=20'
+curl -X POST http://localhost:8080/api/v1/pipelines/validate \
+ -H "Authorization: Bearer $DATAFLOW_API_TOKEN" -H "Content-Type: application/json" \
+ -d '{"nodes":[{"id":"a","job_id":"sync-a","requires":[]},{"id":"b","job_id":"quality-b","requires":["a"]}]}'
+```
+Pipeline validation returns entry nodes and errors for cycles/missing dependencies, but does **not** execute or persist DAG jobs. Run History shows persisted `bootstrap_runs` records; an unexpected server shutdown can leave a `running` record until recovery reconciliation is implemented.
