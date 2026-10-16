@@ -17,7 +17,7 @@ jobs:
       - run: go build ./cmd/...
       - name: Start isolated ClickHouse
         run: |
-          docker run -d --name df-clickhouse -p 127.0.0.1:8123:8123 -e CLICKHOUSE_DB=scratch -e CLICKHOUSE_USER=default -e CLICKHOUSE_PASSWORD=ci-test-password clickhouse/clickhouse-server:25.3
+          docker run -d --name df-clickhouse -p 127.0.0.1:8123:8123 -e CLICKHOUSE_DB=scratch -e CLICKHOUSE_USER=default -e CLICKHOUSE_PASSWORD=ci-test-password -e CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 clickhouse/clickhouse-server:25.3
           for i in $(seq 1 60); do
             if curl -fsS -u default:ci-test-password http://127.0.0.1:8123/ping >/dev/null; then break; fi
             sleep 2
@@ -39,8 +39,8 @@ jobs:
           docker exec df-postgres pg_isready -U dataflow_ci -d dataflow_ci
       - name: Provision isolated read-only ClickHouse user
         run: |
-          curl -fsS -u default:ci-test-password --data-binary "CREATE USER IF NOT EXISTS dataflow_reader IDENTIFIED WITH sha256_password BY 'ci-read-password'" http://127.0.0.1:8123/
-          curl -fsS -u default:ci-test-password --data-binary "GRANT SELECT ON scratch.* TO dataflow_reader" http://127.0.0.1:8123/
+          curl --fail-with-body -sS -u default:ci-test-password --data-binary "CREATE USER IF NOT EXISTS dataflow_reader IDENTIFIED WITH sha256_password BY 'ci-read-password'" http://127.0.0.1:8123/
+          curl --fail-with-body -sS -u default:ci-test-password --data-binary "GRANT SELECT ON scratch.* TO dataflow_reader" http://127.0.0.1:8123/
           curl -fsS -u dataflow_reader:ci-read-password --data-binary "SELECT 1" http://127.0.0.1:8123/
       - name: PostgreSQL + ClickHouse SQL DAG integration
         env:
