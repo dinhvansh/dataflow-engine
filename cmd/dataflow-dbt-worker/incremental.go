@@ -88,9 +88,10 @@ func finishIncremental(ctx context.Context,pg *pgxpool.Pool,c incrementalClaim,s
 // A new or migrated nonzero cursor without stored evidence must not be trusted.
 // Once a target has published a guarded checkpoint, disabling the flag
 // must not silently revert that target to the unguarded version-only path.
-func historicalColumnsPresent(ctx context.Context,pg *pgxpool.Pool)(bool,error){
+type historyRowQuerier interface{QueryRow(context.Context,string,...any) pgx.Row}
+func historicalColumnsPresent(ctx context.Context,q historyRowQuerier)(bool,error){
  var present bool
- err:=pg.QueryRow(ctx,`SELECT EXISTS (
+ err:=q.QueryRow(ctx,`SELECT EXISTS (
   SELECT 1 FROM information_schema.columns
   WHERE table_schema='public' AND table_name='incremental_targets'
   AND column_name='history_cursor')`).Scan(&present)
@@ -256,7 +257,7 @@ func guardedIncrementalSwap(ctx context.Context,pg *pgxpool.Pool,c incrementalCl
   return errors.New("incremental worker lost fencing or prepared UUID")
  }
  if !incrementalHistoryGuardEnabled(){
-  present,e:=historicalColumnsPresent(ctx,pg);if e!=nil{return e}
+  present,e:=historicalColumnsPresent(ctx,tx);if e!=nil{return e}
   if present{
    var witnessExists bool
    e=tx.QueryRow(ctx,`SELECT history_upper_digest IS NOT NULL FROM incremental_runs

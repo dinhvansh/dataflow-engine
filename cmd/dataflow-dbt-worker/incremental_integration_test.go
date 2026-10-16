@@ -82,6 +82,14 @@ func TestSafeIncrementalFullIntegration(t *testing.T){
  if state(first)!="ready"||checkpoint()!="0"{t.Fatalf("staging advanced cursor: %s / %s",state(first),checkpoint())}
  publish(first)
  if checkpoint()!="4"{t.Fatalf("first cursor wrong %s",checkpoint())}
+ // Guard cannot be disabled after publishing a witnessed target checkpoint.
+ t.Setenv("DATAFLOW_ENABLE_INCREMENTAL_HISTORY_GUARD_TEST","false")
+ downgraded:=enqueue()
+ dispatch("building")
+ if state(downgraded)!="failed"||checkpoint()!="4"{
+  t.Fatalf("guard downgrade unexpectedly succeeded: %s/%s",state(downgraded),checkpoint())
+ }
+ t.Setenv("DATAFLOW_ENABLE_INCREMENTAL_HISTORY_GUARD_TEST","true")
  out,err:=cli.Query(ctx,"SELECT ID,Revenue FROM scratch."+target+" ORDER BY ID FORMAT TabSeparatedRaw")
  if err!=nil||out!="A\t100\nC\t30\nD\t40"{t.Fatalf("first materialization wrong: %s %v",out,err)}
  // Stage may be replayed from scratch, but publish replay must be no-op.
@@ -123,7 +131,7 @@ func TestSafeIncrementalFullIntegration(t *testing.T){
  }
  t.Log("PASS INC-11: late event blocks publish and subsequent incremental run")
  // Only test-owned scratch staging tables are removed.
- for _,id:=range []string{first,second,replay,late}{
+ for _,id:=range []string{first,downgraded,second,replay,late}{
   var st string;_ = pg.QueryRow(ctx,"SELECT stage_name FROM incremental_runs WHERE id=$1::uuid",id).Scan(&st)
   if st!=""{_,_=cli.Query(ctx,"DROP TABLE IF EXISTS scratch."+st)}
  }

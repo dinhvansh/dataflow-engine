@@ -46,3 +46,9 @@ Real disposable PostgreSQL + ClickHouse integration must demonstrate two
 ordered publish windows, rollback, late append at/below checkpoint after
 publish, late append between stage and publish, and unchanged checkpoint when
 the guard rejects it. `INC-11` cannot be marked PASS without these logs.
+
+## Feature-flag downgrade protection
+Once a target has a stored historical witness, a future run with the guard
+turned OFF is refused instead of silently reverting to version-only paging.
+Likewise, a previously witnessed staging run cannot be published/rolled back
+with the guard switched off. This is tested on a disposable fixture.
