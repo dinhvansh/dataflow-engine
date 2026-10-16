@@ -1,0 +1,23 @@
+{
+ "$schema":"https://json-schema.org/draft/2020-12/schema",
+ "title":"DataFlow Sync Job Config",
+ "type":"object",
+ "required":["name","type","source_connection_id","destination_connection_id","source","destination","mode","performance"],
+ "properties":{
+  "name":{"type":"string","minLength":1},
+  "type":{"const":"sync"},
+  "source_connection_id":{"type":"string"},
+  "destination_connection_id":{"type":"string"},
+  "source":{"type":"object","required":["schema","table"],"properties":{"schema":{"type":"string"},"table":{"type":"string"}}},
+  "destination":{"type":"object","required":["database","table"],"properties":{"database":{"type":"string"},"table":{"type":"string"}}},
+  "mode":{"enum":["full_refresh","incremental_rowversion","incremental_composite","snapshot_reconcile"]},
+  "cursor":{"type":"object","properties":{"fields":{"type":"array","items":{"type":"object","required":["name","type"],"properties":{"name":{"type":"string"},"type":{"type":"string"},"role":{"type":"string"}}}}}},
+  "primary_key":{"type":"array","items":{"type":"string"}},
+  "performance":{"type":"object","required":["batch_size","transform_workers","queue_capacity_batches"],"properties":{
+   "batch_size":{"type":"integer","minimum":100,"maximum":100000},
+   "transform_workers":{"type":"integer","minimum":1,"maximum":32},
+   "write_workers":{"type":"integer","minimum":1,"maximum":16},
+   "queue_capacity_batches":{"type":"integer","minimum":1,"maximum":100},
+   "max_inflight_bytes":{"type":"integer","minimum":1048576}}}
+ }
+}
