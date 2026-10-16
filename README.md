@@ -183,3 +183,9 @@ DataFlow now supports a standalone **Incremental CDC** UI: register a scratch ta
 - [Go/Web/PostgreSQL/ClickHouse tests](https://github.com/dinhvansh/dataflow-engine/actions/runs/38916767766)
 
 **This is logical incremental + full physical staging copy, not yet a fast high-volume Incremental engine.** No Epicor CDC/deletes pipeline is implemented, no 7m-row performance guarantee, and no production enablement. Apply migration 014 and `DATAFLOW_ENABLE_INCREMENTAL_TEST=true` only to an isolated scratch TEST instance.
+
+## Local acceptance by Codex (v1.3)
+
+Start at **[CODEX_LOCAL_QA.md](CODEX_LOCAL_QA.md)** to have Codex running on your own computer self-provision an isolated QA Docker stack, generate Epicor-like synthetic data and ground truth, execute the **[68-case test catalog](qa/local-acceptance/TEST_CASE_CATALOG.md)**, run local E2E and benchmarks, and produce a sanitized report for ChatGPT review. The complete [QA mission](qa/local-acceptance/CODEX_LOCAL_QA_MISSION.md) and [result template](qa/local-acceptance/REPORT_TEMPLATE.md) are tracked in Git.
+
+**This is a test plan, not a completed local QA run.** Never mutate real Epicor, shared PostgreSQL/ClickHouse or unrelated Docker resources.
