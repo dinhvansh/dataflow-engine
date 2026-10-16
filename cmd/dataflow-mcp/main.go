@@ -46,6 +46,7 @@ func(s *server) handle(r request)any{
    tool("dataflow_list_tables","List SQL Server tables in one schema using read-only metadata",shape([]string{"schema"},map[string]any{"schema":map[string]any{"type":"string"}})),
    tool("dataflow_inspect_columns","Read SQL Server column names/types/primary keys and rowversion hints",shape([]string{"schema","table"},map[string]any{"schema":map[string]any{"type":"string"},"table":map[string]any{"type":"string"}})),
    tool("dataflow_rowversion_upper","Read current SQL Server MIN_ACTIVE_ROWVERSION boundary; NOT a checkpoint",shape(nil,map[string]any{})),
+   tool("dataflow_validate_pipeline","Validate a pipeline DAG for missing dependencies/cycles; does not execute jobs",shape([]string{"nodes"},map[string]any{"nodes":map[string]any{"type":"array","items":map[string]any{"type":"object","required":[]string{"id","job_id","requires"},"properties":map[string]any{"id":map[string]any{"type":"string"},"job_id":map[string]any{"type":"string"},"requires":map[string]any{"type":"array","items":map[string]any{"type":"string"}}}}}})),
   }
   if s.allowWrites{t=append(t,tool("dataflow_run_test_load","Starts an experimental append-only full load into a disposable ClickHouse target. REQUIRES user approval; never use against production.",shape([]string{"source_schema","source_table","target_database","target_table","batch_size","workers","queue_capacity"},map[string]any{
    "source_schema":map[string]any{"type":"string"},"source_table":map[string]any{"type":"string"},"target_database":map[string]any{"type":"string"},"target_table":map[string]any{"type":"string"},"batch_size":map[string]any{"type":"integer","minimum":100,"maximum":100000},"workers":map[string]any{"type":"integer","minimum":1,"maximum":32},"queue_capacity":map[string]any{"type":"integer","minimum":1,"maximum":100},
@@ -69,6 +70,10 @@ func(s *server) handle(r request)any{
    out,err=s.callAPI(ctx,"GET","/api/v1/source/columns?schema="+url.QueryEscape(a.Schema)+"&table="+url.QueryEscape(a.Table),nil)
   case "dataflow_rowversion_upper":
    out,err=s.callAPI(ctx,"GET","/api/v1/source/rowversion-upper",nil)
+  case "dataflow_validate_pipeline":
+   var plan struct{Nodes []struct{ID string `json:"id"`;JobID string `json:"job_id"`;Requires []string `json:"requires"`} `json:"nodes"`}
+   if json.Unmarshal(p.Arguments,&plan)!=nil||len(plan.Nodes)==0{return response(r.ID,textResult("invalid pipeline nodes",true))}
+   out,err=s.callAPI(ctx,"POST","/api/v1/pipelines/validate",plan)
   case "dataflow_get_run":
    var a struct{RunID string `json:"run_id"`}
    if json.Unmarshal(p.Arguments,&a)!=nil||len(a.RunID)!=36||strings.ContainsAny(a.RunID,"/?&#"){return response(r.ID,textResult("Invalid run UUID",true))}
