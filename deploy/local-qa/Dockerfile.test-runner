@@ -1,0 +1,7 @@
+FROM golang:1.23-bookworm AS go
+FROM dataflow-localqa-dbt-worker
+USER root
+COPY --from=go /usr/local/go /usr/local/go
+ENV PATH=/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin
+WORKDIR /src
+ENTRYPOINT []

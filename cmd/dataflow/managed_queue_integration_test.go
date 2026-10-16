@@ -8,7 +8,6 @@ import(
  "net/url"
  "os"
  "path/filepath"
- "strings"
  "testing"
  "time"
 
@@ -27,20 +26,12 @@ func TestManagedQueueIntegration(t *testing.T){
  if os.Getenv("DATAFLOW_INTEGRATION_PG_ISOLATED")!="true"{t.Fatal("test requires disposable PostgreSQL")}
  ctx,cancel:=context.WithTimeout(context.Background(),90*time.Second);defer cancel()
  pool,err:=pgxpool.New(ctx,dsn);if err!=nil{t.Fatal(err)};defer pool.Close()
+ targetTable:=fmt.Sprintf("dataflow_raw_events_%d",time.Now().UnixNano())
  for _,migration:=range []string{
   "001_bootstrap.sql","002_sync_checkpoint.sql","003_managed_runs.sql","004_stream_tuning.sql","009_managed_queue.sql",
  }{
   raw,readErr:=os.ReadFile(filepath.Join("..","..","migrations","postgres",migration));if readErr!=nil{t.Fatal(readErr)}
-  // Strip standalone SQL comments before splitting statements: migration
-  // 001's comment contains a semicolon, which is not a SQL delimiter.
-  cleanLines:=make([]string,0)
-  for _,line:=range strings.Split(string(raw),"\n"){
-   if !strings.HasPrefix(strings.TrimSpace(line),"--"){cleanLines=append(cleanLines,line)}
-  }
-  for _,statement:=range strings.Split(strings.Join(cleanLines,"\n"),";"){
-   if strings.TrimSpace(statement)==""{continue}
-   if _,err=pool.Exec(ctx,statement);err!=nil{t.Fatalf("migration %s failed: %v",migration,err)}
-  }
+  if _,err=pool.Exec(ctx,string(raw));err!=nil{t.Fatalf("migration %s failed: %v",migration,err)}
  }
  t.Setenv("DATAFLOW_ALLOW_TEST_LOAD","true")
  t.Setenv("DATAFLOW_ENABLE_MANAGED_TEST","true")
@@ -48,8 +39,8 @@ func TestManagedQueueIntegration(t *testing.T){
  if err=s.checkManagedSchema(ctx);err!=nil{t.Fatal(err)}
  var streamID string
  err=pool.QueryRow(ctx,`INSERT INTO sync_streams(source_schema,source_table,target_database,target_table,
-  batch_size,workers,queue_capacity) VALUES('Erp','Part','scratch','dataflow_raw_events',100,1,1)
-  RETURNING id::text`).Scan(&streamID)
+  batch_size,workers,queue_capacity) VALUES('Erp','Part','scratch',$1,100,1,1)
+  RETURNING id::text`,targetTable).Scan(&streamID)
  if err!=nil{t.Fatal(err)}
  if _,err=pool.Exec(ctx,"INSERT INTO sync_checkpoints(stream_id) VALUES($1::uuid)",streamID);err!=nil{t.Fatal(err)}
  var runID string
