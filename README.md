@@ -1,191 +1,289 @@
-# DataFlow Engine — Engineering Documentation
+<div align="center">
 
-> Status: **Proposed / Design baseline** · Version: **0.1.0** · Date: 2026-10-16
-> Goal: replace required SQL Server/Epicor → ClickHouse Airbyte workloads with a Go streaming engine.
+![DataFlow Engine banner](docs/assets/dataflow-hero.svg)
 
+# DataFlow Engine
 
-## Implementation status (2026-10-16)
+**A visual, developer-focused data integration workbench**  
+**Ingest → Transform → Orchestrate → Validate → Publish**
 
-**Code has started; this is NOT an Airbyte replacement yet.** The Go bootstrap adds:
-- `cmd/dataflow/main.go`: authenticated experimental HTTP full-load endpoint and run logging.
-- `internal/engine/`: bounded-channel worker pool with tests, cancellation and backpressure.
-- `internal/connectors/sqlserver/`: read-only streaming `SELECT` reader.
-- `internal/connectors/clickhouse/`: JSONEachRow HTTP batch writer.
-- `migrations/postgres/001_bootstrap.sql` and `docker-compose.yml`: PostgreSQL run state bootstrap.
+*Go-powered data movement · ClickHouse analytics · dbt transformations · PostgreSQL-backed reliability*
 
-Read [Bootstrap usage and known limitations](implementation/bootstrap-run.md) before attempting to run. No integration benchmark has been executed here. This starter is **FULL READ + APPEND**, not crash-safe full refresh or incremental. Do not run it against production ClickHouse tables. The next engineering gate is reproducible `go mod tidy && go test ./...` plus a disposable SQL Server/ClickHouse/PostgreSQL integration test.
+[![CI](https://github.com/dinhvansh/dataflow-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/dinhvansh/dataflow-engine/actions/workflows/ci.yml)
+![Stage](https://img.shields.io/badge/stage-developer%20preview-0e7490)
+![Release](https://img.shields.io/badge/milestone-v1.3-164e63)
+![Source](https://img.shields.io/badge/Epicor%20%2F%20SQL%20Server-SELECT--only-2563eb)
+
+[**Explore the architecture**](#architecture) ·
+[**See features**](#what-is-implemented) ·
+[**Run local QA**](#run-the-local-qa-suite) ·
+[**Get started**](#get-started) ·
+[**Roadmap**](#roadmap)
+
+</div>
+
+> [!IMPORTANT]
+> **Developer preview · Not production-ready.** Automated GitHub CI has verified Go, React, PostgreSQL, ClickHouse and dbt integration paths. **Real Epicor SQL Server end-to-end acceptance, Windows/local QA and large-table benchmarks are still pending.** Most write/materialization features are opt-in and restricted to disposable `scratch` environments.
 
 ---
 
-## Documentation map
+## Why DataFlow?
+
+Business data pipelines are often spread between an ingestion tool, SQL scripts, transformation jobs and separate reporting tools. DataFlow brings the **development workflow and operational state** into one place while keeping its execution responsibilities explicit.
+
+| Discover & ingest | Transform visually | Run with dependencies |
+|:---|:---|:---|
+| Inspect SQL Server metadata and experiment with bounded, read-only extraction into ClickHouse. | Build a sequence of visual transformations, preview each step and inspect the generated SQL. | See which model depends on which source; select the final model and run an upstream-first View chain. |
+
+| Publish carefully | Recover from failures | Investigate problems |
+|:---|:---|:---|
+| Stage a physical ClickHouse Table, verify it, then explicitly approve publication and rollback. | PostgreSQL-backed queues, leases, fencing and run snapshots reduce restart and retry hazards. | Follow run history, model-level statuses, error messages, lineage and affected descendants. |
+
+**In Vietnamese:** DataFlow hướng tới trải nghiệm *đồng bộ dữ liệu → kéo-thả xử lý như Power Query → dùng dbt build → theo dõi pipeline → kiểm tra trước khi publish*, trên một giao diện thống nhất. Mục tiêu là dễ kiểm soát và dễ kiểm chứng, **không** phải tuyên bố đã thay thế hoàn toàn Airbyte/dbt/n8n.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph SOURCES["DATA SOURCES"]
+        ERP[("SQL Server / Epicor<br/>SELECT only")]
+    end
+    subgraph ENGINE["DATAFLOW ENGINE · Go"]
+        DISC["Source Explorer"]
+        ING["Bounded ingestion<br/>workers + backpressure"]
+        API["REST API / Coordinator"]
+    end
+    subgraph DATA["DATA & EXECUTION"]
+        CH[("ClickHouse<br/>scratch / raw")]
+        PG[("PostgreSQL<br/>jobs · models · cursors")]
+        DBT["Isolated dbt Core<br/>View / Table worker"]
+    end
+    subgraph EXPERIENCE["WORKSPACE"]
+        UI["React console<br/>Transform Studio · Lineage"]
+        REPORT["Downstream queries<br/>and reporting tools"]
+    end
+    ERP -->|Read-only SELECT| DISC
+    ERP -->|Read-only batches| ING
+    ING -->|TEST target only| CH
+    DISC --> API
+    UI <--> API
+    API <-->|Checkpoints / leases| PG
+    API -->|Queue dbt runs| PG
+    PG <-->|Claim and commit status| DBT
+    DBT -->|Scratch View / staged Table| CH
+    API -->|SELECT preview / DQ| CH
+    CH --> REPORT
+    classDef source fill:#172b4d,stroke:#60a5fa,color:#eaf6ff
+    classDef engine fill:#13304a,stroke:#38bdf8,color:#eaf6ff
+    classDef data fill:#143a37,stroke:#2dd4bf,color:#eafffa
+    classDef ui fill:#273049,stroke:#a5b4fc,color:#f1f5ff
+    class ERP source
+    class DISC,ING,API engine
+    class CH,PG,DBT data
+    class UI,REPORT ui
+```
+
+**Separation of responsibilities:** Go handles API, ingestion and durable scheduling; PostgreSQL persists state; ClickHouse stores/query data; an isolated **dbt Core** process materializes saved visual SELECT models; React presents operations and diagnostics.
+
+The SQL Server connection remains **strictly read-only**. DataFlow must never perform DML/DDL on Epicor.
+
+## From a raw source to a built model
+
+```mermaid
+flowchart TD
+    S["1. Inspect a source"] --> I["2. Read & load into scratch"]
+    I --> A["3. Visual Model A · Clean"]
+    A --> B["4. Model B · Enrich"]
+    B --> C["5. Model C · Aggregate"]
+    C --> RUN["Select Model C → Run dependencies"]
+    RUN --> CHECKA{"A: dbt + DQ pass?"}
+    CHECKA -->|Yes| CHECKB{"B: dbt + DQ pass?"}
+    CHECKB -->|Yes| CHECKC{"C: dbt + DQ pass?"}
+    CHECKC -->|Yes| OK["Flow succeeded · View result"]
+    CHECKA -->|No| STOP["Stop; show failure and logs"]
+    CHECKB -->|No| STOP
+    CHECKC -->|No| STOP
+    classDef complete fill:#065f46,stroke:#34d399,color:#f0fdfa
+    classDef stop fill:#7f1d1d,stroke:#f87171,color:#fff1f2
+    class OK complete
+    class STOP stop
+```
+
+**What this flow means today:** v1.2 runs **single-source Visual models materialized as ClickHouse Views** in dependency order, one at a time. It validates nonempty output and a TEST row cap **after** each View build. It does **not** atomically hide the Views from other readers before DQ, roll back the whole chain, or automatically publish Tables.
+
+## What is implemented?
+
+| Module | Capabilities available in code | Boundary |
+|:---|:---|:---|
+| **Source Explorer** | SQL Server table/column/PK/rowversion discovery | Real Epicor TEST acceptance pending |
+| **Ingestion / Managed Sync** | Full / rowversion experiments, bounded Go workers, durable queue, source-to-scratch writing | TEST-only; physical DELETE capture is not complete |
+| **Reconciliation** | Compare verified key snapshots for added / removed / changed keys | Detection-only, not automatic DELETE repair |
+| **SQL Jobs & DAG** | SELECT-only jobs, dependencies, persisted runs, retry/fencing | No unrestricted write-SQL execution |
+| **Transform Studio** | Applied Steps, reorder/drag, preview, visual-to-SQL compilation, saved models | Visual models have limited operators and single-source scope |
+| **Data Lineage** | Source-to-model dependency map, cycle checks, downstream impact analysis | Metadata-based, not full SQL/column lineage |
+| **Auto Build** | Select an output model; coordinate upstream-first dbt View builds + DQ | View-only; no global atomic release |
+| **Safe Table** | Build staging Table → DQ → manual publish → atomic exchange → rollback | Disposable scratch, max 1M rows per TEST output |
+| **Incremental CDC** | Versioned insert/update/delete events; staged copy-on-write publish + cursor rollback | Needs prepared append-only delta; full physical copy; max 50k events per TEST batch |
+| **Operations UI** | Run history, job/model status, errors, linked dbt runs | Not a production-grade alerting/RBAC console |
+
+### The console today
+
+The current React workspace includes **Overview**, **Sync Jobs**, **Connections**, **Pipelines**, **SQL Jobs**, **Transform Studio**, **Data Lineage**, **Incremental CDC** and **Run History**.
 
-- [System context](architecture/01-system-context.md)
-- [Ingestion runtime](architecture/02-ingestion-runtime.md)
-- [Cursor correctness](architecture/03-cursor-consistency.md) **read before coding**
-- [Change detection without CDC](architecture/04-change-detection.md)
-- [ClickHouse destination semantics](architecture/05-destination-semantics.md)
-- [Pipeline runtime](architecture/06-pipeline-runtime.md)
-- [Module catalog](modules/module-catalog.md)
-- [PostgreSQL DDL](contracts/postgres-schema.md)
-- [API v1](contracts/api-v1.md)
-- [Go connector contract](contracts/connector-interface.md)
-- [Sync-job JSON Schema](contracts/job-config.schema.json)
-- [Security & deployment](operations/security-deployment.md)
-- [Monitoring & runbook](operations/monitoring-runbook.md)
-- [Acceptance tests](testing/acceptance.md)
-- [Benchmark protocol](testing/benchmark.md)
-- [ADR-0001](decisions/adr-0001-baseline.md)
-- [Implementation roadmap](implementation/roadmap.md)
+> [!NOTE]
+> These are actual code-level modules, not claimed production screenshots. Captured and annotated UI screenshots will be added **after local browser E2E acceptance**, so the project page does not present mockups as tested software.
 
-## Scope
-Go backend, PostgreSQL from day one, SQL Server read-only connector, ClickHouse destination, native `SysRevID` rowversion, composite cursor, full/incremental sync, safe restart, bounded queue/worker pool, reconciliation for physical DELETE, SQL and quality jobs, scheduler and DAG pipeline.
+## Safe materialization
 
-## Source constraints
-- Epicor: strictly SELECT-only, no source DDL/triggers/CDC installation.
-- Test: SQL Server `SRVERPTEST / ERPDBTEST`, schema `Erp`; ClickHouse HTTP 8124, native 9001 (environment-specific, not constants).
-- `Erp.PartTran` (~6.95m historical test rows) is the initial benchmark target; recheck current counts and schema.
-- [DECIDED] = working architecture, [PROPOSED] = design suggestion, [VERIFY] = needs measured validation, [RISK] = correctness boundary.
-- No code or benchmark results yet. Never claim exactly-once end-to-end or complete event history from rowversion polling.
+A report-facing Table should not be emptied halfway through a refresh. DataFlow's **v1.1 Table** and **v1.3 Incremental** previews therefore use private staging plus explicit approval:
 
-## New development slice — 2026-10-16
+```mermaid
+flowchart LR
+    SQL["Compiled SELECT<br/>or validated CDC window"] --> STAGE[("Private staging Table")]
+    STAGE --> DQ{"Quality gate"}
+    DQ -->|Fail| KEEP["Keep existing target"]
+    DQ -->|Pass| REVIEW["Manual approval"]
+    REVIEW -->|Publish| SWAP["ClickHouse Atomic<br/>EXCHANGE TABLES"]
+    SWAP --> TARGET[("Published scratch target")]
+    SWAP --> BACKUP[("Previous version<br/>kept for rollback")]
+    BACKUP -.->|Approved rollback| TARGET
+    classDef secure fill:#0f3d37,stroke:#2dd4bf,color:#edfffa
+    classDef reject fill:#522329,stroke:#fb7185,color:#fff1f2
+    class STAGE,SWAP,TARGET,BACKUP secure
+    class KEEP reject
+```
 
-- Read-only SQL Server source browser: list tables and inspect columns, PKs and rowversion.
-- Native 8-byte rowversion window reader with keyset paging inside SQL Server SNAPSHOT transaction. This is a **manual scratch preview**, not automatic incremental synchronization.
-- Cursor hex parser + concurrent contiguous-ACK frontier, with unit tests.
-- PostgreSQL stream lease/fence/checkpoint package and migration 002; **not wired into run success yet**.
-- Optional scratch-only full load into ClickHouse stage table, then `EXCHANGE TABLES` in an Atomic database. SQL Server source uses SNAPSHOT mode when atomic_replace=true.
-- UI Sync Jobs switches between full and rowversion trials, and Connections displays source metadata. CLI/MCP expose read-only source inspection.
+**Table:** full rebuild of a staged physical Table, with an optional unique-key check, confirmation and UUID-protected rollback.
 
-**Remaining blockers:** end-to-end Go/frontend build and 3-database integration are not verified; automatic checkpoint, reliable current-state dedup, schema migration, background jobs, scheduler/DAG, full operational UI are not complete. Do not decommission Airbyte.
+**Incremental:** logically apply the most recent version of each changed key, including tombstones, **but copy unchanged rows into a new physical stage** before swapping. That prioritizes correctness over I/O efficiency. It does not automatically produce CDC events from Epicor or detect SQL Server physical deletions.
 
-Follow [safe test guide](implementation/safe-test-v02.md).
+### Technology stack
 
-## v0.3 Managed Incremental Preview
+| Component | Technology | Purpose |
+|---|---|---|
+| Core services | **Go 1.23+** | Streaming reader, bounded workers, APIs, coordinator |
+| Source | **Microsoft SQL Server** | Read-only ERP / synthetic fixture |
+| Analytical store | **ClickHouse** (25.3 in CI) | Raw data, preview, View and Table materialization |
+| State | **PostgreSQL 16** | Model registry, runs, checkpoints, leases |
+| Transform worker | **dbt Core 1.11.0 + dbt-clickhouse 1.10.3** | Isolated SQL model execution |
+| Frontend | **React + TypeScript + Vite** | Enterprise-style data operations console |
+| Development environment | **Docker Compose** | PostgreSQL and opt-in dbt worker; isolated QA stack is a separate mission |
 
-The repo now includes **opt-in asynchronous rowversion incremental runs** with PostgreSQL fencing/checkpoint, ClickHouse raw event logical dedup and row-count verification, plus an **opt-in interval scheduler** and corresponding UI/CLI/MCP surfaces. These features are **not integration-tested on Epicor** and are disabled by default.
+## Get started
 
-- [Status and release gates](implementation/release-status-v03.md)
-- [Managed stream setup and test plan](implementation/managed-incremental-v03.md)
-- [ClickHouse raw-event schema](deploy/clickhouse/001_raw_events.sql)
-- [One-command API smoke test](scripts/smoke-managed.sh)
+### Recommended: run the local QA suite first
 
-## v0.4 — Source-key Snapshot Reconciliation (detection-only)
+If you're evaluating DataFlow for the first time, start with the full, reproducible local acceptance mission. It instructs a local coding agent to **create an isolated synthetic SQL Server + PostgreSQL + ClickHouse stack**, generate ground-truth fixtures and test the full application rather than touching an existing ERP.
 
-A verified, read-only SQL Server PK snapshot can now be compared against the last published complete snapshot to detect added, missing and rowversion-changed keys. Results are shown in React UI, CLI and MCP. This **does not apply DELETE tombstones** and is guarded by an explicit development flag.
+**[→ Open the Codex Local QA mission](CODEX_LOCAL_QA.md)** · [68 acceptance cases](qa/local-acceptance/TEST_CASE_CATALOG.md) · [Report template](qa/local-acceptance/REPORT_TEMPLATE.md)
 
-**Actual CI passed:** Go race tests, vet, Go command build, React build and ClickHouse 25.3 integration tests for a +1/-1/~1 snapshot difference.
+### Manual developer startup
 
-- [v0.4 Release Status](implementation/release-status-v04.md)
-- [Snapshot Reconciliation Test Guide](implementation/reconciliation-v04.md)
-- [Passing GitHub CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38864021334)
+**Prerequisites:** Go 1.23+, Node.js 22, Docker with Compose, a reachable **TEST SQL Server**, a disposable ClickHouse `scratch` database, and configured PostgreSQL. The root Compose file starts **PostgreSQL only**; it does **not** provision SQL Server, ClickHouse, Go API or Web UI.
 
-Real Epicor SQL Server + PostgreSQL + ClickHouse end-to-end reconciliation has not yet been exercised; see the release status for gates.
+```bash
+git clone https://github.com/dinhvansh/dataflow-engine.git
+cd dataflow-engine
+cp .env.example .env
+# Populate .env with ONLY isolated TEST endpoints and credentials.
+docker compose --env-file .env up -d postgres
+```
 
-## v0.5 — Verified SQL Job + Executable DAG
+For **Windows PowerShell**, use `Copy-Item .env.example .env` instead of `cp`.
 
-DataFlow now offers an experimental SELECT-only ClickHouse SQL Job registry, an asynchronous executable DAG engine with ALL dependencies, retries and per-node status, plus UI, CLI and MCP controls. Job SQL/plan snapshots are immutable per run. Runs are **test-only** and require explicit env flags plus a separately permissioned ClickHouse read-only user.
+**Before launching the API**, export the environment settings from your local `.env` into the Go process, including `DATAFLOW_POSTGRES_DSN`, `DATAFLOW_SQLSERVER_DSN`, `DATAFLOW_CH_URL` and `DATAFLOW_API_TOKEN`. Startup requires both PostgreSQL and SQL Server to be reachable. **Do not commit `.env` or real passwords.**
 
-- [v0.5 release status](implementation/release-status-v05.md)
-- [SQL Job and DAG setup](implementation/sql-dag-v05.md)
-- [Passing real PostgreSQL + ClickHouse CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38866264338)
+```bash
+# Terminal 1 — from repository root, after env vars are loaded
+go run ./cmd/dataflow
 
-**Not yet present:** SQL transformation DML jobs, restart-safe queue, production auth/RBAC and validated live Epicor synchronization at scale.
+# Terminal 2
+cd web
+npm ci
+npm run dev
+```
 
-## v0.6 — Stability pass: leased SELECT-DAG recovery
+- Web UI: `http://localhost:5173`
+- API health: `http://localhost:8080/healthz`
+- PostgreSQL Compose port: `127.0.0.1:5433`
 
-SQL DAGs now use an opt-in PostgreSQL-backed worker queue instead of API-owned goroutines. Queue entries survive Go restarts; workers use heartbeat, fencing tokens and a finite replay cap. No automatic DML is enabled.
+**Existing PostgreSQL volumes:** init SQL scripts do **not** rerun on a populated volume. Back up TEST state and apply missing migrations in order before turning on the corresponding feature flags.
 
-- [Release status v0.6](implementation/release-status-v06.md)
-- [Migration and recovery test guide](implementation/sql-dag-durable-queue-v06.md)
-- [Passing Go + frontend + PostgreSQL/ClickHouse CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38868112698)
+**dbt worker:** run it separately **only after** providing limited scratch-only ClickHouse credentials, PostgreSQL migration 011+ and appropriate opt-in flags. See the [dbt worker guide](implementation/dbt-worker-v09.md) and [safe Table guide](implementation/safe-table-v11.md); the Compose overlay is `docker-compose.dbt.yml`.
 
-**Upgrade note:** existing PostgreSQL databases must apply migration `008_dag_leases.sql` before enabling SQL Job test execution. This is still a developer preview, not a production ETL release.
+### Default-deny test flags
 
+The following features start **off** and must be explicitly enabled only in a disposable environment:
 
-## v0.7 — Restart-safe Managed Sync (dev preview)
+```dotenv
+DATAFLOW_ALLOW_TEST_LOAD=false
+DATAFLOW_ENABLE_MANAGED_TEST=false
+DATAFLOW_ENABLE_SQL_JOBS_TEST=false
+DATAFLOW_ENABLE_DBT_TEST=false
+DATAFLOW_ENABLE_SAFE_TABLE_TEST=false
+DATAFLOW_ENABLE_AUTO_BUILD_TEST=false
+DATAFLOW_ENABLE_INCREMENTAL_TEST=false
+DATAFLOW_TEST_TARGET_DATABASE=scratch
+```
 
-Managed Sync now uses a PostgreSQL durable run queue, one-active-run-per-stream constraint, heartbeat and fenced worker recovery. A fresh attempt UUID isolates ClickHouse row-count verification after a partial prior attempt. The checkpoint and successful run status commit atomically to PostgreSQL. Scheduler and API only enqueue runs.
+Read [.env.example](.env.example) and the individual release instructions before enabling any flag. Use **different read-only and scratch writer identities**. Never point any write-enabled path at ERP or production ClickHouse.
 
-**Verified GitHub CI:** [run 38874212220](https://github.com/dinhvansh/dataflow-engine/actions/runs/38874212220) passed Go race tests/vet/build, frontend build and PostgreSQL 16 + ClickHouse 25.3 integration/failure tests.
+## Quality and verification
 
-- [v0.7 release status](implementation/release-status-v07.md)
-- [v0.7 migration and test guide](implementation/managed-durable-v07.md)
-- [Merged PR #5](https://github.com/dinhvansh/dataflow-engine/pull/5)
+| Validation layer | Status | Evidence |
+|---|---|---|
+| Go unit / race / vet / build | **Passed on GitHub CI** | [CI workflow](.github/workflows/ci.yml) |
+| React TypeScript production build | **Passed on GitHub CI** | [CI workflow](.github/workflows/ci.yml) |
+| PostgreSQL / ClickHouse / dbt integration | **Passed on disposable CI fixtures** | [v1.3 release evidence](implementation/release-status-v13.md) |
+| Synthetic SQL Server full local E2E | **Pending local Codex QA** | [Local QA mission](CODEX_LOCAL_QA.md) |
+| Real Epicor `SRVERPTEST / ERPDBTEST` E2E | **Not yet accepted** | [Acceptance checklist](testing/acceptance.md) |
+| 7M-row throughput vs Airbyte | **Not yet benchmarked** | [Benchmark protocol](testing/benchmark.md) |
+| Production availability / security | **Not certified** | [Security and deployment](operations/security-deployment.md) |
 
-**Upgrade warning:** apply `migrations/postgres/009_managed_queue.sql` after resolving legacy active runs. Default execution flags remain OFF. No real Epicor source integration, DELETE capture, or production readiness claim.
+A PASS from GitHub CI is **not** a PASS from the user's Windows computer. Local Codex QA must report actual test outcomes, logs, row-level mismatches, performance measurements and unresolved bugs; **BLOCKED** is not equivalent to **PASS**.
 
+## Project milestones
 
-## v0.8 — Power Query-style Visual Transform Studio (preview only)
+| Release | Delivered capability |
+|---|---|
+| v0.7 | Restart-safe Managed Sync |
+| v0.8 | Visual Transform Studio |
+| v0.9 | Isolated dbt Core View worker |
+| v1.0 | Data Lineage + impact analysis |
+| v1.1 | Safe staged Table publication & rollback |
+| v1.2 | One-click Auto Build View dependencies |
+| **v1.3** | **Versioned CDC-style Incremental staging & cursor rollback** |
 
-DataFlow now has a working Transform Studio in the React console. Users can click or drag transformation steps, reorder Applied Steps, preview output after any step, switch between Visual / SQL mode, inspect ClickHouse source columns, and save/reload models in PostgreSQL.
+**Next acceptance gate:** local synthetic E2E + bug fixing → source-consistent Epicor TEST E2E → correctness and performance benchmark. Future development candidates include business-grade Data Quality contracts, observability, efficient partition-level Incremental, RBAC and release-level publishing.
 
-The Go SQL compiler generates restricted SELECT queries. Preview runs with a dedicated restricted ClickHouse read-only user. **No dbt Core worker, model materialization or Mart DML is enabled.**
+See the complete [implementation roadmap](implementation/roadmap.md) and [v1.3 release notes](implementation/release-status-v13.md).
 
-- [v0.8 release status](implementation/release-status-v08.md)
-- [v0.8 user guide and safety](implementation/transform-studio-v08.md)
-- [Passing Go + React + PostgreSQL/ClickHouse CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38887366877)
+## Documentation
 
-**Upgrade note:** apply `migrations/postgres/010_transform_models.sql` in existing TEST PostgreSQL. Extraction/loading still require real Epicor TEST E2E acceptance before production.
+| Area | Resources |
+|---|---|
+| Architecture | [System context](architecture/01-system-context.md) · [Ingestion runtime](architecture/02-ingestion-runtime.md) · [Cursor consistency](architecture/03-cursor-consistency.md) |
+| Developer contracts | [API](contracts/api-v1.md) · [Go connectors](contracts/connector-interface.md) · [PostgreSQL schema](contracts/postgres-schema.md) |
+| Transform / dbt | [Transform Studio](implementation/transform-studio-v08.md) · [dbt worker](implementation/dbt-worker-v09.md) · [Lineage](implementation/lineage-v10.md) |
+| Releases | [Safe Table](implementation/safe-table-v11.md) · [Auto Build](implementation/auto-build-v12.md) · [Safe Incremental](implementation/safe-incremental-v13.md) |
+| QA / Operations | [Codex local acceptance](CODEX_LOCAL_QA.md) · [Benchmark rules](testing/benchmark.md) · [Security](operations/security-deployment.md) |
+| Historical notes | [Original engineering README (v0.1–v1.3)](implementation/README-engineering-archive.md) |
 
+## Safety and project status
 
-## v0.9 — Optional dbt Core worker, scratch View materialization
+- Epicor is a **SELECT-only source**, including `SRVERPTEST` / `ERPDBTEST`; no schema changes, triggers or direct writeback are permitted.
+- Destructive fault tests belong exclusively to **QA-owned disposable containers, databases and volumes**.
+- Complete source-to-target *exactly-once*, native physical DELETE CDC, multi-model atomic publish, production RBAC and enterprise-scale performance remain **unverified or out of scope**.
+- No `LICENSE` file is currently present. Do not assume the repository is licensed for unrestricted redistribution until a license is chosen.
 
-Transform Studio now has **Build View (dbt)** after a visual model is saved. Go API enqueues an immutable transformation in PostgreSQL and a separately started, isolated worker uses pinned dbt Core/dbt-clickhouse to create a View in disposable `scratch.dfv_*`. Execution status, logs, attempt counts and dbt artifacts appear in DataFlow UI. Queue uses lease/fencing and finite restart replay.
+---
 
-- [v0.9 release status](implementation/release-status-v09.md)
-- [dbt worker install and safety guide](implementation/dbt-worker-v09.md)
-- [Passing real dbt + PostgreSQL + ClickHouse + Docker CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38897813476)
+<div align="center">
 
-**Test-only:** use migration `011_dbt_runs.sql` and a separate scratch ClickHouse account. No Table/Incremental publishing, production RBAC, or completed Epicor end-to-end acceptance yet.
+**Build pipelines that are observable, testable and safe to change.**
 
+*Developed in milestones. Verified by evidence. Not by marketing claims.*
 
-## v1.0 — Visual Data Lineage and safe dependency gating
+[Top ↑](#dataflow-engine) · [Local QA](CODEX_LOCAL_QA.md) · [Roadmap](implementation/roadmap.md)
 
-Click **Data Lineage** to explore a live metadata-derived source → Visual model → downstream graph with transitive impact highlighting. Transform Studio can select another model's generated scratch View as the input source.
-
-Model saves now reject dependency cycles atomically in PostgreSQL, while dbt View Build requires successful, up-to-date upstream View runs. Dependency build ordering is visible but still **manual**; this release does not introduce automatic dbt `ref()` orchestration.
-
-- [v1.0 release status](implementation/release-status-v10.md)
-- [Lineage usage guide](implementation/lineage-v10.md)
-- [Passing Go + React + PostgreSQL/ClickHouse/dbt CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38900354620)
-
-**Developer preview only:** no production model materializations, managed E2E Epicor acceptance, or browser drag/drop automation certification.
-
-
-## v1.1 — Safe Table Materialization (TEST preview)
-
-Transform Studio can now **Build Staging Table → inspect Data Quality → Approve & Publish → Rollback**. A separate pinned dbt worker materializes a physical staging table inside ClickHouse `scratch`. ClickHouse Atomic `EXCHANGE TABLES`, PostgreSQL durable UUID preparation and fenced worker locks protect the published table from broken or repeated publish steps. Previous physical table is retained for manual rollback.
-
-- [v1.1 release status and CI proof](implementation/release-status-v11.md)
-- [Installation, DQ and safe publish guide](implementation/safe-table-v11.md)
-- [Passing dbt + ClickHouse + PostgreSQL tests](https://github.com/dinhvansh/dataflow-engine/actions/runs/38905418989)
-
-**Warning:** apply migration `012_safe_table.sql` and opt in only on isolated TEST `scratch`. This is **full Table rebuild**, not Incremental and not production-ready.
-
-
-## v1.2 — Auto Build dependencies, one-click View-only flow
-
-Select final model C in **Data Lineage** and click **Run Model + Dependencies**. DataFlow snapshots the upstream A → B → C Visual model chain to PostgreSQL, queues each model into the existing durable dbt View worker, and only advances after a successful dbt View build **and read-only output row-count DQ**. The UI shows every step's status and verified row count. Parent state survives API restarts, and ancestor edits mid-flow cause a safe stop.
-
-- [v1.2 release/CI status](implementation/release-status-v12.md)
-- [Auto Build guide and limitations](implementation/auto-build-v12.md)
-- [Passing real dbt + ClickHouse + PostgreSQL CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38911890898)
-
-**Test-only:** migration `013_auto_build_flows.sql`; set `DATAFLOW_ENABLE_AUTO_BUILD_TEST=true` only in isolated scratch TEST. Individual Views are built one at a time; there is no global atomic multi-model publish, nor Table/Incremental auto-build.
-
-
-## v1.3 — Safe Incremental CDC (copy-on-write TEST preview)
-
-DataFlow now supports a standalone **Incremental CDC** UI: register a scratch target, its append-only delta stream and key, build a staging table from versioned insert/update/delete events, inspect DQ, then explicitly Publish or Rollback **with the cursor**. The existing UUID-fenced ClickHouse Atomic publish/rollback logic protects the published table and PostgreSQL checkpoint from incomplete retries.
-
-- [v1.3 release status and passing CI](implementation/release-status-v13.md)
-- [CDC event contract and test operations](implementation/safe-incremental-v13.md)
-- [Go/Web/PostgreSQL/ClickHouse tests](https://github.com/dinhvansh/dataflow-engine/actions/runs/38916767766)
-
-**This is logical incremental + full physical staging copy, not yet a fast high-volume Incremental engine.** No Epicor CDC/deletes pipeline is implemented, no 7m-row performance guarantee, and no production enablement. Apply migration 014 and `DATAFLOW_ENABLE_INCREMENTAL_TEST=true` only to an isolated scratch TEST instance.
-
-## Local acceptance by Codex (v1.3)
-
-Start at **[CODEX_LOCAL_QA.md](CODEX_LOCAL_QA.md)** to have Codex running on your own computer self-provision an isolated QA Docker stack, generate Epicor-like synthetic data and ground truth, execute the **[68-case test catalog](qa/local-acceptance/TEST_CASE_CATALOG.md)**, run local E2E and benchmarks, and produce a sanitized report for ChatGPT review. The complete [QA mission](qa/local-acceptance/CODEX_LOCAL_QA_MISSION.md) and [result template](qa/local-acceptance/REPORT_TEMPLATE.md) are tracked in Git.
-
-**This is a test plan, not a completed local QA run.** Never mutate real Epicor, shared PostgreSQL/ClickHouse or unrelated Docker resources.
+</div>
