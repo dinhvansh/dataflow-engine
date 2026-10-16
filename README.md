@@ -59,3 +59,12 @@ Go backend, PostgreSQL from day one, SQL Server read-only connector, ClickHouse 
 **Remaining blockers:** end-to-end Go/frontend build and 3-database integration are not verified; automatic checkpoint, reliable current-state dedup, schema migration, background jobs, scheduler/DAG, full operational UI are not complete. Do not decommission Airbyte.
 
 Follow [safe test guide](implementation/safe-test-v02.md).
+
+## v0.3 Managed Incremental Preview
+
+The repo now includes **opt-in asynchronous rowversion incremental runs** with PostgreSQL fencing/checkpoint, ClickHouse raw event logical dedup and row-count verification, plus an **opt-in interval scheduler** and corresponding UI/CLI/MCP surfaces. These features are **not integration-tested on Epicor** and are disabled by default.
+
+- [Status and release gates](implementation/release-status-v03.md)
+- [Managed stream setup and test plan](implementation/managed-incremental-v03.md)
+- [ClickHouse raw-event schema](deploy/clickhouse/001_raw_events.sql)
+- [One-command API smoke test](scripts/smoke-managed.sh)
