@@ -20,13 +20,21 @@ type Reader struct{
  DB *sql.DB
  Schema,Table string
  BatchSize int
+ Snapshot bool
 }
 func(r *Reader)Read(ctx context.Context,emit func(engine.Batch)error)error{
  if r.DB==nil{return errors.New("SQL Server DB is nil")}
  if r.BatchSize<1 || r.BatchSize>100000{return errors.New("invalid batch size")}
  schema,err:=quote(r.Schema);if err!=nil{return err}
  table,err:=quote(r.Table);if err!=nil{return err}
- rows,err:=r.DB.QueryContext(ctx,"SELECT * FROM "+schema+"."+table)
+ var tx *sql.Tx
+ if r.Snapshot{
+  tx,err=r.DB.BeginTx(ctx,&sql.TxOptions{Isolation:sql.LevelSnapshot,ReadOnly:true})
+  if err!=nil{return fmt.Errorf("consistent full refresh requires SQL Server SNAPSHOT isolation: %w",err)}
+  defer tx.Rollback()
+ }
+ var rows *sql.Rows
+ if tx!=nil{rows,err=tx.QueryContext(ctx,"SELECT * FROM "+schema+"."+table)} else {rows,err=r.DB.QueryContext(ctx,"SELECT * FROM "+schema+"."+table)}
  if err!=nil{return err};defer rows.Close()
  cols,err:=rows.Columns();if err!=nil{return err}
  types,err:=rows.ColumnTypes();if err!=nil{return err}
@@ -50,6 +58,8 @@ func(r *Reader)Read(ctx context.Context,emit func(engine.Batch)error)error{
   if len(batch.Rows)>=r.BatchSize{batch.Sequence=seq;seq++;if err:=emit(batch);err!=nil{return err};batch=engine.Batch{}}
  }
  if err:=rows.Err();err!=nil{return err}
- if len(batch.Rows)>0{batch.Sequence=seq;return emit(batch)}
+ if len(batch.Rows)>0{batch.Sequence=seq;if err:=emit(batch);err!=nil{return err}}
+ if err:=rows.Close();err!=nil{return err}
+ if tx!=nil{return tx.Commit()}
  return nil
 }
