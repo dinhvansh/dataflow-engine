@@ -2,6 +2,7 @@ package main
 import(
  "bytes"
  "context"
+ "fmt"
  "net/http"
  "net/http/httptest"
  "os"
@@ -26,9 +27,11 @@ func TestDBTRunAPIIntegration(t *testing.T){
  t.Setenv("DATAFLOW_ENABLE_DBT_TEST","true")
  t.Setenv("DATAFLOW_TEST_TARGET_DATABASE","scratch")
  s:=&server{pg:pg,token:"local-ci-token"}
+ modelName:=fmt.Sprintf("dbt_api_ci_%d",time.Now().UnixNano())
+ definition:=fmt.Sprintf(`{"name":%q,"mode":"visual","source":{"database":"scratch","table":"events"},"steps":[]}`,modelName)
  var id string
  err=pg.QueryRow(ctx,`INSERT INTO transform_models(name,definition,compiled_sql)
- VALUES('dbt_api_ci','{"name":"dbt_api_ci","mode":"visual","source":{"database":"scratch","table":"events"},"steps":[]}'::jsonb,'SELECT * FROM scratch.events') RETURNING id::text`).Scan(&id)
+ VALUES($1,$2::jsonb,'SELECT * FROM scratch.events') RETURNING id::text`,modelName,definition).Scan(&id)
  if err!=nil{t.Fatal(err)}
  call:=func(method,body,uri string)*httptest.ResponseRecorder{
   req:=httptest.NewRequest(method,uri,bytes.NewBufferString(body))

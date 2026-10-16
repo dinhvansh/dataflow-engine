@@ -35,7 +35,9 @@ func (r *RowVersionReader) projection(ctx context.Context)(string,error){
   case "sysrevid":
    if !c.CursorCandidate{return "",fmt.Errorf("SysRevID must be rowversion, found %s",c.SQLType)}
    foundRev=true
-   expr=append(expr,"CONVERT(varchar(18),"+quoted+",1) AS "+quoted)
+   // SQL Server ignores binary style 1 when converting rowversion directly;
+   // normalize through varbinary so the driver receives stable ASCII hex.
+   expr=append(expr,"CONVERT(varchar(18),CONVERT(varbinary(8),"+quoted+"),1) AS "+quoted)
   case "sysrowid":
    if !strings.EqualFold(c.SQLType,"uniqueidentifier"){return "",fmt.Errorf("SysRowID must be uniqueidentifier, found %s",c.SQLType)}
    foundID=true
@@ -67,7 +69,7 @@ func(r *RowVersionReader)Read(ctx context.Context,emit func(engine.Batch)error)e
  if r.DB==nil{return errors.New("nil source DB")}
  if r.BatchSize<1||r.BatchSize>100000{return errors.New("batch size out of bounds")}
  projection,err:=r.projection(ctx);if err!=nil{return err}
- tx,err:=r.DB.BeginTx(ctx,&sql.TxOptions{Isolation:sql.LevelSnapshot,ReadOnly:true})
+ tx,err:=r.DB.BeginTx(ctx,&sql.TxOptions{Isolation:sql.LevelSnapshot})
  if err!=nil{return fmt.Errorf("SNAPSHOT transaction unavailable; enable via DBA approval: %w",err)}
  defer tx.Rollback()
  var upperBytes []byte
@@ -95,18 +97,20 @@ func(r *RowVersionReader)Read(ctx context.Context,emit func(engine.Batch)error)e
    if err=rows.Scan(ptrs...);err!=nil{break}
    record:=make(map[string]any,len(names))
    for i,name:=range names{
-    value:=vals[i]
-    if raw,ok:=value.([]byte);ok{
-     typ:=strings.ToLower(types[i].DatabaseTypeName())
-     if strings.Contains(typ,"binary")||typ=="timestamp"||typ=="rowversion"{
-      record[name]=fmt.Sprintf("0x%X",raw)
-     }else{
-      record[name]=string(raw)
-     }
-    }else{record[name]=value}
+    if raw,ok:=vals[i].([]byte);ok&&strings.EqualFold(name,"SysRevID")&&len(raw)==8{
+     record[name]=fmt.Sprintf("0x%X",raw)
+    }else if raw,ok:=vals[i].(string);ok&&strings.EqualFold(name,"SysRevID")&&len(raw)==8{
+     record[name]=fmt.Sprintf("0x%X",[]byte(raw))
+    }else if raw,ok:=vals[i].([]byte);ok&&strings.EqualFold(name,"SysRowID")&&len(raw)==16{
+     record[name]=normalizeValue(raw,"uniqueidentifier")
+    }else if raw,ok:=vals[i].(string);ok&&strings.EqualFold(name,"SysRowID")&&len(raw)==16{
+     record[name]=normalizeValue([]byte(raw),"uniqueidentifier")
+    }else{
+     record[name]=normalizeValue(vals[i],types[i].DatabaseTypeName())
+    }
    }
    rev,parseErr:=cursor.ParseRowVersion(fmt.Sprint(record["SysRevID"]))
-   if parseErr!=nil{err=parseErr;break}
+   if parseErr!=nil{err=fmt.Errorf("invalid SysRevID %q (%T): %w",record["SysRevID"],record["SysRevID"],parseErr);break}
    id,ok:=record["SysRowID"].(string)
    if !ok||id==""{err=errors.New("missing SysRowID");break}
    afterRev,afterID=rev,id

@@ -35,7 +35,7 @@ func (r *KeySnapshotReader) Read(ctx context.Context,emit func(engine.Batch)erro
  unique,err:=HasUniqueSysRowID(ctx,r.DB,r.Schema,r.Table)
  if err!=nil{return fmt.Errorf("source unique index discovery: %w",err)}
  if !unique{return errors.New("source SysRowID requires a declared unfiltered single-key UNIQUE index; no source DDL will be attempted")}
- tx,err:=r.DB.BeginTx(ctx,&sql.TxOptions{Isolation:sql.LevelSnapshot,ReadOnly:true})
+ tx,err:=r.DB.BeginTx(ctx,&sql.TxOptions{Isolation:sql.LevelSnapshot})
  if err!=nil{return fmt.Errorf("SQL Server SNAPSHOT unavailable: %w",err)}
  defer tx.Rollback()
  query:="SELECT CONVERT(varchar(36),[SysRowID]), CONVERT(varchar(18),[SysRevID],1) FROM "+schema+"."+table+" ORDER BY [SysRowID]"
