@@ -25,3 +25,21 @@ export type HistoryResponse={runs:HistoryRun[];count:number};
 export async function getRunHistory(token:string,limit=20):Promise<HistoryResponse>{
  return parse<HistoryResponse>(await fetch(`/api/v1/bootstrap/history?limit=${limit}`,{headers:{Authorization:`Bearer ${token}`}}))
 }
+
+export type ManagedStream={
+ id:string;source_schema:string;source_table:string;
+ target_database:string;target_table:string;
+ batch_size:number;workers:number;queue_capacity:number;lower_cursor?:string
+};
+export type ManagedRun={
+ run_id:string;stream_id?:string;status:string;lower_cursor?:string;
+ upper_exclusive?:string;rows_written?:number;batches_written?:number;error?:string
+};
+export const managedApi={
+ list:(token:string)=>getSource<{streams:ManagedStream[]}>("/api/v1/managed/streams",token),
+ create:(settings:Omit<ManagedStream,"id"|"lower_cursor">,token:string)=>
+  parse<ManagedStream>(fetch("/api/v1/managed/streams",{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(settings)})),
+ run:(stream_id:string,token:string)=>
+  parse<ManagedRun>(fetch("/api/v1/managed/runs",{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({stream_id})})),
+ status:(id:string,token:string)=>getSource<ManagedRun>(`/api/v1/managed/runs?id=${encodeURIComponent(id)}`,token)
+};
