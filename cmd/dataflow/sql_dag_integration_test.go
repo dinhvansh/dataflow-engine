@@ -4,6 +4,7 @@ import (
  "context"
  "encoding/json"
  "errors"
+ "fmt"
  "os"
  "path/filepath"
  "strings"
@@ -42,11 +43,13 @@ func TestSQLDAGIntegration(t *testing.T){
  if err:=s.checkSQLDAGSchema(ctx);err!=nil{t.Fatalf("migration readiness: %v",err)}
 
  var id1,id2,dagID string
- if err=pool.QueryRow(ctx,"INSERT INTO sql_jobs(name,database_name,query_text,enabled) VALUES('ci_first','scratch','SELECT 1 AS answer',true) RETURNING id::text").Scan(&id1);err!=nil{t.Fatal(err)}
- if err=pool.QueryRow(ctx,"INSERT INTO sql_jobs(name,database_name,query_text,enabled) VALUES('ci_second','scratch','SELECT 2 AS answer',true) RETURNING id::text").Scan(&id2);err!=nil{t.Fatal(err)}
+ suffix:=time.Now().UnixNano()
+ firstName,secondName,pipelineName:=fmt.Sprintf("ci_first_%d",suffix),fmt.Sprintf("ci_second_%d",suffix),fmt.Sprintf("ci_pipeline_%d",suffix)
+ if err=pool.QueryRow(ctx,"INSERT INTO sql_jobs(name,database_name,query_text,enabled) VALUES($1,'scratch','SELECT 1 AS answer',true) RETURNING id::text",firstName).Scan(&id1);err!=nil{t.Fatal(err)}
+ if err=pool.QueryRow(ctx,"INSERT INTO sql_jobs(name,database_name,query_text,enabled) VALUES($1,'scratch','SELECT 2 AS answer',true) RETURNING id::text",secondName).Scan(&id2);err!=nil{t.Fatal(err)}
  plan:=dag.Plan{Nodes:[]dag.Node{{ID:"first",JobID:id1},{ID:"second",JobID:id2,Requires:[]string{"first"}}}}
  encoded,err:=json.Marshal(plan);if err!=nil{t.Fatal(err)}
- if err=pool.QueryRow(ctx,"INSERT INTO dag_definitions(name,definition,enabled) VALUES('ci_pipeline',$1::jsonb,true) RETURNING id::text",string(encoded)).Scan(&dagID);err!=nil{t.Fatal(err)}
+ if err=pool.QueryRow(ctx,"INSERT INTO dag_definitions(name,definition,enabled) VALUES($1,$2::jsonb,true) RETURNING id::text",pipelineName,string(encoded)).Scan(&dagID);err!=nil{t.Fatal(err)}
  runID,err:=s.queueSQLDag(ctx,dagID);if err!=nil{t.Fatal(err)}
  // Mutate registry between queue and execution: immutable run snapshot wins.
  if _,err=pool.Exec(ctx,"UPDATE sql_jobs SET query_text='SELECT imaginary_missing_function()' WHERE id=$1::uuid",id1);err!=nil{t.Fatal(err)}

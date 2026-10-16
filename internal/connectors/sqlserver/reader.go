@@ -7,12 +7,30 @@ import(
  "fmt"
  "regexp"
  "strings"
+ "time"
 
  _ "github.com/microsoft/go-mssqldb"
  "github.com/dinhvansh/dataflow-engine/internal/engine"
 )
 var identifier=regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 func quote(s string)(string,error){if !identifier.MatchString(s){return "",fmt.Errorf("invalid identifier %q",s)};return "["+s+"]",nil}
+
+func normalizeValue(v any, databaseType string) any {
+ typ:=strings.ToLower(databaseType)
+ if b,ok:=v.([]byte);ok{
+  switch typ{
+  case "uniqueidentifier":
+   if len(b)==16{return fmt.Sprintf("%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",b[3],b[2],b[1],b[0],b[5],b[4],b[7],b[6],b[8],b[9],b[10],b[11],b[12],b[13],b[14],b[15])}
+  }
+  if strings.Contains(typ,"binary")||typ=="timestamp"||typ=="rowversion" {return fmt.Sprintf("0x%X",b)}
+  return string(b)
+ }
+ if ts,ok:=v.(time.Time);ok{
+  if typ=="date"{return ts.Format("2006-01-02")}
+  return ts.Format("2006-01-02 15:04:05.9999999")
+ }
+ return v
+}
 
 // Reader supports FULL REFRESH only. No OFFSET, cursor or source writes.
 // SQL Server result is streamed into bounded batches; source query runs with caller context.
@@ -29,7 +47,10 @@ func(r *Reader)Read(ctx context.Context,emit func(engine.Batch)error)error{
  table,err:=quote(r.Table);if err!=nil{return err}
  var tx *sql.Tx
  if r.Snapshot{
-  tx,err=r.DB.BeginTx(ctx,&sql.TxOptions{Isolation:sql.LevelSnapshot,ReadOnly:true})
+  // go-mssqldb rejects TxOptions.ReadOnly even for a SELECT-only login.
+  // Source immutability is enforced by SQL Server grants; SNAPSHOT provides
+  // consistency without asking the driver for its unsupported read-only flag.
+  tx,err=r.DB.BeginTx(ctx,&sql.TxOptions{Isolation:sql.LevelSnapshot})
   if err!=nil{return fmt.Errorf("consistent full refresh requires SQL Server SNAPSHOT isolation: %w",err)}
   defer tx.Rollback()
  }
@@ -47,12 +68,7 @@ func(r *Reader)Read(ctx context.Context,emit func(engine.Batch)error)error{
   obj:=make(map[string]any,len(cols))
   for i,c:=range cols{
    v:=vals[i]
-   if b,ok:=v.([]byte);ok{
-    // Preserve binary values; JSON encoding can be mapped in destination.
-    cp:=append([]byte(nil),b...)
-    typ:=strings.ToLower(types[i].DatabaseTypeName())
-    if strings.Contains(typ,"binary")||typ=="timestamp"||typ=="rowversion" {obj[c]=fmt.Sprintf("0x%X",cp)} else {obj[c]=string(cp)}
-   }else{obj[c]=v}
+   obj[c]=normalizeValue(v,types[i].DatabaseTypeName())
   }
   batch.Rows=append(batch.Rows,obj)
   if len(batch.Rows)>=r.BatchSize{batch.Sequence=seq;seq++;if err:=emit(batch);err!=nil{return err};batch=engine.Batch{}}
