@@ -31,7 +31,13 @@ func TestManagedQueueIntegration(t *testing.T){
   "001_bootstrap.sql","002_sync_checkpoint.sql","003_managed_runs.sql","004_stream_tuning.sql","009_managed_queue.sql",
  }{
   raw,readErr:=os.ReadFile(filepath.Join("..","..","migrations","postgres",migration));if readErr!=nil{t.Fatal(readErr)}
-  for _,statement:=range strings.Split(string(raw),";"){
+  // Strip standalone SQL comments before splitting statements: migration
+  // 001's comment contains a semicolon, which is not a SQL delimiter.
+  cleanLines:=make([]string,0)
+  for _,line:=range strings.Split(string(raw),"\n"){
+   if !strings.HasPrefix(strings.TrimSpace(line),"--"){cleanLines=append(cleanLines,line)}
+  }
+  for _,statement:=range strings.Split(strings.Join(cleanLines,"\n"),";"){
    if strings.TrimSpace(statement)==""{continue}
    if _,err=pool.Exec(ctx,statement);err!=nil{t.Fatalf("migration %s failed: %v",migration,err)}
   }
