@@ -141,12 +141,15 @@ func guardedIncrementalSwap(ctx context.Context,pg *pgxpool.Pool,c incrementalCl
  tx,err:=pg.Begin(ctx);if err!=nil{return err}
  defer tx.Rollback(ctx)
  var state,owner,old,stageUUID,lower,upper string
+ var fence int64
+ var leaseValid bool
  err=tx.QueryRow(ctx,`SELECT state,COALESCE(lease_owner::text,''),
- COALESCE(old_target_uuid,''),COALESCE(stage_uuid,''),cursor_lower::text,cursor_upper::text
+ COALESCE(old_target_uuid,''),COALESCE(stage_uuid,''),cursor_lower::text,cursor_upper::text,
+ fence_token,lease_until>clock_timestamp()
  FROM incremental_runs WHERE id=$1::uuid FOR UPDATE`,c.ID).
- Scan(&state,&owner,&old,&stageUUID,&lower,&upper)
+ Scan(&state,&owner,&old,&stageUUID,&lower,&upper,&fence,&leaseValid)
  if err!=nil{return err}
- if state!=c.State||owner!=c.Owner||old==""||stageUUID==""{
+ if state!=c.State||owner!=c.Owner||fence!=c.Fence||!leaseValid||old==""||stageUUID==""{
   return errors.New("incremental worker lost fencing or prepared UUID")
  }
  var checkpoint,physicalUUID,lastID string
