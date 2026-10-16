@@ -28,6 +28,7 @@ type RunRequest struct {
  QueueCapacity int `json:"queue_capacity"`
  Mode string `json:"mode"`
  LowerCursor string `json:"lower_cursor"`
+ AtomicReplace bool `json:"atomic_replace"`
 }
 type server struct {pg *pgxpool.Pool; sql *sql.DB; chURL,chUser,chPass,token string}
 func (s *server) run(w http.ResponseWriter,r *http.Request){
@@ -41,6 +42,7 @@ func (s *server) run(w http.ResponseWriter,r *http.Request){
  }
  if req.Mode!="" && req.Mode!="full" && req.Mode!="rowversion"{http.Error(w,"unsupported mode",400);return}
  if req.Mode=="rowversion" {if _,err:=cursor.ParseRowVersion(req.LowerCursor);err!=nil{http.Error(w,"invalid lower_cursor: "+err.Error(),400);return}}
+ if req.Mode=="rowversion"&&req.AtomicReplace{http.Error(w,"atomic_replace supported only for full mode",400);return}
  // Only an explicitly designated scratch database may be mutated by the bootstrap.
  allowedDB:=os.Getenv("DATAFLOW_TEST_TARGET_DATABASE")
  if allowedDB==""{allowedDB="scratch"}
@@ -62,7 +64,21 @@ func (s *server) run(w http.ResponseWriter,r *http.Request){
   rd=incremental
  }else{http.Error(w,"unsupported mode",400);return}
  wr:=&clickhouse.Writer{Endpoint:s.chURL,Database:req.TargetDatabase,Table:req.TargetTable,Username:s.chUser,Password:s.chPass}
- stats,runErr:=engine.Run(ctx,engine.Config{Workers:req.Workers,QueueCapacity:req.QueueCapacity},rd,wr)
+ var stage *clickhouse.Staging
+ var runErr error
+ var stats engine.Stats
+ targetWriter:=wr
+ if req.AtomicReplace{
+  stage,runErr=targetWriter.PrepareStage(ctx,id)
+  if runErr==nil{wr=stage.Writer}
+ }
+ if runErr==nil{stats,runErr=engine.Run(ctx,engine.Config{Workers:req.Workers,QueueCapacity:req.QueueCapacity},rd,wr)}
+ if runErr==nil&&stage!=nil{runErr=targetWriter.PublishStage(ctx,stage)}
+ if stage!=nil&&stage.Published{
+  cleanupCtx,cleanupCancel:=context.WithTimeout(context.Background(),30*time.Second)
+  if cleanupErr:=targetWriter.DropStage(cleanupCtx,stage);cleanupErr!=nil{log.Printf("run=%s old target cleanup pending: %v",id,cleanupErr)}
+  cleanupCancel()
+ }
  status:="succeeded";message:=""
  if runErr!=nil{status="failed";message=runErr.Error()}
  persistCtx,cancel:=context.WithTimeout(context.Background(),5*time.Second);defer cancel()
