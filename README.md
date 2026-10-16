@@ -113,3 +113,16 @@ Managed Sync now uses a PostgreSQL durable run queue, one-active-run-per-stream 
 - [Merged PR #5](https://github.com/dinhvansh/dataflow-engine/pull/5)
 
 **Upgrade warning:** apply `migrations/postgres/009_managed_queue.sql` after resolving legacy active runs. Default execution flags remain OFF. No real Epicor source integration, DELETE capture, or production readiness claim.
+
+
+## v0.8 — Power Query-style Visual Transform Studio (preview only)
+
+DataFlow now has a working Transform Studio in the React console. Users can click or drag transformation steps, reorder Applied Steps, preview output after any step, switch between Visual / SQL mode, inspect ClickHouse source columns, and save/reload models in PostgreSQL.
+
+The Go SQL compiler generates restricted SELECT queries. Preview runs with a dedicated restricted ClickHouse read-only user. **No dbt Core worker, model materialization or Mart DML is enabled.**
+
+- [v0.8 release status](implementation/release-status-v08.md)
+- [v0.8 user guide and safety](implementation/transform-studio-v08.md)
+- [Passing Go + React + PostgreSQL/ClickHouse CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38887366877)
+
+**Upgrade note:** apply `migrations/postgres/010_transform_models.sql` in existing TEST PostgreSQL. Extraction/loading still require real Epicor TEST E2E acceptance before production.
