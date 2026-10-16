@@ -10,3 +10,12 @@ export const sourceApi={
  rowversionUpper:(token:string)=>getSource<{upper_exclusive:string}>("/api/v1/source/rowversion-upper",token)
 };
 
+
+export type PipelineNode={id:string;job_id:string;requires:string[]};
+export type PipelinePlan={nodes:PipelineNode[]};
+export type PipelineValidation={valid:boolean;nodes?:number;ready_on_start?:string[];status?:string;error?:string};
+export async function validatePipeline(plan:PipelinePlan,token:string):Promise<PipelineValidation>{
+ const r=await fetch("/api/v1/pipelines/validate",{method:"POST",headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(plan)});
+ if(r.status===422)return r.json() as Promise<PipelineValidation>;
+ return parse<PipelineValidation>(r);
+}
