@@ -72,7 +72,9 @@ func(s *server)startManagedScheduler(){
   for range tick.C{
    // A bounded number of schedules per tick avoids monopolizing API capacity.
    for attempt:=0;attempt<2;attempt++{
-    select{case s.managedSlots<-struct{}{}:default:break}
+    slotAcquired:=false
+    select{case s.managedSlots<-struct{}{}:slotAcquired=true;default:}
+    if !slotAcquired{break}
     ctx,cancel:=context.WithTimeout(context.Background(),10*time.Second)
     runID,streamID,err:=s.claimScheduled(ctx)
     cancel()
