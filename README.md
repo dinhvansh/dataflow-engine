@@ -150,3 +150,14 @@ Model saves now reject dependency cycles atomically in PostgreSQL, while dbt Vie
 - [Passing Go + React + PostgreSQL/ClickHouse/dbt CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38900354620)
 
 **Developer preview only:** no production model materializations, managed E2E Epicor acceptance, or browser drag/drop automation certification.
+
+
+## v1.1 — Safe Table Materialization (TEST preview)
+
+Transform Studio can now **Build Staging Table → inspect Data Quality → Approve & Publish → Rollback**. A separate pinned dbt worker materializes a physical staging table inside ClickHouse `scratch`. ClickHouse Atomic `EXCHANGE TABLES`, PostgreSQL durable UUID preparation and fenced worker locks protect the published table from broken or repeated publish steps. Previous physical table is retained for manual rollback.
+
+- [v1.1 release status and CI proof](implementation/release-status-v11.md)
+- [Installation, DQ and safe publish guide](implementation/safe-table-v11.md)
+- [Passing dbt + ClickHouse + PostgreSQL tests](https://github.com/dinhvansh/dataflow-engine/actions/runs/38905418989)
+
+**Warning:** apply migration `012_safe_table.sql` and opt in only on isolated TEST `scratch`. This is **full Table rebuild**, not Incremental and not production-ready.
