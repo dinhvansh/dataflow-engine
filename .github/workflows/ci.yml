@@ -32,7 +32,7 @@ jobs:
         run: |
           go test ./internal/connectors/clickhouse -run Integration -count=1 -v
           go test ./internal/transform -run Integration -count=1 -v
-          go test ./internal/safetable -run 'Test(AtomicPublishAndRollbackIntegration|DeltaUpdateDeleteReplayIntegration|DeltaRejectDuplicateVersionIntegration)$' -count=1 -v
+          go test ./internal/safetable -run 'Test(AtomicPublishAndRollbackIntegration|DeltaUpdateDeleteReplayIntegration|DeltaRejectDuplicateVersionIntegration|DeltaHistoryDetectsOldVersionAppendIntegration)$' -count=1 -v
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
