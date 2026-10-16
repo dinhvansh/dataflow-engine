@@ -86,6 +86,27 @@ func finishIncremental(ctx context.Context,pg *pgxpool.Pool,c incrementalClaim,s
 }
 // The fingerprint protects the prefix which has already been checkpointed.
 // A new or migrated nonzero cursor without stored evidence must not be trusted.
+// Once a target has published a guarded checkpoint, disabling the flag
+// must not silently revert that target to the unguarded version-only path.
+func historicalColumnsPresent(ctx context.Context,pg *pgxpool.Pool)(bool,error){
+ var present bool
+ err:=pg.QueryRow(ctx,`SELECT EXISTS (
+  SELECT 1 FROM information_schema.columns
+  WHERE table_schema='public' AND table_name='incremental_targets'
+  AND column_name='history_cursor')`).Scan(&present)
+ return present,err
+}
+func denyHistoryGuardDowngrade(ctx context.Context,pg *pgxpool.Pool,target string)error{
+ if incrementalHistoryGuardEnabled(){return nil}
+ present,err:=historicalColumnsPresent(ctx,pg);if err!=nil{return err}
+ if !present{return nil} // v1.3 migration remains valid when guard unused.
+ var guarded bool
+ err=pg.QueryRow(ctx,`SELECT history_cursor IS NOT NULL FROM incremental_targets
+  WHERE target_name=$1`,target).Scan(&guarded)
+ if err!=nil{return err}
+ if guarded{return errors.New("historical CDC guard was used for this target; refusing unguarded downgrade")}
+ return nil
+}
 func verifyIncrementalHistory(ctx context.Context,pg *pgxpool.Pool,c incrementalClaim,client safetable.Client,lower uint64)(safetable.HistoryFingerprint,error){
  var empty safetable.HistoryFingerprint
  if !incrementalHistoryGuardEnabled(){return empty,nil}
@@ -112,6 +133,10 @@ func verifyIncrementalHistory(ctx context.Context,pg *pgxpool.Pool,c incremental
 func runIncrementalBuild(ctx context.Context,pg *pgxpool.Pool,c incrementalClaim,client safetable.Client){
  if !incrementalWorkerEnabled(){return}
  lower,err:=strconv.ParseUint(c.Lower,10,64);if err!=nil{return}
+ if err=denyHistoryGuardDowngrade(ctx,pg,c.Target);err!=nil{
+  _=finishIncremental(ctx,pg,c,"failed",err.Error(),"",safetable.DeltaStats{})
+  return
+ }
  targetUUID,err:=client.UUID(ctx,c.Target)
  if err!=nil||targetUUID==""{
   _=finishIncremental(ctx,pg,c,"failed","baseline physical table missing", "",safetable.DeltaStats{})
@@ -229,6 +254,18 @@ func guardedIncrementalSwap(ctx context.Context,pg *pgxpool.Pool,c incrementalCl
  if err!=nil{return err}
  if state!=c.State||owner!=c.Owner||fence!=c.Fence||!leaseValid||old==""||stageUUID==""{
   return errors.New("incremental worker lost fencing or prepared UUID")
+ }
+ if !incrementalHistoryGuardEnabled(){
+  present,e:=historicalColumnsPresent(ctx,pg);if e!=nil{return e}
+  if present{
+   var witnessExists bool
+   e=tx.QueryRow(ctx,`SELECT history_upper_digest IS NOT NULL FROM incremental_runs
+    WHERE id=$1::uuid`,c.ID).Scan(&witnessExists)
+   if e!=nil{return e}
+   if witnessExists{
+    return errors.New("guarded CDC stage cannot be published/rolled back with history guard disabled")
+   }
+  }
  }
  var checkpoint,physicalUUID,lastID string
  err=tx.QueryRow(ctx,`SELECT cursor_value::text,COALESCE(target_uuid,''),
