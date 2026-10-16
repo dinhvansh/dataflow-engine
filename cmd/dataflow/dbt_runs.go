@@ -6,7 +6,6 @@ import(
  "net/http"
  "os"
  "strings"
- "time"
  "github.com/dinhvansh/dataflow-engine/internal/transform"
 )
 func dbtPreviewEnabled()bool{
@@ -31,7 +30,7 @@ func(s *server)dbtRunsAPI(w http.ResponseWriter,r *http.Request){
   if err!=nil{http.Error(w,"model not found",404);return}
   var model transform.Model
   if json.Unmarshal(raw,&model)!=nil||model.Mode!="visual"{http.Error(w,"dbt worker accepts visual models only",422);return}
-  if len(name)>85||strings.ToLower(name)!=name{http.Error(w,"model name must be lower-case and <=85 characters",422);return}
+  if len(name)>85||len(name)==0||name[0]<'a'||name[0]>'z'||strings.ToLower(name)!=name{http.Error(w,"model name must be lower-case and <=85 characters",422);return}
   if _,err=transform.ValidateModelName(name);err!=nil{http.Error(w,"invalid model name",422);return}
   if model.Source.Database!="scratch"||strings.EqualFold(model.Source.Table,"dfv_"+name){
    http.Error(w,"only scratch source supported; destination cannot equal source",422);return
