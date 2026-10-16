@@ -114,3 +114,18 @@ See [v1.0 release status](release-status-v10.md).
 - [ ] Production-ready Incremental materialization (including update/delete semantics and idempotent partition/key strategy).
 - [ ] Epicor SQL Server TEST end-to-end correctness, large-scale performance, full RBAC and operational monitoring.
 See [v1.1 release status](release-status-v11.md).
+
+
+## v1.2 — Auto Build Dependencies (2026-10-16)
+
+- [x] One-click Run Model + Dependencies from Data Lineage.
+- [x] Durable, frozen model/SQL parent flow with ordered PostgreSQL step checkpoints.
+- [x] Existing dbt View worker executes A → B → C sequentially.
+- [x] Per-step DQ gate (nonempty/1m TEST cap), stop on upstream failure or changed ancestor SQL.
+- [x] Restart-resumable parent/child job links, single-active-flow constraint.
+- [x] Real PostgreSQL/ClickHouse/dbt tests, simulated process restart, failure and drift regressions; Go/Web CI green.
+- [ ] Business-level data tests, multi-model atomic publish, automatic table dependency releases.
+- [ ] Safe Incremental with update/delete and unique-key semantics.
+- [ ] Epicor TEST large-table E2E and production access/monitoring acceptance.
+
+See [v1.2 release status](release-status-v12.md).
