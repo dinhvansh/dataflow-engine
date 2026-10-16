@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {Database,RefreshCw,TableProperties,ShieldCheck} from "lucide-react";
 import {Button} from "./ui/button";
-import {api,type TableInfo,type ColumnInfo} from "../lib/api";
+import {sourceApi,type TableInfo,type ColumnInfo} from "../lib/api";
 type Props={token:string;onTokenChange:(value:string)=>void};
 export function SourceExplorer({token,onTokenChange}:Props){
  const[schema,setSchema]=useState("Erp");
@@ -12,9 +12,9 @@ export function SourceExplorer({token,onTokenChange}:Props){
  const[loading,setLoading]=useState(false);
  const[error,setError]=useState("");
  const action=async(fn:()=>Promise<void>)=>{setLoading(true);setError("");try{await fn()}catch(e){setError(String(e))}finally{setLoading(false)}};
- const list=()=>action(async()=>{setTables(await api.tables(schema,token));setColumns([])});
- const inspect=()=>action(async()=>{setColumns(await api.columns(schema,table,token))});
- const watermark=()=>action(async()=>{setUpper((await api.rowversionUpper(token)).upper_exclusive)});
+ const list=()=>action(async()=>{setTables(await sourceApi.tables(schema,token));setColumns([])});
+ const inspect=()=>action(async()=>{setColumns(await sourceApi.columns(schema,table,token))});
+ const watermark=()=>action(async()=>{setUpper((await sourceApi.rowversionUpper(token)).upper_exclusive)});
  return <div className="space-y-5">
   <div className="section space-y-4">
    <div className="flex items-center gap-2 text-lg font-semibold"><Database size={18}/>SQL Server Source Explorer</div>
