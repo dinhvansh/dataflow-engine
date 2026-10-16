@@ -67,6 +67,8 @@ func(s *server) streamAPI(w http.ResponseWriter,r *http.Request){
    if col.Name=="SysRowID"&&col.SQLType=="uniqueidentifier"{id=true}
   }
   if !rev||!id{http.Error(w,"source requires native SysRevID rowversion and SysRowID uniqueidentifier",422);return}
+  unique,uniqueErr:=sqlserver.HasUniqueSysRowID(ctx,s.sql,cfg.SourceSchema,cfg.SourceTable)
+  if uniqueErr!=nil||!unique{http.Error(w,"source SysRowID must have a single-column unique index (read-only inspection)",422);return}
   var isolation string
   if err=s.sql.QueryRowContext(ctx,`SELECT snapshot_isolation_state_desc FROM sys.databases WHERE name=DB_NAME()`).Scan(&isolation);err!=nil||isolation!="ON"{
    http.Error(w,"SQL Server SNAPSHOT isolation must already be ON (DBA-managed setting)",422);return
