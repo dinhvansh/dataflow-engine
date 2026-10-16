@@ -165,6 +165,15 @@ func runIncrementalBuild(ctx context.Context,pg *pgxpool.Pool,c incrementalClaim
   _=finishIncremental(ctx,pg,c,"no_changes","", "",safetable.DeltaStats{})
   return
  }
+ var beforeStageHistory safetable.HistoryFingerprint
+ if incrementalHistoryGuardEnabled(){
+  beforeStageHistory,err=client.DeltaHistory(ctx,c.Target,c.Delta,c.Key,upper)
+  if err!=nil||beforeStageHistory.Events<lowerHistory.Events||
+   beforeStageHistory.Events-lowerHistory.Events>50000{
+   _=finishIncremental(ctx,pg,c,"failed","CDC history invalid before staging","",safetable.DeltaStats{})
+   return
+  }
+ }
  plan:=safetable.DeltaPlan{Target:c.Target,Delta:c.Delta,Key:c.Key,Stage:c.Stage,
   Lower:lower,Upper:upper,BaselineUUID:targetUUID}
  stats,err:=client.BuildDeltaStage(ctx,plan)
@@ -180,8 +189,8 @@ func runIncrementalBuild(ctx context.Context,pg *pgxpool.Pool,c incrementalClaim
    return
   }
   high,e:=client.DeltaHistory(ctx,c.Target,c.Delta,c.Key,upper)
-  if e!=nil||high.Events<lowerHistory.Events||high.Events-lowerHistory.Events!=stats.Events||
-   high.Events>uint64(^uint64(0)>>1){
+  if e!=nil||high!=beforeStageHistory||high.Events<lowerHistory.Events||
+   high.Events-lowerHistory.Events!=stats.Events||high.Events>uint64(^uint64(0)>>1){
    _=finishIncremental(ctx,pg,c,"failed","CDC historical event count changed; refuse publish","",safetable.DeltaStats{})
    return
   }
