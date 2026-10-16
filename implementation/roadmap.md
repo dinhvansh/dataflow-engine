@@ -71,3 +71,16 @@ See [v0.6 status](release-status-v06.md).
 - [ ] Atomic View/Table/Incremental materializations, DQ gate and rollback.
 - [ ] Browser drag/drop E2E and real Epicor TEST integration.
 See [v0.8 release status](release-status-v08.md).
+
+
+## v0.9 — dbt Core View Worker milestone (2026-10-16)
+
+- [x] Optional real dbt Core 1.x worker container, no user CLI needed.
+- [x] Transform Studio Build View button, queue/run status, error/log details.
+- [x] Immutable per-run model snapshot; persisted PG queue, leases and fencing.
+- [x] Scratch View materialization, verified with real dbt and ClickHouse 25.3 CI.
+- [x] PostgreSQL queue-to-dbt-to-View integration and Docker image build PASS.
+- [ ] dbt model dependencies/lineage visible in UI.
+- [ ] Safe Table/Incremental materialization with staged publish, DQ and rollback.
+- [ ] Production secrets/RBAC, browser E2E, Epicor TEST 7m-row end-to-end benchmark.
+See [v0.9 release status](release-status-v09.md).
