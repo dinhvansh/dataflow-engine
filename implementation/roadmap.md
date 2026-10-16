@@ -28,3 +28,13 @@
 - [ ] Durable job queue, true DAG execution and SQL Job runtime.
 
 Refer to [Release Status v0.4](release-status-v04.md) and [Reconciliation Test Guide](reconciliation-v04.md). 
+
+## Progress update — v0.5 SQL Job + DAG Executor, 2026-10-16
+
+- [x] Read-only SQL Job registry in PostgreSQL.
+- [x] Executable DAG (ALL joins, bounded concurrency, retries, timeout, skipped downstream).
+- [x] Immutable per-run DAG/SQL snapshot, run status API, CLI, MCP and shadcn-style UI.
+- [x] Automated test using isolated PostgreSQL + real ClickHouse account and SELECT grants.
+- [ ] True ClickHouse SQL transform jobs (INSERT INTO SELECT), permission isolation, materialization controls.
+- [ ] Distributed durable queue/restart recovery, cron, alerting.
+- [ ] SQL Server Epicor full 3-store integration with failure injection.
