@@ -36,6 +36,14 @@ func TestSafeTableAPIIntegration(t *testing.T){
  var modelID string
  if err=pg.QueryRow(ctx,`INSERT INTO transform_models(name,definition,compiled_sql)
   VALUES($1,$2::jsonb,$3) RETURNING id::text`,name,definition,compiled.SQL).Scan(&modelID);err!=nil{t.Fatal(err)}
+ // These tests share a disposable PostgreSQL container. Never leave a
+ // queued publish/rollback fixture for the separate dbt worker test package.
+ defer func(){
+  cleanup,done:=context.WithTimeout(context.Background(),10*time.Second)
+  defer done()
+  if _,err:=pg.Exec(cleanup,"DELETE FROM table_runs WHERE model_id=$1::uuid",modelID);err!=nil{t.Logf("cleanup table_run fixture: %v",err)}
+ }()
+
  call:=func(path string,handler http.HandlerFunc,body string,auth bool)*httptest.ResponseRecorder{
   req:=httptest.NewRequest(http.MethodPost,path,bytes.NewBufferString(body))
   if auth{req.Header.Set("Authorization","Bearer ci-table-token")}
