@@ -15,9 +15,9 @@ Updated 2026-10-16. Source of truth: GitHub main. This document intentionally di
 | Durable count check per run | `internal/connectors/clickhouse/verify.go` | HTTP test only |
 | Managed stream registry & async run | `cmd/dataflow/managed.go` | Integration NOT run |
 | Interval schedules (opt-in) | `cmd/dataflow/schedules.go` | Integration NOT run; not HA worker queue |
-| React management UI | `web/src/components/{ManagedStreams,SchedulePanel}.tsx` | Needs frontend build and browser smoke test |
-| CLI + MCP | `cmd/dataflowctl`, `cmd/dataflow-mcp` | Build and client integration NOT confirmed |
-| CI pipeline | `.github/workflows/ci.yml` | Workflow configured; completion not confirmed here |
+| React management UI | `web/src/components/{ManagedStreams,SchedulePanel}.tsx` | Frontend Vite/TypeScript build passed in GitHub Actions PR #1; browser smoke test pending |
+| CLI + MCP | `cmd/dataflowctl`, `cmd/dataflow-mcp` | Go command build passed in GitHub Actions PR #1; client integration pending |
+| CI pipeline | `.github/workflows/ci.yml` | PR #1 CI passed for Go race tests, vet, command build and React build on 2026-10-16 |
 
 ## Required environment preparation
 
@@ -38,8 +38,15 @@ Updated 2026-10-16. Source of truth: GitHub main. This document intentionally di
 - Interval schedules are in-process; queued runs are not a fully durable distributed queue.
 - No stable production auth/RBAC, no end-to-end exactly-once, no historical event capture from rowversion.
 - The first managed run may load a large table; start with a small representative source.
-- Database/Go/React integration tests were not performed through this session.
+- Database integration and browser E2E tests were not performed. Go test -race, go vet, go build ./cmd/... and React npm run build passed in GitHub Actions PR #1; no production-data test performed.
 
 ## Failure invariant
 
 **Never move a checkpoint manually to the largest observed SysRevID.** A managed run only commits its next lower-inclusive boundary after (1) SQL Server SNAPSHOT reader completes, (2) all ClickHouse writes return success, (3) destination run row count matches, and (4) PostgreSQL lease + generation CAS succeeds. Replays may produce physical raw duplicates; query `dataflow_latest` for logical latest state.
+
+## Verified build evidence (2026-10-16)
+
+- [PR #1 build verification](https://github.com/dinhvansh/dataflow-engine/pull/1): merged after both CI jobs passed.
+- [Passing GitHub Actions run](https://github.com/dinhvansh/dataflow-engine/actions/runs/38862048696): Go `go mod tidy`, `go test -race ./...`, `go vet ./...`, `go build ./cmd/...`; Web `npm install` and `npm run build`.
+- Fix: `web/src/lib/api.ts` now awaits `Promise<Response>` before checking `Response.ok`. This resolved five TypeScript errors.
+- Remaining: no connected SQL Server/PostgreSQL/ClickHouse integration, browser E2E or data correctness benchmark.
