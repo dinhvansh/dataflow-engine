@@ -23,9 +23,11 @@ type QueryJob struct {
  Username,Password string
  Client *http.Client
 }
+type QueryColumn struct {Name string `json:"name"`;Type string `json:"type"`}
 type QueryResult struct {
  Rows uint64 `json:"rows"`
  Data []map[string]any `json:"data"`
+ Meta []QueryColumn `json:"meta,omitempty"`
 }
 var readQuery=regexp.MustCompile(`(?is)^\s*SELECT\s+.+`)
 func ValidateReadQuery(query string)error{
