@@ -44,7 +44,7 @@ func Run(ctx context.Context,plan dag.Plan,task Task,opts Options)(Result,error)
   blocked,err:=plan.Blocked(result.State);if err!=nil{return result,err}
   for _,id:=range blocked{result.State[id]=dag.Skipped;result.Errors[id]="upstream dependency failed/skipped/cancelled"}
   ready,err:=plan.Ready(result.State);if err!=nil{return result,err}
-  if len(ready)==0{break}
+  if len(ready)==0{if len(blocked)>0{continue};break}
   concurrency:=opts.Concurrency
   if concurrency>len(ready){concurrency=len(ready)}
   sem:=make(chan struct{},concurrency)
