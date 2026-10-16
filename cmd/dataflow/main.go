@@ -57,7 +57,7 @@ func (s *server) run(w http.ResponseWriter,r *http.Request){
  started:=time.Now()
  var rd engine.Reader
  var incremental *sqlserver.RowVersionReader
- if req.Mode==""||req.Mode=="full"{rd=&sqlserver.Reader{DB:s.sql,Schema:req.SourceSchema,Table:req.SourceTable,BatchSize:req.BatchSize}} else if req.Mode=="rowversion"{
+ if req.Mode==""||req.Mode=="full"{rd=&sqlserver.Reader{DB:s.sql,Schema:req.SourceSchema,Table:req.SourceTable,BatchSize:req.BatchSize,Snapshot:req.AtomicReplace}} else if req.Mode=="rowversion"{
   lower,parseErr:=cursor.ParseRowVersion(req.LowerCursor)
   if parseErr!=nil{http.Error(w,"invalid lower_cursor: "+parseErr.Error(),400);return}
   incremental=&sqlserver.RowVersionReader{DB:s.sql,Schema:req.SourceSchema,Table:req.SourceTable,BatchSize:req.BatchSize,Lower:lower}
