@@ -31,7 +31,7 @@ func main(){
  if err:=run(os.Args[1:]);err!=nil{fmt.Fprintln(os.Stderr,"dataflowctl:",err);os.Exit(1)}
 }
 func run(args []string)error{
- if len(args)==0{return errors.New("usage: dataflowctl health | status RUN_UUID | test-load --schema Erp --table Part --database scratch --target part_test --confirm-disposable")}
+ if len(args)==0{return errors.New("usage: dataflowctl health | tables SCHEMA | columns SCHEMA TABLE | rowversion-upper | status RUN_UUID | test-load --schema Erp --table Part --database scratch --target part_test --confirm-disposable")}
  endpoint:=strings.TrimRight(os.Getenv("DATAFLOW_API_URL"),"/")
  if endpoint==""{endpoint="http://127.0.0.1:8080"}
  c:=config{endpoint:endpoint,token:os.Getenv("DATAFLOW_API_TOKEN"),client:&http.Client{Timeout:60*time.Minute}}
@@ -39,6 +39,15 @@ func run(args []string)error{
  case "health":
   if len(args)!=1{return errors.New("health accepts no arguments")}
   return c.request("GET","/healthz",nil)
+ case "tables":
+  if len(args)!=2{return errors.New("tables requires source schema")}
+  return c.request("GET","/api/v1/source/tables?schema="+url.QueryEscape(args[1]),nil)
+ case "columns":
+  if len(args)!=3{return errors.New("columns requires schema and table")}
+  return c.request("GET","/api/v1/source/columns?schema="+url.QueryEscape(args[1])+"&table="+url.QueryEscape(args[2]),nil)
+ case "rowversion-upper":
+  if len(args)!=1{return errors.New("rowversion-upper accepts no args")}
+  return c.request("GET","/api/v1/source/rowversion-upper",nil)
  case "status":
   if len(args)!=2{return errors.New("status requires run UUID")}
   if len(args[1])!=36||strings.ContainsAny(args[1],"&?/#"){return errors.New("invalid run UUID")}
