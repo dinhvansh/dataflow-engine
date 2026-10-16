@@ -58,3 +58,16 @@ See [v0.6 status](release-status-v06.md).
 - [x] PostgreSQL 16 + ClickHouse 25.3 integration CI, including transient crashes and row-count mismatch; all Go and Web checks passed.
 - [ ] Real SQL Server TEST -> PostgreSQL -> ClickHouse E2E, type mapping, snapshot window correctness, benchmark.
 - [ ] Delete capture/reconciliation application, production RBAC and operational high availability.
+
+
+## v0.8 — Visual Transform Studio (2026-10-16)
+
+- [x] Three-pane Applied Steps visual editor with drag reordering and SQL code mode.
+- [x] Safe compiled SELECT: filter, select, rename, calculate, group, sort and limit.
+- [x] Read-only step Preview and ClickHouse source columns.
+- [x] PostgreSQL saved transformation definitions (migration 010).
+- [x] CI: Go race/vet/build, React build and PostgreSQL/ClickHouse query/model integration PASS.
+- [ ] dbt Core worker and version-managed dbt-clickhouse adapter.
+- [ ] Atomic View/Table/Incremental materializations, DQ gate and rollback.
+- [ ] Browser drag/drop E2E and real Epicor TEST integration.
+See [v0.8 release status](release-status-v08.md).
