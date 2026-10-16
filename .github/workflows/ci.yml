@@ -15,6 +15,37 @@ jobs:
       - run: go test -race ./...
       - run: go vet ./...
       - run: go build ./cmd/...
+      - name: ClickHouse snapshot diff integration
+        run: |
+          docker run -d --name df-clickhouse -p 127.0.0.1:8123:8123 \
+            -e CLICKHOUSE_DB=scratch -e CLICKHOUSE_USER=default \
+            -e CLICKHOUSE_PASSWORD=ci-test-password \
+            clickhouse/clickhouse-server:25.3
+          for i in $(seq 1 60); do
+            if curl -fsS -u default:ci-test-password http://127.0.0.1:8123/ping >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS -u default:ci-test-password http://127.0.0.1:8123/ping
+          DATAFLOW_INTEGRATION_CH_URL=http://127.0.0.1:8123 \
+            DATAFLOW_INTEGRATION_CH_USER=default \
+            DATAFLOW_INTEGRATION_CH_PASSWORD=ci-test-password \
+            go test ./internal/connectors/clickhouse -run '^TestSnapshotDiffIntegration
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+ -count=1 -v
+      - name: ClickHouse logs on failure
+        if: failure()
+        run: docker logs df-clickhouse --tail 100 || true
   web:
     runs-on: ubuntu-latest
     defaults:
