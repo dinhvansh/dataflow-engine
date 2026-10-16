@@ -1,6 +1,6 @@
-# Release Status v0.7 — Managed Sync Recovery (PRE-MERGE)
+# Release Status v0.7 — Managed Sync Recovery (MERGED, DEV PREVIEW)
 
-Status at authoring: **PR #5 open; CI run not yet visible for the latest head SHA. DO NOT deploy or merge until tests pass.**
+Status: **PR #5 merged to main after Go and Web CI passed on 2026-10-16.** Developer preview only; not approved for live Epicor or production use.
 
 ## Delivered on the feature branch
 - Durable PostgreSQL queue dispatch for Managed Sync; API and interval scheduler only enqueue, worker polls and claims.
@@ -15,10 +15,10 @@ Status at authoring: **PR #5 open; CI run not yet visible for the latest head SH
 ## Test matrix
 | Test | State |
 |---|---|
-| Go race tests / vet / build | **PENDING CI** |
-| React Vite build | **PENDING CI** |
-| PostgreSQL 16 queue/fence/atomic checkpoint integration | **PENDING CI** |
-| ClickHouse 25.3 attempt-level row count | **PENDING CI** |
+| Go race tests / vet / build | **PASS** |
+| React Vite build | **PASS** |
+| PostgreSQL 16 queue/fence/atomic checkpoint integration | **PASS** |
+| ClickHouse 25.3 attempt-level row count | **PASS** |
 | Epicor SQL Server source SNAPSHOT integration | **NOT AVAILABLE; separate test needed** |
 
 ## Required pre-deployment steps
@@ -37,4 +37,13 @@ Status at authoring: **PR #5 open; CI run not yet visible for the latest head SH
 - This change doesn't implement actual SQL Server end-to-end testing on Epicor data.
 - This remains a developer preview with bearer-token-only API access and no production operations guarantees.
 
-CI result must be updated with an actual passing workflow link before changing this status.
+## Verified CI evidence
+
+- [PR #5 (merged)](https://github.com/dinhvansh/dataflow-engine/pull/5).
+- [GitHub Actions run 38874212220](https://github.com/dinhvansh/dataflow-engine/actions/runs/38874212220): two jobs succeeded.
+- Go race tests, vet, command build, snapshot/SQL integration and PostgreSQL+ClickHouse managed recovery tests all passed; web build passed.
+- Integration includes a retry-limit regression: exhausted runs must persist as failed even when no claim candidate remains. The fix commits exhausted-run cleanup in a separate PostgreSQL statement instead of rolling it back.
+- The test uses isolated database containers, not the user's internal ERP servers.
+
+**Important:** Existing PostgreSQL deployments must back up and review legacy queued/running records before migration 009. The application fails startup if the managed test runner is enabled but required migration/index is missing.
+
