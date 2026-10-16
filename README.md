@@ -172,3 +172,14 @@ Select final model C in **Data Lineage** and click **Run Model + Dependencies**.
 - [Passing real dbt + ClickHouse + PostgreSQL CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38911890898)
 
 **Test-only:** migration `013_auto_build_flows.sql`; set `DATAFLOW_ENABLE_AUTO_BUILD_TEST=true` only in isolated scratch TEST. Individual Views are built one at a time; there is no global atomic multi-model publish, nor Table/Incremental auto-build.
+
+
+## v1.3 — Safe Incremental CDC (copy-on-write TEST preview)
+
+DataFlow now supports a standalone **Incremental CDC** UI: register a scratch target, its append-only delta stream and key, build a staging table from versioned insert/update/delete events, inspect DQ, then explicitly Publish or Rollback **with the cursor**. The existing UUID-fenced ClickHouse Atomic publish/rollback logic protects the published table and PostgreSQL checkpoint from incomplete retries.
+
+- [v1.3 release status and passing CI](implementation/release-status-v13.md)
+- [CDC event contract and test operations](implementation/safe-incremental-v13.md)
+- [Go/Web/PostgreSQL/ClickHouse tests](https://github.com/dinhvansh/dataflow-engine/actions/runs/38916767766)
+
+**This is logical incremental + full physical staging copy, not yet a fast high-volume Incremental engine.** No Epicor CDC/deletes pipeline is implemented, no 7m-row performance guarantee, and no production enablement. Apply migration 014 and `DATAFLOW_ENABLE_INCREMENTAL_TEST=true` only to an isolated scratch TEST instance.
