@@ -133,6 +133,8 @@ func main(){
  mux.HandleFunc("/api/v1/transform/dbt/runs",svc.dbtRunsAPI)
  mux.HandleFunc("/api/v1/transform/table/runs",svc.tableRunsAPI)
  mux.HandleFunc("/api/v1/transform/table/action",svc.tableActionAPI)
+ mux.HandleFunc("/api/v1/transform/incremental/runs",svc.incrementalRunsAPI)
+ mux.HandleFunc("/api/v1/transform/incremental/action",svc.incrementalActionAPI)
  mux.HandleFunc("/api/v1/transform/lineage",svc.lineageAPI)
  mux.HandleFunc("/api/v1/transform/auto-build",svc.autoBuildAPI)
  port:=8080;if p:=os.Getenv("PORT");p!=""{if v,e:=strconv.Atoi(p);e==nil&&v>0&&v<65536{port=v}}
