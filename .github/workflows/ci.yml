@@ -11,8 +11,8 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
-      - run: go mod tidy
-      - run: go test -race ./...
+      - name: Go unit and race tests
+        run: go test -race ./...
       - run: go vet ./...
       - run: go build ./cmd/...
       - name: Start isolated ClickHouse
@@ -23,18 +23,26 @@ jobs:
             sleep 2
           done
           curl -fsS -u default:ci-test-password http://127.0.0.1:8123/ping
-      - name: ClickHouse snapshot and read-only SQL integration
+      - name: ClickHouse ingestion and SQL integration
         env:
           DATAFLOW_INTEGRATION_CH_URL: http://127.0.0.1:8123
           DATAFLOW_INTEGRATION_CH_USER: default
           DATAFLOW_INTEGRATION_CH_PASSWORD: ci-test-password
-        run: go test ./internal/connectors/clickhouse -run Integration -count=1 -v
-      - name: Visual Transform SQL integration
+        run: |
+          go test ./internal/connectors/clickhouse -run Integration -count=1 -v
+          go test ./internal/transform -run Integration -count=1 -v
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install version-pinned dbt Core and ClickHouse adapter
+        run: python -m pip install 'dbt-core==1.11.0' 'dbt-clickhouse==1.10.3'
+      - name: Materialize a REAL scratch ClickHouse View through dbt
         env:
           DATAFLOW_INTEGRATION_CH_URL: http://127.0.0.1:8123
           DATAFLOW_INTEGRATION_CH_USER: default
           DATAFLOW_INTEGRATION_CH_PASSWORD: ci-test-password
-        run: go test ./internal/transform -run Integration -count=1 -v
+          DATAFLOW_INTEGRATION_DBT_BIN: dbt
+        run: go test ./internal/dbtworker -run TestDBTRealClickHouseIntegration -count=1 -v
       - name: Start isolated PostgreSQL
         run: |
           docker run -d --name df-postgres -p 127.0.0.1:5433:5432 -e POSTGRES_DB=dataflow_ci -e POSTGRES_USER=dataflow_ci -e POSTGRES_PASSWORD=ci-postgres-password postgres:16-alpine
@@ -57,7 +65,9 @@ jobs:
           DATAFLOW_INTEGRATION_CH_PASSWORD: ci-read-password
           DATAFLOW_INTEGRATION_CH_WRITER_USER: default
           DATAFLOW_INTEGRATION_CH_WRITER_PASSWORD: ci-test-password
-        run: go test ./cmd/dataflow -run 'Test(ManagedQueueIntegration|SQLDAGIntegration|TransformStudioIntegration)$' -count=1 -v
+        run: |
+          go test ./cmd/dataflow -run 'Test(ManagedQueueIntegration|SQLDAGIntegration|TransformStudioIntegration|DBTRunAPIIntegration)$' -count=1 -v
+          go test ./cmd/dataflow-dbt-worker -run TestDBTQueueIntegration -count=1 -v
       - name: Container logs on failure
         if: failure()
         run: |
