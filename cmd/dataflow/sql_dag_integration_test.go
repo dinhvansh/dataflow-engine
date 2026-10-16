@@ -88,5 +88,18 @@ func TestSQLDAGIntegration(t *testing.T){
   _=pool.QueryRow(ctx,"SELECT COALESCE(error_message,'') FROM dag_runs WHERE id=$1::uuid",recoveryID).Scan(&detail)
   t.Fatalf("recovered status=%s attempts=%d error=%s",recoveredStatus,attempts,detail)
  }
+ // Safety cap: a perpetually crashing SELECT job must not replay forever.
+ exhaustedID,err:=s.queueSQLDag(ctx,dagID);if err!=nil{t.Fatal(err)}
+ for attempt:=1;attempt<=sqlDAGMaxClaims;attempt++{
+  claim,claimErr:=s.claimSQLDAG(ctx,exhaustedID)
+  if claimErr!=nil||claim.Attempts!=attempt{t.Fatalf("claim %d failed: %+v %v",attempt,claim,claimErr)}
+  if _,err=pool.Exec(ctx,"UPDATE dag_runs SET lease_expires_at=clock_timestamp()-interval '1 second' WHERE id=$1::uuid",exhaustedID);err!=nil{t.Fatal(err)}
+ }
+ if _,err=s.claimSQLDAG(ctx,exhaustedID);!errors.Is(err,pgx.ErrNoRows){t.Fatalf("allowed attempt beyond cap: %v",err)}
+ var exhaustedStatus string
+ if err=pool.QueryRow(ctx,"SELECT status FROM dag_runs WHERE id=$1::uuid",exhaustedID).Scan(&exhaustedStatus);err!=nil||exhaustedStatus!="failed"{
+  t.Fatalf("exhausted run not failed: status=%s err=%v",exhaustedStatus,err)
+ }
+
 
 }
