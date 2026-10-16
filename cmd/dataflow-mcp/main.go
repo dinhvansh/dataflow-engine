@@ -9,6 +9,7 @@ import (
  "fmt"
  "io"
  "net/http"
+ "net/url"
  "os"
  "strings"
  "time"
@@ -42,6 +43,9 @@ func(s *server) handle(r request)any{
   t:=[]any{
    tool("dataflow_health","Check the DataFlow backend health",shape(nil,map[string]any{})),
    tool("dataflow_get_run","Read status of one known run UUID",shape([]string{"run_id"},map[string]any{"run_id":map[string]any{"type":"string"}})),
+   tool("dataflow_list_tables","List SQL Server tables in one schema using read-only metadata",shape([]string{"schema"},map[string]any{"schema":map[string]any{"type":"string"}})),
+   tool("dataflow_inspect_columns","Read SQL Server column names/types/primary keys and rowversion hints",shape([]string{"schema","table"},map[string]any{"schema":map[string]any{"type":"string"},"table":map[string]any{"type":"string"}})),
+   tool("dataflow_rowversion_upper","Read current SQL Server MIN_ACTIVE_ROWVERSION boundary; NOT a checkpoint",shape(nil,map[string]any{})),
   }
   if s.allowWrites{t=append(t,tool("dataflow_run_test_load","Starts an experimental append-only full load into a disposable ClickHouse target. REQUIRES user approval; never use against production.",shape([]string{"source_schema","source_table","target_database","target_table","batch_size","workers","queue_capacity"},map[string]any{
    "source_schema":map[string]any{"type":"string"},"source_table":map[string]any{"type":"string"},"target_database":map[string]any{"type":"string"},"target_table":map[string]any{"type":"string"},"batch_size":map[string]any{"type":"integer","minimum":100,"maximum":100000},"workers":map[string]any{"type":"integer","minimum":1,"maximum":32},"queue_capacity":map[string]any{"type":"integer","minimum":1,"maximum":100},
@@ -55,6 +59,16 @@ func(s *server) handle(r request)any{
   switch p.Name{
   case "dataflow_health":
    out,err=s.callAPI(ctx,"GET","/healthz",nil)
+  case "dataflow_list_tables":
+   var a struct{Schema string `json:"schema"`}
+   if json.Unmarshal(p.Arguments,&a)!=nil||a.Schema==""{return response(r.ID,textResult("schema required",true))}
+   out,err=s.callAPI(ctx,"GET","/api/v1/source/tables?schema="+url.QueryEscape(a.Schema),nil)
+  case "dataflow_inspect_columns":
+   var a struct{Schema string `json:"schema"`;Table string `json:"table"`}
+   if json.Unmarshal(p.Arguments,&a)!=nil||a.Schema==""||a.Table==""{return response(r.ID,textResult("schema and table required",true))}
+   out,err=s.callAPI(ctx,"GET","/api/v1/source/columns?schema="+url.QueryEscape(a.Schema)+"&table="+url.QueryEscape(a.Table),nil)
+  case "dataflow_rowversion_upper":
+   out,err=s.callAPI(ctx,"GET","/api/v1/source/rowversion-upper",nil)
   case "dataflow_get_run":
    var a struct{RunID string `json:"run_id"`}
    if json.Unmarshal(p.Arguments,&a)!=nil||len(a.RunID)!=36||strings.ContainsAny(a.RunID,"/?&#"){return response(r.ID,textResult("Invalid run UUID",true))}
