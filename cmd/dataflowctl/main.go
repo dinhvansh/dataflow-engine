@@ -45,6 +45,15 @@ func run(args []string)error{
  case "streams":
   if len(args)!=1{return errors.New("streams takes no arguments")}
   return c.request("GET","/api/v1/managed/streams",nil)
+ case "reconcile-list":
+  if len(args)!=1{return errors.New("reconcile-list accepts no arguments")}
+  return c.request("GET","/api/v1/reconcile/runs",nil)
+ case "reconcile-status":
+  if len(args)!=2||len(args[1])!=36{return errors.New("reconcile-status needs run UUID")}
+  return c.request("GET","/api/v1/reconcile/runs?id="+url.QueryEscape(args[1]),nil)
+ case "reconcile-run":
+  if len(args)!=2||len(args[1])!=36{return errors.New("reconcile-run needs stream UUID")}
+  return c.request("POST","/api/v1/reconcile/runs",map[string]string{"stream_id":args[1]})
  case "stream-run":
   if len(args)!=2{return errors.New("stream-run needs stream UUID")}
   if len(args[1])!=36||strings.ContainsAny(args[1],"&?/#"){return errors.New("invalid stream UUID")}
