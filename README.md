@@ -68,3 +68,15 @@ The repo now includes **opt-in asynchronous rowversion incremental runs** with P
 - [Managed stream setup and test plan](implementation/managed-incremental-v03.md)
 - [ClickHouse raw-event schema](deploy/clickhouse/001_raw_events.sql)
 - [One-command API smoke test](scripts/smoke-managed.sh)
+
+## v0.4 — Source-key Snapshot Reconciliation (detection-only)
+
+A verified, read-only SQL Server PK snapshot can now be compared against the last published complete snapshot to detect added, missing and rowversion-changed keys. Results are shown in React UI, CLI and MCP. This **does not apply DELETE tombstones** and is guarded by an explicit development flag.
+
+**Actual CI passed:** Go race tests, vet, Go command build, React build and ClickHouse 25.3 integration tests for a +1/-1/~1 snapshot difference.
+
+- [v0.4 Release Status](implementation/release-status-v04.md)
+- [Snapshot Reconciliation Test Guide](implementation/reconciliation-v04.md)
+- [Passing GitHub CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38864021334)
+
+Real Epicor SQL Server + PostgreSQL + ClickHouse end-to-end reconciliation has not yet been exercised; see the release status for gates.
