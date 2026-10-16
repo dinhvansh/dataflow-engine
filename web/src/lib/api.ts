@@ -43,3 +43,10 @@ export const managedApi={
   parse<ManagedRun>(fetch("/api/v1/managed/runs",{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({stream_id})})),
  status:(id:string,token:string)=>getSource<ManagedRun>(`/api/v1/managed/runs?id=${encodeURIComponent(id)}`,token)
 };
+
+export type ManagedSchedule={id:string;stream_id:string;interval_seconds:number;enabled:boolean;next_run_at:string};
+export const scheduleApi={
+ list:(token:string)=>getSource<{schedules:ManagedSchedule[]}>("/api/v1/managed/schedules",token),
+ save:(cfg:{stream_id:string;interval_seconds:number;enabled:boolean},token:string)=>
+  parse<ManagedSchedule>(fetch("/api/v1/managed/schedules",{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(cfg)}))
+};
