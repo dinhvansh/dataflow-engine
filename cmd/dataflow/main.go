@@ -15,6 +15,7 @@ import (
  "github.com/dinhvansh/dataflow-engine/internal/connectors/clickhouse"
  "github.com/dinhvansh/dataflow-engine/internal/connectors/sqlserver"
  "github.com/dinhvansh/dataflow-engine/internal/engine"
+ "github.com/dinhvansh/dataflow-engine/internal/cursor"
  "github.com/jackc/pgx/v5/pgxpool"
 )
 type RunRequest struct {
@@ -25,6 +26,8 @@ type RunRequest struct {
  BatchSize int `json:"batch_size"`
  Workers int `json:"workers"`
  QueueCapacity int `json:"queue_capacity"`
+ Mode string `json:"mode"`
+ LowerCursor string `json:"lower_cursor"`
 }
 type server struct {pg *pgxpool.Pool; sql *sql.DB; chURL,chUser,chPass,token string}
 func (s *server) run(w http.ResponseWriter,r *http.Request){
@@ -36,6 +39,8 @@ func (s *server) run(w http.ResponseWriter,r *http.Request){
  if req.BatchSize<100||req.BatchSize>100000||req.Workers<1||req.Workers>32||req.QueueCapacity<1||req.QueueCapacity>100{
   http.Error(w,"invalid runtime settings",400);return
  }
+ if req.Mode!="" && req.Mode!="full" && req.Mode!="rowversion"{http.Error(w,"unsupported mode",400);return}
+ if req.Mode=="rowversion" {if _,err:=cursor.ParseRowVersion(req.LowerCursor);err!=nil{http.Error(w,"invalid lower_cursor: "+err.Error(),400);return}}
  // This bootstrap only supports intentionally isolated TEST targets.
  if os.Getenv("DATAFLOW_ALLOW_TEST_LOAD")!="true"{http.Error(w,"test load disabled",403);return}
  ctx:=r.Context()
@@ -44,7 +49,14 @@ func (s *server) run(w http.ResponseWriter,r *http.Request){
  VALUES ('running',$1,$2) RETURNING id`,req.SourceSchema+"."+req.SourceTable,req.TargetDatabase+"."+req.TargetTable).Scan(&id)
  if err!=nil{http.Error(w,"cannot create run",500);return}
  started:=time.Now()
- rd:=&sqlserver.Reader{DB:s.sql,Schema:req.SourceSchema,Table:req.SourceTable,BatchSize:req.BatchSize}
+ var rd engine.Reader
+ var incremental *sqlserver.RowVersionReader
+ if req.Mode==""||req.Mode=="full"{rd=&sqlserver.Reader{DB:s.sql,Schema:req.SourceSchema,Table:req.SourceTable,BatchSize:req.BatchSize}} else if req.Mode=="rowversion"{
+  lower,parseErr:=cursor.ParseRowVersion(req.LowerCursor)
+  if parseErr!=nil{http.Error(w,"invalid lower_cursor: "+parseErr.Error(),400);return}
+  incremental=&sqlserver.RowVersionReader{DB:s.sql,Schema:req.SourceSchema,Table:req.SourceTable,BatchSize:req.BatchSize,Lower:lower}
+  rd=incremental
+ }else{http.Error(w,"unsupported mode",400);return}
  wr:=&clickhouse.Writer{Endpoint:s.chURL,Database:req.TargetDatabase,Table:req.TargetTable,Username:s.chUser,Password:s.chPass}
  stats,runErr:=engine.Run(ctx,engine.Config{Workers:req.Workers,QueueCapacity:req.QueueCapacity},rd,wr)
  status:="succeeded";message:=""
@@ -53,7 +65,9 @@ func (s *server) run(w http.ResponseWriter,r *http.Request){
  if _,err=s.pg.Exec(persistCtx,`UPDATE bootstrap_runs SET status=$2,rows_written=$3,batches_written=$4,error_message=$5,finished_at=now() WHERE id=$1`,id,status,stats.Rows,stats.Batches,message);err!=nil{log.Printf("run=%s persist: %v",id,err)}
  w.Header().Set("Content-Type","application/json")
  if runErr!=nil{w.WriteHeader(502)}
- _=json.NewEncoder(w).Encode(map[string]any{"run_id":id,"status":status,"rows_written":stats.Rows,"batches_written":stats.Batches,"elapsed_seconds":time.Since(started).Seconds(),"error":message})
+ upper:=""
+ if incremental!=nil&&runErr==nil{upper=incremental.Upper.String()}
+ _=json.NewEncoder(w).Encode(map[string]any{"run_id":id,"status":status,"rows_written":stats.Rows,"batches_written":stats.Batches,"upper_exclusive":upper,"elapsed_seconds":time.Since(started).Seconds(),"error":message})
 }
 func(s *server) status(w http.ResponseWriter,r *http.Request){
  if !s.validBearer(r){http.Error(w,"unauthorized",401);return}
