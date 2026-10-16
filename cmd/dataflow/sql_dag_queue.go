@@ -137,6 +137,15 @@ func(s *server)finalizeBadSQLDAG(claim sqlDAGClaim,cause error){
 // Dispatcher polls PostgreSQL; no direct goroutine spawned by the enqueue API.
 // Each scheduled run survives process restarts. Only readonly SELECT tasks
 // may replay after a worker lease expires.
+// Refuse to start the SQL DAG test runner with an outdated metadata schema.
+// Otherwise the API could accept queued work that no worker can ever claim.
+func(s *server)checkSQLDAGSchema(ctx context.Context)error{
+ if !sqlDAGEnabled(){return nil}
+ rows,err:=s.pg.Query(ctx,"SELECT lease_owner,lease_expires_at,fence_token,dispatch_attempts FROM dag_runs LIMIT 0")
+ if err!=nil{return fmt.Errorf("SQL DAG requires PostgreSQL migration 008: %w",err)}
+ defer rows.Close()
+ return rows.Err()
+}
 func(s *server)startSQLDAGDispatcher(ctx context.Context){
  if !sqlDAGEnabled(){log.Print("SQL DAG dispatcher disabled");return}
  if s.sqlDAGSlots==nil{s.sqlDAGSlots=make(chan struct{},2)}
