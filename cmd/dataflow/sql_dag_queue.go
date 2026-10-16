@@ -6,6 +6,7 @@ import(
  "errors"
  "fmt"
  "log"
+ "os"
  "time"
 
  "github.com/dinhvansh/dataflow-engine/internal/connectors/clickhouse"
@@ -111,7 +112,7 @@ func(s *server)runClaimedSQLDAG(parent context.Context,claim sqlDAGClaim){
   if job.Database!=scratchDatabase(){return errors.New("frozen job targets non-scratch database")}
   if err:=clickhouse.ValidateReadQuery(job.Query);err!=nil{return err}
   reader:=clickhouse.QueryJob{Endpoint:s.chURL,Database:job.Database,
-   Username:envReadonlyUser(),Password:envReadonlyPassword()}
+   Username:os.Getenv("DATAFLOW_CH_READONLY_USER"),Password:os.Getenv("DATAFLOW_CH_READONLY_PASSWORD")}
   _,err:=reader.Execute(stepCtx,job.Query)
   return err
  },opts)
