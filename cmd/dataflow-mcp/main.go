@@ -42,6 +42,7 @@ func(s *server) handle(r request)any{
  case "tools/list":
   t:=[]any{
    tool("dataflow_health","Check the DataFlow backend health",shape(nil,map[string]any{})),
+   tool("dataflow_list_recent_runs","List latest PostgreSQL-backed sync runs (read only)",shape(nil,map[string]any{})),
    tool("dataflow_get_run","Read status of one known run UUID",shape([]string{"run_id"},map[string]any{"run_id":map[string]any{"type":"string"}})),
    tool("dataflow_list_tables","List SQL Server tables in one schema using read-only metadata",shape([]string{"schema"},map[string]any{"schema":map[string]any{"type":"string"}})),
    tool("dataflow_inspect_columns","Read SQL Server column names/types/primary keys and rowversion hints",shape([]string{"schema","table"},map[string]any{"schema":map[string]any{"type":"string"},"table":map[string]any{"type":"string"}})),
@@ -60,6 +61,8 @@ func(s *server) handle(r request)any{
   switch p.Name{
   case "dataflow_health":
    out,err=s.callAPI(ctx,"GET","/healthz",nil)
+  case "dataflow_list_recent_runs":
+   out,err=s.callAPI(ctx,"GET","/api/v1/bootstrap/history?limit=20",nil)
   case "dataflow_list_tables":
    var a struct{Schema string `json:"schema"`}
    if json.Unmarshal(p.Arguments,&a)!=nil||a.Schema==""{return response(r.ID,textResult("schema required",true))}
