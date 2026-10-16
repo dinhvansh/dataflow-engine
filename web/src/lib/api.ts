@@ -50,3 +50,18 @@ export const scheduleApi={
  save:(cfg:{stream_id:string;interval_seconds:number;enabled:boolean},token:string)=>
   parse<ManagedSchedule>(fetch("/api/v1/managed/schedules",{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(cfg)}))
 };
+
+export type ReconciliationRun={
+ run_id:string;stream_id:string;status:string;previous_snapshot_id?:string;
+ scanned_rows:number;verified_rows:number;
+ added_keys:number|null;deleted_keys:number|null;changed_versions:number|null;
+ error?:string;detection_only?:boolean
+};
+export const reconciliationApi={
+ list:(token:string)=>getSource<{runs:ReconciliationRun[]}>("/api/v1/reconcile/runs",token),
+ run:(stream_id:string,token:string)=>parse<ReconciliationRun>(fetch("/api/v1/reconcile/runs",{
+  method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},
+  body:JSON.stringify({stream_id})
+ })),
+ status:(runID:string,token:string)=>getSource<ReconciliationRun>(`/api/v1/reconcile/runs?id=${encodeURIComponent(runID)}`,token)
+};

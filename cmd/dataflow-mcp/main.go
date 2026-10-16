@@ -44,6 +44,7 @@ func(s *server) handle(r request)any{
    tool("dataflow_health","Check the DataFlow backend health",shape(nil,map[string]any{})),
    tool("dataflow_list_recent_runs","List latest PostgreSQL-backed sync runs (read only)",shape(nil,map[string]any{})),
    tool("dataflow_list_managed_streams","List registered streams and committed native rowversion checkpoints",shape(nil,map[string]any{})),
+   tool("dataflow_list_reconciliations","View last 50 PK snapshot comparisons (read-only)",shape(nil,map[string]any{})),
    tool("dataflow_managed_run_status","Inspect an asynchronous managed incremental run by UUID",shape([]string{"run_id"},map[string]any{"run_id":map[string]any{"type":"string"}})),
    tool("dataflow_get_run","Read status of one known run UUID",shape([]string{"run_id"},map[string]any{"run_id":map[string]any{"type":"string"}})),
    tool("dataflow_list_tables","List SQL Server tables in one schema using read-only metadata",shape([]string{"schema"},map[string]any{"schema":map[string]any{"type":"string"}})),
@@ -56,6 +57,7 @@ func(s *server) handle(r request)any{
   })))}
   if s.allowWrites {
    t=append(t,tool("dataflow_run_managed_stream","Start an opt-in scratch-only managed incremental stream; requires explicit user approval.",shape([]string{"stream_id"},map[string]any{"stream_id":map[string]any{"type":"string"}})))
+   t=append(t,tool("dataflow_capture_reconciliation","Capture a full PK snapshot for a scratch stream. Heavy ERP SELECT read; requires user approval and server flag.",shape([]string{"stream_id"},map[string]any{"stream_id":map[string]any{"type":"string"}})))
   }
   return response(r.ID,map[string]any{"tools":t})
  case "tools/call":
@@ -70,6 +72,13 @@ func(s *server) handle(r request)any{
    out,err=s.callAPI(ctx,"GET","/api/v1/bootstrap/history?limit=20",nil)
   case "dataflow_list_managed_streams":
    out,err=s.callAPI(ctx,"GET","/api/v1/managed/streams",nil)
+  case "dataflow_list_reconciliations":
+   out,err=s.callAPI(ctx,"GET","/api/v1/reconcile/runs",nil)
+  case "dataflow_capture_reconciliation":
+   if !s.allowWrites{return response(r.ID,textResult("write tool disabled",true))}
+   var a struct{StreamID string `json:"stream_id"`}
+   if json.Unmarshal(p.Arguments,&a)!=nil||len(a.StreamID)!=36||strings.ContainsAny(a.StreamID,"/?&#"){return response(r.ID,textResult("invalid stream id",true))}
+   out,err=s.callAPI(ctx,"POST","/api/v1/reconcile/runs",a)
   case "dataflow_managed_run_status":
    var a struct{RunID string `json:"run_id"`}
    if json.Unmarshal(p.Arguments,&a)!=nil||len(a.RunID)!=36||strings.ContainsAny(a.RunID,"/?&#"){return response(r.ID,textResult("invalid run id",true))}

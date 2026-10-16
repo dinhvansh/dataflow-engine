@@ -1,3 +1,4 @@
+import {ReconciliationPanel} from "./ReconciliationPanel";
 import {SchedulePanel} from "./SchedulePanel";
 import {useEffect,useState} from "react";
 import {Activity,Database,Play,RefreshCw,ShieldCheck} from "lucide-react";
@@ -41,5 +42,6 @@ export function ManagedStreams({token}:{token:string}){
   {streams.length>0&&<div className="overflow-x-auto"><table className="w-full min-w-[690px] text-left text-xs"><thead><tr className="border-b border-slate-700 text-slate-400"><th className="py-3">Source → Target</th><th>Checkpoint (lower inclusive)</th><th>Performance</th><th>Action</th></tr></thead><tbody>{streams.map(s=><tr key={s.id} className="border-b border-slate-800"><td className="py-3">{s.source_schema}.{s.source_table}<span className="muted block">{s.target_database}.{s.target_table}</span></td><td className="font-mono text-sky-200">{s.lower_cursor||"—"}</td><td>{s.batch_size} batch · {s.workers} workers · {s.queue_capacity} queue</td><td><Button size="sm" disabled={!!busy||!token} onClick={()=>execute(s.id)}><Play size={14}/>Run</Button></td></tr>)}</tbody></table></div>}
   {run&&<div className="rounded-lg border border-slate-700 bg-slate-800/60 p-4"><div className="mb-2 flex items-center justify-between gap-2"><span className="flex items-center gap-2 font-semibold"><Activity size={16}/>Async run · {run.status}</span><Button size="sm" variant="outline" disabled={!!busy} onClick={refresh}><RefreshCw size={14}/>Status</Button></div><p className="muted break-all text-xs">Run ID: {run.run_id}</p><div className="mt-3 grid gap-2 text-sm sm:grid-cols-2"><p>Read boundary: <code>{run.lower_cursor||"—"}</code></p><p>Next lower: <code>{run.upper_exclusive||"—"}</code></p><p>Rows: {run.rows_written??0}</p><p>Batches: {run.batches_written??0}</p></div>{run.error&&<p className="mt-2 text-sm text-red-400">{run.error}</p>}</div>}
   <SchedulePanel token={token} streams={streams}/>
+  <ReconciliationPanel token={token} streams={streams}/>
  </section>;
 }

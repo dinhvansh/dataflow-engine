@@ -44,6 +44,9 @@ func (r *RowVersionReader) projection(ctx context.Context)(string,error){
   }
  }
  if !foundRev||!foundID{return "",errors.New("source requires SysRevID rowversion and SysRowID uniqueidentifier")}
+ unique,err:=HasUniqueSysRowID(ctx,r.DB,r.Schema,r.Table)
+ if err!=nil{return "",fmt.Errorf("source unique index inspection: %w",err)}
+ if !unique{return "",errors.New("SysRowID requires a declared unique single-key index for deterministic incremental pagination")}
  return strings.Join(expr,","),nil
 }
 
