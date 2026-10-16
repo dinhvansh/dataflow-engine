@@ -45,6 +45,28 @@ func run(args []string)error{
  case "streams":
   if len(args)!=1{return errors.New("streams takes no arguments")}
   return c.request("GET","/api/v1/managed/streams",nil)
+ case "sql-job-list":
+  if len(args)!=1{return errors.New("sql-job-list accepts no arguments")}
+  return c.request("GET","/api/v1/sql/jobs",nil)
+ case "sql-job-save":
+  if len(args)!=2{return errors.New("sql-job-save requires JSON file path")}
+  b,err:=os.ReadFile(args[1]);if err!=nil{return err}
+  var payload any;if err=json.Unmarshal(b,&payload);err!=nil{return err}
+  return c.request("POST","/api/v1/sql/jobs",payload)
+ case "sql-dag-list":
+  if len(args)!=1{return errors.New("sql-dag-list accepts no arguments")}
+  return c.request("GET","/api/v1/sql/dags",nil)
+ case "sql-dag-save":
+  if len(args)!=2{return errors.New("sql-dag-save requires JSON file path")}
+  b,err:=os.ReadFile(args[1]);if err!=nil{return err}
+  var payload any;if err=json.Unmarshal(b,&payload);err!=nil{return err}
+  return c.request("POST","/api/v1/sql/dags",payload)
+ case "sql-dag-run":
+  if len(args)!=2||len(args[1])!=36{return errors.New("sql-dag-run needs dag UUID")}
+  return c.request("POST","/api/v1/sql/dag-runs",map[string]string{"dag_id":args[1]})
+ case "sql-dag-status":
+  if len(args)!=2||len(args[1])!=36{return errors.New("sql-dag-status needs run UUID")}
+  return c.request("GET","/api/v1/sql/dag-runs?id="+url.QueryEscape(args[1]),nil)
  case "reconcile-list":
   if len(args)!=1{return errors.New("reconcile-list accepts no arguments")}
   return c.request("GET","/api/v1/reconcile/runs",nil)

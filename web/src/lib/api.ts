@@ -65,3 +65,16 @@ export const reconciliationApi={
  })),
  status:(runID:string,token:string)=>getSource<ReconciliationRun>(`/api/v1/reconcile/runs?id=${encodeURIComponent(runID)}`,token)
 };
+
+export type SQLJob={id:string;name:string;database:string;query:string;enabled:boolean};
+export type ExecutableDAG={id:string;name:string;enabled:boolean;nodes:PipelineNode[]};
+export type DAGRun={run_id:string;dag_id?:string;status:string;result?:{state:Record<string,string>;attempts:Record<string,number>;errors:Record<string,string>};error?:string};
+export const sqlDAGApi={
+ jobs:(token:string)=>getSource<{jobs:SQLJob[]}>("/api/v1/sql/jobs",token),
+ saveJob:(job:Omit<SQLJob,"id">,token:string)=>parse<SQLJob>(fetch("/api/v1/sql/jobs",{method:"POST",headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(job)})),
+ dags:(token:string)=>getSource<{pipelines:ExecutableDAG[]}>("/api/v1/sql/dags",token),
+ saveDAG:(dag:Omit<ExecutableDAG,"id">,token:string)=>parse<ExecutableDAG>(fetch("/api/v1/sql/dags",{method:"POST",headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(dag)})),
+ start:(dag_id:string,token:string)=>parse<DAGRun>(fetch("/api/v1/sql/dag-runs",{method:"POST",headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({dag_id})})),
+ run:(runID:string,token:string)=>getSource<DAGRun>(`/api/v1/sql/dag-runs?id=${encodeURIComponent(runID)}`,token),
+ history:(token:string)=>getSource<{runs:DAGRun[]}>("/api/v1/sql/dag-runs",token)
+};
