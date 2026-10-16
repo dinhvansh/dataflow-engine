@@ -1,10 +1,9 @@
 # Experimental dbt worker — deliberately separate from Go API and ERP connectors.
 FROM golang:1.23-alpine AS build
 WORKDIR /src
-COPY go.mod go.sum ./
-RUN go mod download
+COPY go.mod ./
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -o /out/dataflow-dbt-worker ./cmd/dataflow-dbt-worker
+RUN go mod tidy && CGO_ENABLED=0 go build -trimpath -o /out/dataflow-dbt-worker ./cmd/dataflow-dbt-worker
 
 FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PIP_DISABLE_PIP_VERSION_CHECK=1 DBT_SEND_ANONYMOUS_USAGE_STATS=false
