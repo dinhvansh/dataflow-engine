@@ -186,9 +186,7 @@ func(s *server)runClaimedManaged(parent context.Context,c managedClaim){
   if err==nil{
    // _run_id is the unique attempt owner, not the logical run UUID.
    // Old partial attempts cannot inflate this attempt's row count.
-   var count uint64
-   count,err=dest.CountRunRows(ctx,c.OwnerID)
-   if err==nil&&count!=stats.Rows{err=fmt.Errorf("destination mismatch: expected %d rows got %d",stats.Rows,count)}
+   err=verifyManagedAttempt(ctx,dest,c.OwnerID,stats.Rows)
    if err==nil{
     finishCtx,stop:=context.WithTimeout(ctx,20*time.Second)
     err=s.finishManagedSuccess(finishCtx,c,reader.Upper,stats)
@@ -207,6 +205,14 @@ func(s *server)runClaimedManaged(parent context.Context,c managedClaim){
  if failErr:=s.finishManagedFailure(finalCtx,c,err,stats);failErr!=nil{
   log.Printf("managed %s terminal failure write rejected: %v",c.RunID,failErr)
  }
+}
+// verifyManagedAttempt rejects a mismatch before any checkpoint mutation.
+// Each attempt has a distinct _run_id, isolating partial previous attempts.
+func verifyManagedAttempt(ctx context.Context,dest *clickhouse.Writer,attemptID string,expected uint64)error{
+ n,err:=dest.CountRunRows(ctx,attemptID)
+ if err!=nil{return fmt.Errorf("destination verification failed: %w",err)}
+ if n!=expected{return fmt.Errorf("destination mismatch for attempt: expected %d rows got %d",expected,n)}
+ return nil
 }
 func(s *server)startManagedDispatcher(ctx context.Context){
  if !managedEnabled(){log.Print("managed durable dispatcher disabled");return}
