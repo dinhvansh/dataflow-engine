@@ -48,6 +48,12 @@ func run(args []string)error{
  case "rowversion-upper":
   if len(args)!=1{return errors.New("rowversion-upper accepts no args")}
   return c.request("GET","/api/v1/source/rowversion-upper",nil)
+ case "validate-pipeline":
+  if len(args)!=2{return errors.New("validate-pipeline requires a JSON file")}
+  b,err:=os.ReadFile(args[1]);if err!=nil{return err}
+  var definition any
+  if err=json.Unmarshal(b,&definition);err!=nil{return err}
+  return c.request("POST","/api/v1/pipelines/validate",definition)
  case "status":
   if len(args)!=2{return errors.New("status requires run UUID")}
   if len(args[1])!=36||strings.ContainsAny(args[1],"&?/#"){return errors.New("invalid run UUID")}
