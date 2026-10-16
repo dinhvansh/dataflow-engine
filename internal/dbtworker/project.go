@@ -32,10 +32,10 @@ type Plan struct{
  Target string
 }
 type Outcome struct{
- Success bool \`json:"success"\`
- Log string \`json:"log"\`
- Results json.RawMessage \`json:"results"\`
- ElapsedSeconds float64 \`json:"elapsed_seconds"\`
+ Success bool `json:"success"`
+ Log string `json:"log"`
+ Results json.RawMessage `json:"results"`
+ ElapsedSeconds float64 `json:"elapsed_seconds"`
 }
 func ValidatePlan(p Plan,c Config)error{
  if !safe.MatchString(p.Name)||p.Target!="dfv_"+p.Name{return errors.New("unsafe dbt model or target name")}
@@ -101,7 +101,7 @@ func Execute(ctx context.Context,p Plan,c Config)(Outcome,error){
  artifact,readErr:=os.ReadFile(filepath.Join(root,"target","run_results.json"))
  if readErr==nil&&len(artifact)<512*1024&&json.Valid(artifact){
   var summary struct{
-   Results []struct{Status string \`json:"status"\`} \`json:"results"\`
+   Results []struct{Status string `json:"status"`} `json:"results"`
   }
   if json.Unmarshal(artifact,&summary)==nil{
    out.Results=json.RawMessage(artifact)
