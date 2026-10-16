@@ -20,6 +20,10 @@ func TestSafeIncrementalFullIntegration(t *testing.T){
  pg,err:=pgxpool.New(ctx,dsn);if err!=nil{t.Fatal(err)};defer pg.Close()
  schema,err:=os.ReadFile(filepath.Join("..","..","migrations","postgres","014_safe_incremental.sql"));if err!=nil{t.Fatal(err)}
  if _,err=pg.Exec(ctx,string(schema));err!=nil{t.Fatal(err)}
+ historyMigration,e:=os.ReadFile(filepath.Join("..","..","migrations","postgres","015_incremental_history_guard.sql"))
+ if e!=nil{t.Fatal(e)}
+ if _,e=pg.Exec(ctx,string(historyMigration));e!=nil{t.Fatal(e)}
+ t.Setenv("DATAFLOW_ENABLE_INCREMENTAL_HISTORY_GUARD_TEST","true")
  t.Setenv("DATAFLOW_ALLOW_TEST_LOAD","true")
  t.Setenv("DATAFLOW_ENABLE_DBT_TEST","true")
  t.Setenv("DATAFLOW_ENABLE_SAFE_TABLE_TEST","true")
@@ -78,6 +82,14 @@ func TestSafeIncrementalFullIntegration(t *testing.T){
  if state(first)!="ready"||checkpoint()!="0"{t.Fatalf("staging advanced cursor: %s / %s",state(first),checkpoint())}
  publish(first)
  if checkpoint()!="4"{t.Fatalf("first cursor wrong %s",checkpoint())}
+ // Guard cannot be disabled after publishing a witnessed target checkpoint.
+ t.Setenv("DATAFLOW_ENABLE_INCREMENTAL_HISTORY_GUARD_TEST","false")
+ downgraded:=enqueue()
+ dispatch("building")
+ if state(downgraded)!="failed"||checkpoint()!="4"{
+  t.Fatalf("guard downgrade unexpectedly succeeded: %s/%s",state(downgraded),checkpoint())
+ }
+ t.Setenv("DATAFLOW_ENABLE_INCREMENTAL_HISTORY_GUARD_TEST","true")
  out,err:=cli.Query(ctx,"SELECT ID,Revenue FROM scratch."+target+" ORDER BY ID FORMAT TabSeparatedRaw")
  if err!=nil||out!="A\t100\nC\t30\nD\t40"{t.Fatalf("first materialization wrong: %s %v",out,err)}
  // Stage may be replayed from scratch, but publish replay must be no-op.
@@ -102,8 +114,24 @@ func TestSafeIncrementalFullIntegration(t *testing.T){
  replay:=enqueue();dispatch("building")
  if state(replay)!="ready"||checkpoint()!="4"{t.Fatal("replay lost cursor")}
  t.Log("PASS insert/update/delete, two cursor commits, preserved backup and cursor rollback")
+ // INC-11: a late append below the restored cursor must not be published.
+ if _,err=cli.Query(ctx,"INSERT INTO scratch."+delta+" VALUES ('B',999,0,0)");err!=nil{t.Fatal(err)}
+ if _,err=pg.Exec(ctx,`UPDATE incremental_runs SET state='publishing',attempt_count=0
+  WHERE id=$1::uuid AND state='ready'`,replay);err!=nil{t.Fatal(err)}
+ dispatch("publishing")
+ if state(replay)=="published"||checkpoint()!="4"{t.Fatalf("late CDC event was silently published; state=%s cursor=%s",state(replay),checkpoint())}
+ // Requeue on the disposable fixture to verify detection also works when
+ // there are no new high-version events. Never mutate production metadata.
+ if _,err=pg.Exec(ctx,`UPDATE incremental_runs SET state='failed',
+  lease_owner=NULL,lease_until=NULL WHERE id=$1::uuid`,replay);err!=nil{t.Fatal(err)}
+ late:=enqueue()
+ dispatch("building")
+ if state(late)!="failed"||checkpoint()!="4"{
+  t.Fatalf("late event was silently skipped on new run; state=%s cursor=%s",state(late),checkpoint())
+ }
+ t.Log("PASS INC-11: late event blocks publish and subsequent incremental run")
  // Only test-owned scratch staging tables are removed.
- for _,id:=range []string{first,second,replay}{
+ for _,id:=range []string{first,downgraded,second,replay,late}{
   var st string;_ = pg.QueryRow(ctx,"SELECT stage_name FROM incremental_runs WHERE id=$1::uuid",id).Scan(&st)
   if st!=""{_,_=cli.Query(ctx,"DROP TABLE IF EXISTS scratch."+st)}
  }

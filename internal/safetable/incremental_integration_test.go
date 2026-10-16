@@ -41,3 +41,27 @@ func TestDeltaRejectDuplicateVersionIntegration(t *testing.T){
  _,err=cli.Query(ctx,"INSERT INTO scratch."+delta+" VALUES ('A',1,7,0),('A',2,7,0)");if err!=nil{t.Fatal(err)}
  if _,err=cli.DeltaStats(ctx,DeltaPlan{Target:target,Delta:delta,Key:"ID",Lower:0,Upper:7});err==nil{t.Fatal("duplicate key/version must be rejected")}
 }
+
+func TestDeltaHistoryDetectsOldVersionAppendIntegration(t *testing.T){
+ endpoint:=os.Getenv("DATAFLOW_INTEGRATION_CH_URL")
+ if endpoint==""{t.Skip("real disposable ClickHouse only")}
+ ctx,cancel:=context.WithTimeout(context.Background(),60*time.Second);defer cancel()
+ cli:=Client{Endpoint:endpoint,User:os.Getenv("DATAFLOW_INTEGRATION_CH_USER"),Password:os.Getenv("DATAFLOW_INTEGRATION_CH_PASSWORD")}
+ name:=fmt.Sprintf("hist%d",time.Now().UnixNano())
+ target:=TargetName(name);delta:="dfd_"+name
+ defer func(){for _,n:=range []string{target,delta}{_,_=cli.Query(context.Background(),"DROP TABLE IF EXISTS scratch."+n)}}()
+ for _,q:=range []string{
+  "CREATE TABLE scratch."+target+" (ID String, Revenue UInt64) ENGINE=MergeTree ORDER BY ID",
+  "CREATE TABLE scratch."+delta+" (ID String, Revenue UInt64, _df_version UInt64, _df_deleted UInt8) ENGINE=MergeTree ORDER BY (ID,_df_version)",
+  "INSERT INTO scratch."+delta+" VALUES ('A',10,1,0),('B',20,3,0)",
+ }{if _,err:=cli.Query(ctx,q);err!=nil{t.Fatal(err)}}
+ initial,err:=cli.DeltaHistory(ctx,target,delta,"ID",3)
+ if err!=nil||initial.Events!=2||initial.Digest==""{t.Fatalf("historical fingerprint invalid: %+v %v",initial,err)}
+ // Event version 2 arrives after checkpoint version 3.
+ if _,err=cli.Query(ctx,"INSERT INTO scratch."+delta+" VALUES ('A',99,2,0)");err!=nil{t.Fatal(err)}
+ later,err:=cli.DeltaHistory(ctx,target,delta,"ID",3)
+ if err!=nil||later.Events!=3||later==initial{t.Fatalf("late version not detected: old=%+v new=%+v err=%v",initial,later,err)}
+ // No additional max version exists, so a version-only consumer would skip it.
+ upper,err:=cli.UpperCursor(ctx,delta)
+ if err!=nil||upper!=3{t.Fatalf("watermark changed unexpectedly: %d %v",upper,err)}
+}
