@@ -35,3 +35,12 @@ UI operation and collecting screenshots/video/trace. Ensure staging and
 publishing point only to `scratch`, never production; require explicit
 manual authorization before any real Epicor TEST read. Mark any missing
 browser/database evidence BLOCKED, not PASS.
+
+`test_console_live.py` is skipped unless `DATAFLOW_LIVE_QA_OPT_IN=true`. It
+accepts loopback HTTP endpoints only, verifies all three database containers
+carry the local-QA owner/role labels, and confirms the source database is
+`DataFlowFixtureQA`. Configure the API itself and `DATAFLOW_LIVE_API_TOKEN`
+with the literal `synthetic-live-browser-token-not-a-secret`; a real bearer
+credential is refused because Playwright traces can contain request headers.
+Every run uses unique scratch names, deletes only those owned resources, and
+scans each trace payload for protected environment values.
