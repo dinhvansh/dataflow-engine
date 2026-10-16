@@ -20,6 +20,10 @@ func TestSafeIncrementalFullIntegration(t *testing.T){
  pg,err:=pgxpool.New(ctx,dsn);if err!=nil{t.Fatal(err)};defer pg.Close()
  schema,err:=os.ReadFile(filepath.Join("..","..","migrations","postgres","014_safe_incremental.sql"));if err!=nil{t.Fatal(err)}
  if _,err=pg.Exec(ctx,string(schema));err!=nil{t.Fatal(err)}
+ historyMigration,e:=os.ReadFile(filepath.Join("..","..","migrations","postgres","015_incremental_history_guard.sql"))
+ if e!=nil{t.Fatal(e)}
+ if _,e=pg.Exec(ctx,string(historyMigration));e!=nil{t.Fatal(e)}
+ t.Setenv("DATAFLOW_ENABLE_INCREMENTAL_HISTORY_GUARD_TEST","true")
  t.Setenv("DATAFLOW_ALLOW_TEST_LOAD","true")
  t.Setenv("DATAFLOW_ENABLE_DBT_TEST","true")
  t.Setenv("DATAFLOW_ENABLE_SAFE_TABLE_TEST","true")
@@ -102,8 +106,24 @@ func TestSafeIncrementalFullIntegration(t *testing.T){
  replay:=enqueue();dispatch("building")
  if state(replay)!="ready"||checkpoint()!="4"{t.Fatal("replay lost cursor")}
  t.Log("PASS insert/update/delete, two cursor commits, preserved backup and cursor rollback")
+ // INC-11: a late append below the restored cursor must not be published.
+ if _,err=cli.Query(ctx,"INSERT INTO scratch."+delta+" VALUES ('B',999,0,0)");err!=nil{t.Fatal(err)}
+ if _,err=pg.Exec(ctx,`UPDATE incremental_runs SET state='publishing',attempt_count=0
+  WHERE id=$1::uuid AND state='ready'`,replay);err!=nil{t.Fatal(err)}
+ dispatch("publishing")
+ if state(replay)=="published"||checkpoint()!="4"{t.Fatalf("late CDC event was silently published; state=%s cursor=%s",state(replay),checkpoint())}
+ // Requeue on the disposable fixture to verify detection also works when
+ // there are no new high-version events. Never mutate production metadata.
+ if _,err=pg.Exec(ctx,`UPDATE incremental_runs SET state='failed',
+  lease_owner=NULL,lease_until=NULL WHERE id=$1::uuid`,replay);err!=nil{t.Fatal(err)}
+ late:=enqueue()
+ dispatch("building")
+ if state(late)!="failed"||checkpoint()!="4"{
+  t.Fatalf("late event was silently skipped on new run; state=%s cursor=%s",state(late),checkpoint())
+ }
+ t.Log("PASS INC-11: late event blocks publish and subsequent incremental run")
  // Only test-owned scratch staging tables are removed.
- for _,id:=range []string{first,second,replay}{
+ for _,id:=range []string{first,second,replay,late}{
   var st string;_ = pg.QueryRow(ctx,"SELECT stage_name FROM incremental_runs WHERE id=$1::uuid",id).Scan(&st)
   if st!=""{_,_=cli.Query(ctx,"DROP TABLE IF EXISTS scratch."+st)}
  }
