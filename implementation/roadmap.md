@@ -129,3 +129,16 @@ See [v1.1 release status](release-status-v11.md).
 - [ ] Epicor TEST large-table E2E and production access/monitoring acceptance.
 
 See [v1.2 release status](release-status-v12.md).
+
+
+## v1.3 — Safe Incremental CDC (2026-10-16)
+
+- [x] Explicit scratch-only versioned delta contract (`_df_version UInt64`, `_df_deleted UInt8`).
+- [x] Latest-event per key with insert/update/delete, bounded copy-on-write staging and DQ.
+- [x] Durable PostgreSQL cursor windows, fenced claims, atomic UUID-guarded publish and cursor commit, rollback restoration.
+- [x] New Incremental CDC UI and manual Publish/Rollback controls.
+- [x] Real ClickHouse + PostgreSQL 2-window + replay + rollback tests; Go/Web CI and Docker worker green.
+- [ ] True physically efficient incremental updates/partition publish and 7m+ row benchmark.
+- [ ] Validated Epicor TEST CDC/delete event capture, snapshot consistency and late-arrival recovery.
+- [ ] Multi-model staged publish, production RBAC/audit, monitoring and backup retention.
+See [v1.3 release status](release-status-v13.md).
