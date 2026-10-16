@@ -6,6 +6,7 @@ import (
  "net/http"
  "os"
  "regexp"
+ "time"
 
  "github.com/dinhvansh/dataflow-engine/internal/connectors/sqlserver"
 )
@@ -110,10 +111,15 @@ func(s *server)managedRunAPI(w http.ResponseWriter,r *http.Request){
   ctx,cancel:=context.WithTimeout(r.Context(),10*time.Second);defer cancel()
   var streamID,status,lowerHex,upperHex,errMessage string
   var count,batches int64
-  err:=s.pg.QueryRow(ctx,`SELECT stream_id::text,status,COALESCE(encode(lower_cursor,'hex'),''),COALESCE(encode(upper_cursor,'hex'),''),rows_written,batches_written,COALESCE(error_message,'')
-  FROM managed_runs WHERE id=$1::uuid`,id).Scan(&streamID,&status,&lowerHex,&upperHex,&count,&batches,&errMessage)
+  var attempts int
+  var leaseUntil *time.Time
+  err:=s.pg.QueryRow(ctx,`SELECT stream_id::text,status,
+    COALESCE(encode(lower_cursor,'hex'),''),COALESCE(encode(upper_cursor,'hex'),''),
+    rows_written,batches_written,COALESCE(error_message,''),
+    dispatch_attempts,lease_expires_at
+  FROM managed_runs WHERE id=$1::uuid`,id).Scan(&streamID,&status,&lowerHex,&upperHex,&count,&batches,&errMessage,&attempts,&leaseUntil)
   if err!=nil{http.Error(w,"run not found",404);return}
-  jsonResponse(w,200,map[string]any{"run_id":id,"stream_id":streamID,"status":status,"lower_cursor":formatHex(lowerHex),"upper_exclusive":formatHex(upperHex),"rows_written":count,"batches_written":batches,"error":errMessage})
+  jsonResponse(w,200,map[string]any{"run_id":id,"stream_id":streamID,"status":status,"lower_cursor":formatHex(lowerHex),"upper_exclusive":formatHex(upperHex),"rows_written":count,"batches_written":batches,"error":errMessage,"dispatch_attempts":attempts,"lease_expires_at":leaseUntil})
  default:http.Error(w,"method not allowed",405)
  }
 }
