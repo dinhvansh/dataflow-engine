@@ -42,8 +42,10 @@ func claimTable(ctx context.Context,pg *pgxpool.Pool)(tableClaim,error){
  if err!=nil{return c,err}
  err=pg.QueryRow(ctx,`WITH candidate AS (
   SELECT id FROM table_runs
-   WHERE (state='queued' OR (state IN ('building','publishing','rolling_back')
-    AND lease_until<clock_timestamp()))
+   WHERE (state='queued'
+    OR (state IN ('publishing','rolling_back') AND lease_owner IS NULL)
+    OR (state IN ('building','publishing','rolling_back')
+      AND lease_until<clock_timestamp()))
     AND attempt_count<3
   ORDER BY created_at,id LIMIT 1 FOR UPDATE SKIP LOCKED
  )
