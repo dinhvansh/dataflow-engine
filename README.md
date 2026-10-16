@@ -100,3 +100,16 @@ SQL DAGs now use an opt-in PostgreSQL-backed worker queue instead of API-owned g
 - [Passing Go + frontend + PostgreSQL/ClickHouse CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38868112698)
 
 **Upgrade note:** existing PostgreSQL databases must apply migration `008_dag_leases.sql` before enabling SQL Job test execution. This is still a developer preview, not a production ETL release.
+
+
+## v0.7 — Restart-safe Managed Sync (dev preview)
+
+Managed Sync now uses a PostgreSQL durable run queue, one-active-run-per-stream constraint, heartbeat and fenced worker recovery. A fresh attempt UUID isolates ClickHouse row-count verification after a partial prior attempt. The checkpoint and successful run status commit atomically to PostgreSQL. Scheduler and API only enqueue runs.
+
+**Verified GitHub CI:** [run 38874212220](https://github.com/dinhvansh/dataflow-engine/actions/runs/38874212220) passed Go race tests/vet/build, frontend build and PostgreSQL 16 + ClickHouse 25.3 integration/failure tests.
+
+- [v0.7 release status](implementation/release-status-v07.md)
+- [v0.7 migration and test guide](implementation/managed-durable-v07.md)
+- [Merged PR #5](https://github.com/dinhvansh/dataflow-engine/pull/5)
+
+**Upgrade warning:** apply `migrations/postgres/009_managed_queue.sql` after resolving legacy active runs. Default execution flags remain OFF. No real Epicor source integration, DELETE capture, or production readiness claim.
