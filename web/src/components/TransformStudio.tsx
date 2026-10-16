@@ -74,6 +74,7 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
  const[error,setError]=useState("");
  const[info,setInfo]=useState("");
  const[sqlDirty,setSQLDirty]=useState(false);
+ const[compileError,setCompileError]=useState("");
  const active=useMemo(()=>model.steps.filter(s=>s.enabled!==false),[model.steps]);
  const selectedStep=model.steps.find(s=>s.id===selected);
  const selectedIndex=selected==="source"?0:Math.max(0,active.findIndex(s=>s.id===selected)+1);
@@ -83,6 +84,8 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
  const addStep=(type:TransformKind,position?:number)=>{
   if(model.steps.length>=30){setError("Chỉ hỗ trợ tối đa 30 bước");return}
   const step=makeStep(type,columns);
+  // Persisted models may already contain step_1 etc. Never reuse IDs.
+  while(model.steps.some(existing=>existing.id===step.id)){step.id="step_"+String(++nextID)}
   const next=[...model.steps];next.splice(position??next.length,0,step);
   patchModel({steps:next,mode:"visual"});setSelected(step.id);
  };
@@ -105,7 +108,7 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
  useEffect(()=>{
   if(!token)return;
   let live=true;const timeout=window.setTimeout(()=>{
-   void transformApi.compile(model,token).then(result=>{if(live){setCompiled(result);setSQLDirty(false)}}).catch(()=>{if(live){setCompiled(null);setSQLDirty(true)}});
+   void transformApi.compile(model,token).then(result=>{if(live){setCompiled(result);setSQLDirty(false);setCompileError("")}}).catch((cause:unknown)=>{if(live){setCompiled(null);setSQLDirty(true);setCompileError(String(cause))}});
   },320);
   return()=>{live=false;window.clearTimeout(timeout)};
  },[model,token]);
@@ -175,7 +178,7 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
     {model.mode==="sql"?<div className="space-y-2"><div className="flex items-center gap-2 text-xs text-slate-400"><Code2 size={15}/>Chế độ code: tự sửa câu SQL SELECT</div><textarea spellCheck={false} className="field min-h-64 font-mono text-xs leading-6" value={model.sql||""} onChange={e=>patchModel({sql:e.target.value})}/></div>:<div className="flex items-center gap-2 rounded-md border border-slate-800 bg-slate-900/70 p-2 text-xs"><Filter size={15}/><span>Đang xem: <b>{selected==="source"?"Source":labels[selectedStep?.type||"filter"]||"Kết quả cuối"}</b></span><span className="muted ml-auto">{active.length} bước đang bật</span></div>}
     {preview?<div className="space-y-3"><div className="flex items-center justify-between text-xs"><span className="text-emerald-400">Read-only preview · {preview.rows} dòng</span><span className="muted">Tối đa 50 dòng / lần</span></div><div className="max-h-[420px] overflow-auto rounded-lg border border-slate-700"><table className="w-full min-w-[560px] whitespace-nowrap text-left text-xs"><thead className="sticky top-0 bg-slate-800">{displayedFields.map(col=><th className="border-b border-slate-700 px-3 py-2" key={col}>{col}</th>)}</thead><tbody>{(preview.data||[]).map((row,i)=><tr key={i} className="border-b border-slate-800">{displayedFields.map(col=><td className="max-w-60 truncate px-3 py-2" key={col} title={String(row[col]??"NULL")}>{row[col]===null?<i className="muted">NULL</i>:typeof row[col]==="object"?JSON.stringify(row[col]):String(row[col]??"")}</td>)}</tr>)}</tbody></table>{(!preview.data||preview.data.length===0)&&<p className="muted p-6 text-center text-sm">Không có dòng dữ liệu; xem schema nếu có.</p>}</div></div>:
     <div className="flex min-h-44 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-700 bg-slate-900/40 p-6 text-center"><Eye size={26} className="text-slate-500"/><b className="text-sm">Xem dữ liệu sau từng bước</b><p className="muted max-w-sm text-xs">Chọn Source hoặc Applied Step bên phải rồi bấm Preview bước. Dữ liệu không được lưu hay chỉnh sửa.</p><Button variant="outline" disabled={busy||!token} onClick={doPreview}>Chạy Preview</Button></div>}
-    <div className="border-t border-slate-700 pt-3"><div className="mb-2 flex items-center gap-2 font-semibold text-sm"><Braces size={16}/>Generated SQL {sqlDirty&&<span className="muted text-xs">(đang cập nhật)</span>}</div><pre className="max-h-72 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-slate-950 p-3 font-mono text-xs leading-5 text-sky-200">{compiled?.sql||"Chọn nguồn hoặc nhập API token để tạo SQL."}</pre><p className="muted mt-2 text-xs">Chuyển sang SQL Code để sửa trực tiếp. SQL code độc lập với Applied Steps.</p></div>
+    <div className="border-t border-slate-700 pt-3"><div className="mb-2 flex items-center gap-2 font-semibold text-sm"><Braces size={16}/>Generated SQL {sqlDirty&&<span className="muted text-xs">(đang cập nhật)</span>}</div><pre className="max-h-72 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-slate-950 p-3 font-mono text-xs leading-5 text-sky-200">{compiled?.sql||"Chọn nguồn hoặc nhập API token để tạo SQL."}</pre>{compileError&&<p role="alert" className="mt-2 text-xs text-rose-300">Lỗi bước biến đổi: {compileError}</p>}<p className="muted mt-2 text-xs">Chuyển sang SQL Code để sửa trực tiếp. SQL code độc lập với Applied Steps.</p></div>
    </section>
    <aside className="section min-w-0 space-y-3">
     <div className="flex items-center justify-between"><h3 className="font-semibold">Applied Steps</h3><span className="muted text-xs">Kéo đổi thứ tự</span></div>
