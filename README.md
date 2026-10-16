@@ -80,3 +80,13 @@ A verified, read-only SQL Server PK snapshot can now be compared against the las
 - [Passing GitHub CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38864021334)
 
 Real Epicor SQL Server + PostgreSQL + ClickHouse end-to-end reconciliation has not yet been exercised; see the release status for gates.
+
+## v0.5 — Verified SQL Job + Executable DAG
+
+DataFlow now offers an experimental SELECT-only ClickHouse SQL Job registry, an asynchronous executable DAG engine with ALL dependencies, retries and per-node status, plus UI, CLI and MCP controls. Job SQL/plan snapshots are immutable per run. Runs are **test-only** and require explicit env flags plus a separately permissioned ClickHouse read-only user.
+
+- [v0.5 release status](implementation/release-status-v05.md)
+- [SQL Job and DAG setup](implementation/sql-dag-v05.md)
+- [Passing real PostgreSQL + ClickHouse CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38866264338)
+
+**Not yet present:** SQL transformation DML jobs, restart-safe queue, production auth/RBAC and validated live Epicor synchronization at scale.
