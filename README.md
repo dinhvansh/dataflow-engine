@@ -126,3 +126,14 @@ The Go SQL compiler generates restricted SELECT queries. Preview runs with a ded
 - [Passing Go + React + PostgreSQL/ClickHouse CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38887366877)
 
 **Upgrade note:** apply `migrations/postgres/010_transform_models.sql` in existing TEST PostgreSQL. Extraction/loading still require real Epicor TEST E2E acceptance before production.
+
+
+## v0.9 — Optional dbt Core worker, scratch View materialization
+
+Transform Studio now has **Build View (dbt)** after a visual model is saved. Go API enqueues an immutable transformation in PostgreSQL and a separately started, isolated worker uses pinned dbt Core/dbt-clickhouse to create a View in disposable `scratch.dfv_*`. Execution status, logs, attempt counts and dbt artifacts appear in DataFlow UI. Queue uses lease/fencing and finite restart replay.
+
+- [v0.9 release status](implementation/release-status-v09.md)
+- [dbt worker install and safety guide](implementation/dbt-worker-v09.md)
+- [Passing real dbt + PostgreSQL + ClickHouse + Docker CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38897813476)
+
+**Test-only:** use migration `011_dbt_runs.sql` and a separate scratch ClickHouse account. No Table/Incremental publishing, production RBAC, or completed Epicor end-to-end acceptance yet.
