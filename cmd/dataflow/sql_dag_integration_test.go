@@ -56,6 +56,9 @@ func TestSQLDAGIntegration(t *testing.T){
  if err=json.Unmarshal(raw,&result);err!=nil{t.Fatal(err)}
  if result.State["first"]!=dag.Succeeded||result.State["second"]!=dag.Succeeded{t.Fatalf("DAG results %+v",result)}
  if result.Attempts["first"]!=1||result.Attempts["second"]!=1{t.Fatalf("unexpected retries: %+v",result.Attempts)}
+ // Reset the intentionally corrupted registry SQL from the immutable
+ // snapshot test. Recovery must test worker leasing, not malformed SQL.
+ if _,err=pool.Exec(ctx,"UPDATE sql_jobs SET query_text='SELECT 1 AS answer' WHERE id=$1::uuid",id1);err!=nil{t.Fatal(err)}
  // Simulate process crash after claiming a persisted run.
  // A second worker must fence off the old owner when the lease expires.
  recoveryID,err:=s.queueSQLDag(ctx,dagID);if err!=nil{t.Fatal(err)}
@@ -78,6 +81,10 @@ func TestSQLDAGIntegration(t *testing.T){
  s.runClaimedSQLDAG(ctx,secondClaim)
  var recoveredStatus string;var attempts int
  if err=pool.QueryRow(ctx,"SELECT status,dispatch_attempts FROM dag_runs WHERE id=$1::uuid",recoveryID).Scan(&recoveredStatus,&attempts);err!=nil{t.Fatal(err)}
- if recoveredStatus!="succeeded"||attempts!=2{t.Fatalf("recovered status=%s attempts=%d",recoveredStatus,attempts)}
+ if recoveredStatus!="succeeded"||attempts!=2{
+  var detail string
+  _=pool.QueryRow(ctx,"SELECT COALESCE(error_message,'') FROM dag_runs WHERE id=$1::uuid",recoveryID).Scan(&detail)
+  t.Fatalf("recovered status=%s attempts=%d error=%s",recoveredStatus,attempts,detail)
+ }
 
 }
