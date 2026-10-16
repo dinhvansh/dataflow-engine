@@ -24,13 +24,13 @@ func PlanChain(models []Model,target string)([]Model,error){
   if !exists{return fmt.Errorf("missing upstream model %q",name)}
   if m.Mode!="visual"{return fmt.Errorf("model %q must use Visual mode",name)}
   if m.Database!="scratch"||m.Table==""{return fmt.Errorf("model %q must read a scratch source",name)}
-  if len(result)>=30{return errors.New("auto build exceeds 30 steps")}
   visited[name]=true
   if parent:=DependsOn(m);parent!=""{
    if parent==name{return errors.New("model cannot depend on itself")}
    if err:=visit(parent);err!=nil{return err}
   }
   visited[name]=false
+  if len(result)>=30{return errors.New("auto build exceeds 30 steps")}
   result=append(result,m)
   return nil
  }
