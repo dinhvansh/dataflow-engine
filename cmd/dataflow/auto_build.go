@@ -148,10 +148,27 @@ func(s *server)reconcileOneFlow(ctx context.Context)error{
    finished_at=clock_timestamp() WHERE id=$1::uuid`,id,message);e!=nil{return e}
   return tx.Commit(ctx)
  }
- var currentSQL string
- if err=tx.QueryRow(ctx,`SELECT compiled_sql FROM transform_models WHERE id=$1::uuid`,modelID).Scan(&currentSQL);err!=nil||currentSQL!=sqlText{
-  return fail("model changed during Auto Build; restart a new flow to use a consistent snapshot")
+ // Validate every already-completed ancestor and the current model
+ // against the original flow plan. This prevents a successful flow from
+ // silently combining stale upstream Views with newly edited definitions.
+ rows,err:=tx.Query(ctx,`SELECT f.model_name,f.compiled_sql,m.compiled_sql
+  FROM model_flow_steps f JOIN transform_models m ON m.id=f.model_id
+  WHERE f.flow_id=$1::uuid AND f.step_index<=$2 ORDER BY f.step_index`,id,current)
+ if err!=nil{return err}
+ changed:=""
+ for rows.Next(){
+  var stepName,snapshotSQL,currentSQL string
+  if err=rows.Scan(&stepName,&snapshotSQL,&currentSQL);err!=nil{break}
+  if snapshotSQL!=currentSQL{changed=stepName;break}
  }
+ scanErr:=rows.Err()
+ rows.Close()
+ if err!=nil||scanErr!=nil{return fail("cannot validate saved model snapshots")}
+ if changed!=""{return fail("model "+changed+" changed during Auto Build; restart a new flow")}
+ // Explicitly track missing models as failed, not indefinitely blocked.
+ var modelExists bool
+ err=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM transform_models WHERE id=$1::uuid)`,modelID).Scan(&modelExists)
+ if err!=nil||!modelExists{return fail("current model no longer exists")}
  if childID==nil{
   // A manual dbt job can already be operating on this model. Wait rather
   // than inserting conflicting jobs or stealing its worker lease.
