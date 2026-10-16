@@ -4,6 +4,7 @@ import (
  "context"
  "encoding/json"
  "os"
+ "path/filepath"
  "strings"
  "testing"
  "time"
@@ -22,7 +23,7 @@ func TestSQLDAGIntegration(t *testing.T){
  if os.Getenv("DATAFLOW_INTEGRATION_PG_ISOLATED")!="true"{t.Fatal("refusing to mutate PostgreSQL without isolated test database marker")}
  ctx,cancel:=context.WithTimeout(context.Background(),90*time.Second);defer cancel()
  pool,err:=pgxpool.New(ctx,pgDSN);if err!=nil{t.Fatal(err)};defer pool.Close()
- schema,err:=os.ReadFile("migrations/postgres/007_sql_dag.sql");if err!=nil{t.Fatal(err)}
+ schema,err:=os.ReadFile(filepath.Join("..","..","migrations","postgres","007_sql_dag.sql"));if err!=nil{t.Fatal(err)}
  for _,statement:=range strings.Split(string(schema),";"){
   if strings.TrimSpace(statement)==""{continue}
   if _,err=pool.Exec(ctx,statement);err!=nil{t.Fatalf("migration 007: %v",err)}
