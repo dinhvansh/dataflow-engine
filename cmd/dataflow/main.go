@@ -115,6 +115,7 @@ func main(){
  mux.HandleFunc("/api/v1/source/tables",svc.sourceAPI)
  mux.HandleFunc("/api/v1/source/columns",svc.sourceAPI)
  mux.HandleFunc("/api/v1/source/rowversion-upper",svc.sourceAPI)
+ mux.HandleFunc("/api/v1/pipelines/validate",svc.pipelineAPI)
  port:=8080;if p:=os.Getenv("PORT");p!=""{if v,e:=strconv.Atoi(p);e==nil&&v>0&&v<65536{port=v}}
  srv:=&http.Server{Addr:fmt.Sprintf(":%d",port),Handler:mux,ReadHeaderTimeout:5*time.Second}
  log.Printf("DataFlow bootstrap listening on :%d",port)
