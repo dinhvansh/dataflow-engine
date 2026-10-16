@@ -137,3 +137,16 @@ Transform Studio now has **Build View (dbt)** after a visual model is saved. Go 
 - [Passing real dbt + PostgreSQL + ClickHouse + Docker CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38897813476)
 
 **Test-only:** use migration `011_dbt_runs.sql` and a separate scratch ClickHouse account. No Table/Incremental publishing, production RBAC, or completed Epicor end-to-end acceptance yet.
+
+
+## v1.0 — Visual Data Lineage and safe dependency gating
+
+Click **Data Lineage** to explore a live metadata-derived source → Visual model → downstream graph with transitive impact highlighting. Transform Studio can select another model's generated scratch View as the input source.
+
+Model saves now reject dependency cycles atomically in PostgreSQL, while dbt View Build requires successful, up-to-date upstream View runs. Dependency build ordering is visible but still **manual**; this release does not introduce automatic dbt `ref()` orchestration.
+
+- [v1.0 release status](implementation/release-status-v10.md)
+- [Lineage usage guide](implementation/lineage-v10.md)
+- [Passing Go + React + PostgreSQL/ClickHouse/dbt CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/38900354620)
+
+**Developer preview only:** no production model materializations, managed E2E Epicor acceptance, or browser drag/drop automation certification.
