@@ -78,7 +78,11 @@ func(s *server) streamAPI(w http.ResponseWriter,r *http.Request){
   if err!=nil{http.Error(w,"cannot save stream",500);return}
   if _,err=tx.Exec(ctx,`INSERT INTO sync_checkpoints(stream_id) VALUES ($1::uuid) ON CONFLICT DO NOTHING`,cfg.ID);err!=nil{http.Error(w,"cannot initialize cursor",500);return}
   if err=tx.Commit(ctx);err!=nil{http.Error(w,"cannot commit stream",500);return}
-  cfg.LowerCursor="0x0000000000000000"
+  var lastHex string
+  if err=s.pg.QueryRow(ctx,`SELECT encode(lower_cursor,'hex') FROM sync_checkpoints WHERE stream_id=$1::uuid`,cfg.ID).Scan(&lastHex);err!=nil{
+   http.Error(w,"cannot read committed checkpoint",500);return
+  }
+  cfg.LowerCursor=formatHex(lastHex)
   jsonResponse(w,201,cfg)
  default:http.Error(w,"method not allowed",405)
  }
