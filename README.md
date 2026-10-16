@@ -1,0 +1,34 @@
+# DataFlow Engine — Engineering Documentation
+
+> Status: **Proposed / Design baseline** · Version: **0.1.0** · Date: 2026-10-16
+> Goal: replace required SQL Server/Epicor → ClickHouse Airbyte workloads with a Go streaming engine.
+
+## Documentation map
+
+- [System context](architecture/01-system-context.md)
+- [Ingestion runtime](architecture/02-ingestion-runtime.md)
+- [Cursor correctness](architecture/03-cursor-consistency.md) **read before coding**
+- [Change detection without CDC](architecture/04-change-detection.md)
+- [ClickHouse destination semantics](architecture/05-destination-semantics.md)
+- [Pipeline runtime](architecture/06-pipeline-runtime.md)
+- [Module catalog](modules/module-catalog.md)
+- [PostgreSQL DDL](contracts/postgres-schema.md)
+- [API v1](contracts/api-v1.md)
+- [Go connector contract](contracts/connector-interface.md)
+- [Sync-job JSON Schema](contracts/job-config.schema.json)
+- [Security & deployment](operations/security-deployment.md)
+- [Monitoring & runbook](operations/monitoring-runbook.md)
+- [Acceptance tests](testing/acceptance.md)
+- [Benchmark protocol](testing/benchmark.md)
+- [ADR-0001](decisions/adr-0001-baseline.md)
+- [Implementation roadmap](implementation/roadmap.md)
+
+## Scope
+Go backend, PostgreSQL from day one, SQL Server read-only connector, ClickHouse destination, native `SysRevID` rowversion, composite cursor, full/incremental sync, safe restart, bounded queue/worker pool, reconciliation for physical DELETE, SQL and quality jobs, scheduler and DAG pipeline.
+
+## Source constraints
+- Epicor: strictly SELECT-only, no source DDL/triggers/CDC installation.
+- Test: SQL Server `SRVERPTEST / ERPDBTEST`, schema `Erp`; ClickHouse HTTP 8124, native 9001 (environment-specific, not constants).
+- `Erp.PartTran` (~6.95m historical test rows) is the initial benchmark target; recheck current counts and schema.
+- [DECIDED] = working architecture, [PROPOSED] = design suggestion, [VERIFY] = needs measured validation, [RISK] = correctness boundary.
+- No code or benchmark results yet. Never claim exactly-once end-to-end or complete event history from rowversion polling.
