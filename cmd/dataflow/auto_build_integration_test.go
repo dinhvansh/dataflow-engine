@@ -83,6 +83,11 @@ func TestAutoBuildRealDBTIntegration(t *testing.T){
  config:=dbtworker.Config{Binary:dbtBin,Host:"127.0.0.1",Port:8123,Database:"scratch",
   Username:writer.User,Password:writer.Password}
  for _,name:=range []string{a,b,c}{
+  if name==b{
+   // Simulate an API restart: all parent/child state must live in PG,
+   // not in Go process memory.
+   svc=&server{pg:pg,chURL:clickhouseURL,token:"ci-flow-token"}
+  }
   if err=svc.reconcileOneFlow(ctx);err!=nil{t.Fatal(err)}
   var childID,childName,childSQL,childTarget string
   err=pg.QueryRow(ctx,`SELECT d.id::text,d.model_name,d.compiled_sql,d.target_relation FROM dbt_runs d
@@ -106,7 +111,31 @@ func TestAutoBuildRealDBTIntegration(t *testing.T){
  var successful int
  if err=pg.QueryRow(ctx,`SELECT count(*) FROM model_flow_steps
   WHERE flow_id=$1::uuid AND status='succeeded' AND rows_verified=2`,result.RunID).Scan(&successful);err!=nil||successful!=3{t.Fatalf("DQ check status %d %v",successful,err)}
- t.Log("PASS real dbt A → B → C, View DQ gate, durable status and output")
+ t.Log("PASS real dbt A → B → C, View DQ gate, restart-safe state and output")
+
+ // Change A AFTER A has succeeded but BEFORE B is queued. The parent
+ // must reject the drift in ANY ancestor, not only the next model B.
+ drift:=call(modelIDs[c])
+ if drift.Code!=202{t.Fatalf("drift flow enqueue %d %s",drift.Code,drift.Body.String())}
+ var driftFlow struct{RunID string `json:"run_id"`}
+ if err=json.Unmarshal(drift.Body.Bytes(),&driftFlow);err!=nil{t.Fatal(err)}
+ if err=svc.reconcileOneFlow(ctx);err!=nil{t.Fatal(err)}
+ var driftChild string
+ if err=pg.QueryRow(ctx,`SELECT dbt_run_id::text FROM model_flow_steps
+  WHERE flow_id=$1::uuid AND step_index=0`,driftFlow.RunID).Scan(&driftChild);err!=nil{t.Fatal(err)}
+ if _,err=pg.Exec(ctx,`UPDATE dbt_runs SET status='succeeded' WHERE id=$1::uuid`,driftChild);err!=nil{t.Fatal(err)}
+ if err=svc.reconcileOneFlow(ctx);err!=nil{t.Fatal(err)} // DQ A then advance
+ var originalASQL string
+ if err=pg.QueryRow(ctx,"SELECT compiled_sql FROM transform_models WHERE id=$1::uuid",modelIDs[a]).Scan(&originalASQL);err!=nil{t.Fatal(err)}
+ if _,err=pg.Exec(ctx,"UPDATE transform_models SET compiled_sql='SELECT 999 AS changed' WHERE id=$1::uuid",modelIDs[a]);err!=nil{t.Fatal(err)}
+ if err=svc.reconcileOneFlow(ctx);err!=nil{t.Fatal(err)}
+ var driftStatus string
+ if err=pg.QueryRow(ctx,"SELECT status FROM model_flow_runs WHERE id=$1::uuid",driftFlow.RunID).Scan(&driftStatus);err!=nil||driftStatus!="failed"{t.Fatalf("ancestor drift not rejected %s %v",driftStatus,err)}
+ var BCount int
+ if err=pg.QueryRow(ctx,`SELECT count(*) FROM model_flow_steps
+  WHERE flow_id=$1::uuid AND step_index=1 AND dbt_run_id IS NOT NULL`,driftFlow.RunID).Scan(&BCount);err!=nil||BCount!=0{t.Fatalf("B queued after A changed %d %v",BCount,err)}
+ if _,err=pg.Exec(ctx,"UPDATE transform_models SET compiled_sql=$2 WHERE id=$1::uuid",modelIDs[a],originalASQL);err!=nil{t.Fatal(err)}
+ t.Log("PASS upstream SQL drift blocks downstream B")
 
  // A new flow must stop before enqueueing B if A fails.
  stopFlow:=call(modelIDs[b])
