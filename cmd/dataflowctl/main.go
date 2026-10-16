@@ -42,6 +42,29 @@ func run(args []string)error{
  case "runs":
   if len(args)!=1{return errors.New("runs takes no arguments")}
   return c.request("GET","/api/v1/bootstrap/history?limit=50",nil)
+ case "streams":
+  if len(args)!=1{return errors.New("streams takes no arguments")}
+  return c.request("GET","/api/v1/managed/streams",nil)
+ case "stream-run":
+  if len(args)!=2{return errors.New("stream-run needs stream UUID")}
+  if len(args[1])!=36||strings.ContainsAny(args[1],"&?/#"){return errors.New("invalid stream UUID")}
+  return c.request("POST","/api/v1/managed/runs",map[string]string{"stream_id":args[1]})
+ case "managed-status":
+  if len(args)!=2{return errors.New("managed-status needs run UUID")}
+  if len(args[1])!=36||strings.ContainsAny(args[1],"&?/#"){return errors.New("invalid run UUID")}
+  return c.request("GET","/api/v1/managed/runs?id="+url.QueryEscape(args[1]),nil)
+ case "stream-create":
+  fs:=flag.NewFlagSet("stream-create",flag.ContinueOnError)
+  schema:=fs.String("schema","Erp","source schema")
+  table:=fs.String("table","","source table")
+  database:=fs.String("database","scratch","ClickHouse scratch database")
+  target:=fs.String("target","dataflow_raw_events","ClickHouse raw events table")
+  batch:=fs.Int("batch",10000,"rows per batch")
+  workers:=fs.Int("workers",2,"writer workers")
+  queue:=fs.Int("queue",4,"queue capacity")
+  if err:=fs.Parse(args[1:]);err!=nil{return err}
+  if *table==""{return errors.New("--table required")}
+  return c.request("POST","/api/v1/managed/streams",map[string]any{"source_schema":*schema,"source_table":*table,"target_database":*database,"target_table":*target,"batch_size":*batch,"workers":*workers,"queue_capacity":*queue})
  case "tables":
   if len(args)!=2{return errors.New("tables requires source schema")}
   return c.request("GET","/api/v1/source/tables?schema="+url.QueryEscape(args[1]),nil)
