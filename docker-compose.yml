@@ -10,7 +10,7 @@ services:
    - "127.0.0.1:5433:5432"
   volumes:
    - pgdata:/var/lib/postgresql/data
-   - ./migrations/postgres/001_bootstrap.sql:/docker-entrypoint-initdb.d/001_bootstrap.sql:ro
+   - ./migrations/postgres:/docker-entrypoint-initdb.d:ro
   healthcheck:
    test: ["CMD-SHELL","pg_isready -U dataflow -d dataflow"]
    interval: 5s
