@@ -48,3 +48,13 @@ Refer to [Release Status v0.4](release-status-v04.md) and [Reconciliation Test G
 - [ ] Epicor TEST + ClickHouse + PostgreSQL failure-injection E2E and performance acceptance.
 - [ ] Production-safe idempotent SQL materialization and deletion repairs.
 See [v0.6 status](release-status-v06.md).
+
+
+## v0.7 — Managed Sync stability milestone (2026-10-16)
+
+- [x] Durable PostgreSQL queue for Managed Sync API/scheduler with single active run per stream.
+- [x] Fenced lease claim, heartbeat and bounded crash attempts.
+- [x] Per-attempt ClickHouse event verification, atomic PostgreSQL checkpoint+run completion.
+- [x] PostgreSQL 16 + ClickHouse 25.3 integration CI, including transient crashes and row-count mismatch; all Go and Web checks passed.
+- [ ] Real SQL Server TEST -> PostgreSQL -> ClickHouse E2E, type mapping, snapshot window correctness, benchmark.
+- [ ] Delete capture/reconciliation application, production RBAC and operational high availability.
