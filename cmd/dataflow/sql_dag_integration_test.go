@@ -3,6 +3,7 @@ package main
 import (
  "context"
  "encoding/json"
+ "errors"
  "os"
  "path/filepath"
  "strings"
@@ -12,6 +13,7 @@ import (
  "github.com/dinhvansh/dataflow-engine/internal/jobs/dag"
  "github.com/dinhvansh/dataflow-engine/internal/jobs/executor"
  "github.com/jackc/pgx/v5/pgxpool"
+ "github.com/jackc/pgx/v5"
 )
 
 // SQL DAG integration requires a disposable Postgres database AND a running
@@ -23,10 +25,13 @@ func TestSQLDAGIntegration(t *testing.T){
  if os.Getenv("DATAFLOW_INTEGRATION_PG_ISOLATED")!="true"{t.Fatal("refusing to mutate PostgreSQL without isolated test database marker")}
  ctx,cancel:=context.WithTimeout(context.Background(),90*time.Second);defer cancel()
  pool,err:=pgxpool.New(ctx,pgDSN);if err!=nil{t.Fatal(err)};defer pool.Close()
- schema,err:=os.ReadFile(filepath.Join("..","..","migrations","postgres","007_sql_dag.sql"));if err!=nil{t.Fatal(err)}
- for _,statement:=range strings.Split(string(schema),";"){
-  if strings.TrimSpace(statement)==""{continue}
-  if _,err=pool.Exec(ctx,statement);err!=nil{t.Fatalf("migration 007: %v",err)}
+ for _,version:=range []string{"007_sql_dag.sql","008_dag_leases.sql"}{
+  schema,readErr:=os.ReadFile(filepath.Join("..","..","migrations","postgres",version))
+  if readErr!=nil{t.Fatal(readErr)}
+  for _,statement:=range strings.Split(string(schema),";"){
+   if strings.TrimSpace(statement)==""{continue}
+   if _,err=pool.Exec(ctx,statement);err!=nil{t.Fatalf("migration %s: %v",version,err)}
+  }
  }
  t.Setenv("DATAFLOW_TEST_TARGET_DATABASE","scratch")
  t.Setenv("DATAFLOW_ALLOW_TEST_LOAD","true")
@@ -51,4 +56,28 @@ func TestSQLDAGIntegration(t *testing.T){
  if err=json.Unmarshal(raw,&result);err!=nil{t.Fatal(err)}
  if result.State["first"]!=dag.Succeeded||result.State["second"]!=dag.Succeeded{t.Fatalf("DAG results %+v",result)}
  if result.Attempts["first"]!=1||result.Attempts["second"]!=1{t.Fatalf("unexpected retries: %+v",result.Attempts)}
+ // Simulate process crash after claiming a persisted run.
+ // A second worker must fence off the old owner when the lease expires.
+ recoveryID,err:=s.queueSQLDag(ctx,dagID);if err!=nil{t.Fatal(err)}
+ firstClaim,err:=s.claimSQLDAG(ctx,recoveryID);if err!=nil{t.Fatal(err)}
+ if firstClaim.Attempts!=1{t.Fatalf("first dispatch attempt=%d",firstClaim.Attempts)}
+ var initialStatus string
+ if err=pool.QueryRow(ctx,"SELECT status FROM dag_runs WHERE id=$1::uuid",recoveryID).Scan(&initialStatus);err!=nil||initialStatus!="running"{t.Fatalf("unexpected claim status: %s %v",initialStatus,err)}
+ // Simulate a crashed worker by expiring the lease in the disposable DB.
+ if _,err=pool.Exec(ctx,"UPDATE dag_runs SET lease_expires_at=clock_timestamp()-interval '1 second' WHERE id=$1::uuid",recoveryID);err!=nil{t.Fatal(err)}
+ secondClaim,err:=s.claimSQLDAG(ctx,recoveryID)
+ if err!=nil{t.Fatalf("restart recovery failed: %v",err)}
+ if secondClaim.Fence<=firstClaim.Fence||secondClaim.Owner==firstClaim.Owner||secondClaim.Attempts!=2{
+  t.Fatalf("fence did not advance old=%+v new=%+v",firstClaim,secondClaim)
+ }
+ if err=s.completeSQLDAG(ctx,firstClaim,"succeeded",map[string]any{"forged":true},"");err==nil{
+  t.Fatal("expired worker incorrectly overwrote recovered owner")
+ }
+ // A concurrent worker must not acquire an already leased job.
+ if _,err=s.claimSQLDAG(ctx,recoveryID);!errors.Is(err,pgx.ErrNoRows){t.Fatalf("double claim permitted: %v",err)}
+ s.runClaimedSQLDAG(ctx,secondClaim)
+ var recoveredStatus string;var attempts int
+ if err=pool.QueryRow(ctx,"SELECT status,dispatch_attempts FROM dag_runs WHERE id=$1::uuid",recoveryID).Scan(&recoveredStatus,&attempts);err!=nil{t.Fatal(err)}
+ if recoveredStatus!="succeeded"||attempts!=2{t.Fatalf("recovered status=%s attempts=%d",recoveredStatus,attempts)}
+
 }
