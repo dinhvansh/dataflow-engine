@@ -30,7 +30,7 @@ type RunRequest struct {
  LowerCursor string `json:"lower_cursor"`
  AtomicReplace bool `json:"atomic_replace"`
 }
-type server struct {pg *pgxpool.Pool; sql *sql.DB; chURL,chUser,chPass,token string}
+type server struct {pg *pgxpool.Pool; sql *sql.DB; chURL,chUser,chPass,token string; managedSlots chan struct{}}
 func (s *server) run(w http.ResponseWriter,r *http.Request){
  if r.Method!=http.MethodPost{http.Error(w,"POST required",405);return}
  if !s.validBearer(r){http.Error(w,"unauthorized",401);return}
@@ -107,7 +107,7 @@ func main(){
  db,err:=sql.Open("sqlserver",os.Getenv("DATAFLOW_SQLSERVER_DSN"));if err!=nil{log.Fatal(err)};defer db.Close()
  db.SetMaxOpenConns(4);db.SetMaxIdleConns(2)
  if err=db.PingContext(ctx);err!=nil{log.Fatal(err)}
- svc:=&server{pg:pg,sql:db,chURL:os.Getenv("DATAFLOW_CH_URL"),chUser:os.Getenv("DATAFLOW_CH_USER"),chPass:os.Getenv("DATAFLOW_CH_PASSWORD"),token:os.Getenv("DATAFLOW_API_TOKEN")}
+ svc:=&server{pg:pg,sql:db,chURL:os.Getenv("DATAFLOW_CH_URL"),chUser:os.Getenv("DATAFLOW_CH_USER"),chPass:os.Getenv("DATAFLOW_CH_PASSWORD"),token:os.Getenv("DATAFLOW_API_TOKEN"),managedSlots:make(chan struct{},2)}
  mux:=http.NewServeMux()
  mux.HandleFunc("/healthz",func(w http.ResponseWriter,r *http.Request){_,_=w.Write([]byte("ok"))})
  mux.HandleFunc("/api/v1/bootstrap/runs",svc.run)
@@ -117,6 +117,8 @@ func main(){
  mux.HandleFunc("/api/v1/source/rowversion-upper",svc.sourceAPI)
  mux.HandleFunc("/api/v1/pipelines/validate",svc.pipelineAPI)
  mux.HandleFunc("/api/v1/bootstrap/history",svc.history)
+ mux.HandleFunc("/api/v1/managed/streams",svc.streamAPI)
+ mux.HandleFunc("/api/v1/managed/runs",svc.managedRunAPI)
  port:=8080;if p:=os.Getenv("PORT");p!=""{if v,e:=strconv.Atoi(p);e==nil&&v>0&&v<65536{port=v}}
  srv:=&http.Server{Addr:fmt.Sprintf(":%d",port),Handler:mux,ReadHeaderTimeout:5*time.Second}
  log.Printf("DataFlow bootstrap listening on :%d",port)
