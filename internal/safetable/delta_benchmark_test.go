@@ -123,8 +123,7 @@ func TestDeltaPerformanceQAIntegration(t *testing.T){
   var lines strings.Builder
   for _,sample:=range all{
    encoded,_:=json.Marshal(sample)
-   lines.Write(encoded);lines.WriteByte('
-')
+   lines.Write(encoded);lines.WriteByte(10)
   }
   if err=os.WriteFile(output,[]byte(lines.String()),0600);err!=nil{t.Fatal(err)}
  }
