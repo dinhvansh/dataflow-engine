@@ -26,6 +26,7 @@ func TestLineageAPIIntegration(t *testing.T){
   if _,e=pool.Exec(ctx,string(data));e!=nil{t.Fatal(e)}
  }
  t.Setenv("DATAFLOW_ALLOW_TEST_LOAD","true");t.Setenv("DATAFLOW_ENABLE_SQL_JOBS_TEST","true")
+ t.Setenv("DATAFLOW_CH_READONLY_USER","dataflow_reader");t.Setenv("DATAFLOW_CH_READONLY_PASSWORD","ci-read-password")
  t.Setenv("DATAFLOW_ENABLE_DBT_TEST","true");t.Setenv("DATAFLOW_TEST_TARGET_DATABASE","scratch")
  svc:=&server{pg:pool,token:"lineage-test-secret"}
  postModel:=func(m transform.Model)(int,string){
