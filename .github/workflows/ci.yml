@@ -2,7 +2,6 @@ name: CI
 on:
   push:
   pull_request:
-
 jobs:
   go:
     runs-on: ubuntu-latest
@@ -30,7 +29,7 @@ jobs:
           DATAFLOW_INTEGRATION_CH_USER: default
           DATAFLOW_INTEGRATION_CH_PASSWORD: ci-test-password
         run: go test ./internal/connectors/clickhouse -run Integration -count=1 -v
-      - name: Visual transformation SQL integration on real ClickHouse
+      - name: Visual Transform SQL integration
         env:
           DATAFLOW_INTEGRATION_CH_URL: http://127.0.0.1:8123
           DATAFLOW_INTEGRATION_CH_USER: default
@@ -49,7 +48,7 @@ jobs:
           curl --fail-with-body -sS -u default:ci-test-password --data-binary "CREATE USER IF NOT EXISTS dataflow_reader IDENTIFIED WITH sha256_password BY 'ci-read-password'" http://127.0.0.1:8123/
           curl --fail-with-body -sS -u default:ci-test-password --data-binary "GRANT SELECT ON scratch.* TO dataflow_reader" http://127.0.0.1:8123/
           curl -fsS -u dataflow_reader:ci-read-password --data-binary "SELECT 1" http://127.0.0.1:8123/
-      - name: PostgreSQL and ClickHouse managed recovery + SQL DAG integration
+      - name: PostgreSQL and ClickHouse integration
         env:
           DATAFLOW_INTEGRATION_POSTGRES_DSN: postgres://dataflow_ci:ci-postgres-password@127.0.0.1:5433/dataflow_ci?sslmode=disable
           DATAFLOW_INTEGRATION_PG_ISOLATED: "true"
@@ -58,25 +57,7 @@ jobs:
           DATAFLOW_INTEGRATION_CH_PASSWORD: ci-read-password
           DATAFLOW_INTEGRATION_CH_WRITER_USER: default
           DATAFLOW_INTEGRATION_CH_WRITER_PASSWORD: ci-test-password
-        run: go test ./cmd/dataflow -run 'Test(ManagedQueueIntegration|SQLDAGIntegration|TransformStudioIntegration)
-      - name: Container logs on failure
-        if: failure()
-        run: |
-          docker logs df-clickhouse --tail 100 || true
-          docker logs df-postgres --tail 100 || true
-  web:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: npm install --no-audit --no-fund
-      - run: npm run build
- -count=1 -v
+        run: go test ./cmd/dataflow -run 'Test(ManagedQueueIntegration|SQLDAGIntegration|TransformStudioIntegration)$' -count=1 -v
       - name: Container logs on failure
         if: failure()
         run: |
