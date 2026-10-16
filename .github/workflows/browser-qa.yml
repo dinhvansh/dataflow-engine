@@ -1,0 +1,48 @@
+name: Browser UI QA (mock API)
+on:
+  push:
+    paths:
+      - "web/**"
+      - "qa/browser/**"
+      - ".github/workflows/browser-qa.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - "qa/browser/**"
+      - ".github/workflows/browser-qa.yml"
+jobs:
+  browser-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install frontend and pinned Python browser tools
+        run: |
+          npm ci --prefix web
+          python -m pip install 'pytest==8.4.2' 'playwright==1.56.0'
+          python -m playwright install --with-deps chromium
+      - name: Start Vite (all API routes are mocked)
+        run: |
+          (cd web && npm run dev -- --host 127.0.0.1 --port 5173) > /tmp/dataflow-vite.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:5173/ >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/
+      - name: Run six mocked browser UI contract cases
+        env:
+          DATAFLOW_BROWSER_BASE_URL: http://127.0.0.1:5173
+        run: python -m pytest qa/browser/test_console.py -q
+      - name: Upload browser traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dataflow-browser-traces
+          path: |
+            qa/browser/artifacts/
+            /tmp/dataflow-vite.log
