@@ -67,6 +67,10 @@ func(s *server) streamAPI(w http.ResponseWriter,r *http.Request){
    if col.Name=="SysRowID"&&col.SQLType=="uniqueidentifier"{id=true}
   }
   if !rev||!id{http.Error(w,"source requires native SysRevID rowversion and SysRowID uniqueidentifier",422);return}
+  var isolation string
+  if err=s.sql.QueryRowContext(ctx,`SELECT snapshot_isolation_state_desc FROM sys.databases WHERE name=DB_NAME()`).Scan(&isolation);err!=nil||isolation!="ON"{
+   http.Error(w,"SQL Server SNAPSHOT isolation must already be ON (DBA-managed setting)",422);return
+  }
   tx,err:=s.pg.Begin(ctx)
   if err!=nil{http.Error(w,"metadata storage unavailable",500);return}
   defer tx.Rollback(ctx)
