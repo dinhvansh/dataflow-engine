@@ -74,10 +74,16 @@ func main(){
    err=checkTableSchema(chk,pg);done()
    if err!=nil{log.Fatal(err)}
  }
+ if incrementalWorkerEnabled(){
+  chk,done:=context.WithTimeout(ctx,10*time.Second)
+  err=checkIncrementalSchema(chk,pg);done()
+  if err!=nil{log.Fatal(err)}
+ }
  ticker:=time.NewTicker(3*time.Second);defer ticker.Stop()
  log.Print("dbt scratch view worker ready")
  for{
   select{case <-ctx.Done():return;default:}
+  if incrementalWorkerEnabled(){dispatchIncremental(ctx,pg,config)}
   if tableEnabled(){dispatchTable(ctx,pg,config)}
   claimCtx,cancel:=context.WithTimeout(ctx,10*time.Second)
   work,e:=claimNext(claimCtx,pg);cancel()
