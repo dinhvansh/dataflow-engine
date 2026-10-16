@@ -3,8 +3,8 @@ package main
 import (
  "context"
  "encoding/json"
- "errors"
  "log"
+ "errors"
  "net/http"
  "os"
  "time"
@@ -61,76 +61,46 @@ func(s *server)scheduleAPI(w http.ResponseWriter,r *http.Request){
  default:http.Error(w,"method not allowed",405)
  }
 }
-func(s *server)startManagedScheduler(){
+func(s *server)startManagedScheduler(parent context.Context){
  if !managedEnabled()||os.Getenv("DATAFLOW_ENABLE_MANAGED_SCHEDULER")!="true"{
-  log.Print("managed interval scheduler disabled")
-  return
+  log.Print("managed interval scheduler disabled");return
  }
  go func(){
-  tick:=time.NewTicker(15*time.Second);defer tick.Stop()
-  log.Print("managed interval scheduler enabled: 15-second due scan")
-  for range tick.C{
-   // Fail orphaned runs only after a grace period and only when no
-   // matching PostgreSQL lease remains active. Never auto-reset cursor.
-   recoveryCtx,recoveryCancel:=context.WithTimeout(context.Background(),10*time.Second)
-   if err:=s.failOrphanedRuns(recoveryCtx);err!=nil{log.Printf("scheduler orphan scan: %v",err)}
-   recoveryCancel()
-   // A bounded number of schedules per tick avoids monopolizing API capacity.
-   for attempt:=0;attempt<2;attempt++{
-    slotAcquired:=false
-    select{case s.managedSlots<-struct{}{}:slotAcquired=true;default:}
-    if !slotAcquired{break}
-    ctx,cancel:=context.WithTimeout(context.Background(),10*time.Second)
-    runID,streamID,err:=s.claimScheduled(ctx)
-    cancel()
-    if err!=nil{<-s.managedSlots
-     if !errors.Is(err,pgx.ErrNoRows){log.Printf("scheduler: %v",err)}
-     break
+  ticker:=time.NewTicker(15*time.Second);defer ticker.Stop()
+  log.Print("managed scheduler enqueues only; durable worker owns execution")
+  for {select{
+   case <-parent.Done():return
+   case <-ticker.C:
+    for i:=0;i<2;i++{
+     ctx,stop:=context.WithTimeout(parent,10*time.Second)
+     err:=s.claimScheduled(ctx)
+     stop()
+     if errors.Is(err,pgx.ErrNoRows){break}
+     if err!=nil{log.Printf("scheduler enqueue failed: %v",err);break}
     }
-    go func(run,stream string){defer func(){<-s.managedSlots}();s.executeManaged(run,stream)}(runID,streamID)
-   }
-  }
+  }}
  }()
 }
-// claimScheduled atomically claims one due schedule and inserts its run.
-// PostgreSQL row locking prevents two scheduler replicas claiming the same tick.
-// It does NOT provide durable queue worker recovery after process crashes.
-func(s *server)claimScheduled(ctx context.Context)(string,string,error){
- tx,err:=s.pg.Begin(ctx);if err!=nil{return "","",err}
+// claimScheduled records a durable queued run; it NEVER starts a worker
+// goroutine. Workers claim it using sync_checkpoints fencing in PostgreSQL.
+func(s *server)claimScheduled(ctx context.Context)error{
+ tx,err:=s.pg.Begin(ctx);if err!=nil{return err}
  defer tx.Rollback(ctx)
- var scheduleID,streamID string;var interval int
+ var scheduleID,streamID string
+ var interval int
  err=tx.QueryRow(ctx,`SELECT ms.id::text,ms.stream_id::text,ms.interval_seconds
   FROM managed_schedules ms
   WHERE ms.enabled=true AND ms.next_run_at<=clock_timestamp()
-  AND NOT EXISTS (
-   SELECT 1 FROM managed_runs r
-   WHERE r.stream_id=ms.stream_id AND r.status IN ('queued','running')
-   AND r.requested_at>clock_timestamp()-interval '3 hours'
-  )
-  ORDER BY ms.next_run_at LIMIT 1 FOR UPDATE OF ms SKIP LOCKED`).Scan(&scheduleID,&streamID,&interval)
- if err!=nil{return "","",err}
- var runID string
- err=tx.QueryRow(ctx,`INSERT INTO managed_runs(stream_id,status) VALUES($1::uuid,'queued') RETURNING id::text`,streamID).Scan(&runID)
- if err!=nil{return "","",err}
- _,err=tx.Exec(ctx,`UPDATE managed_schedules SET
-   next_run_at=clock_timestamp()+($2::integer*interval '1 second'),updated_at=now()
-   WHERE id=$1::uuid`,scheduleID,interval)
- if err!=nil{return "","",err}
- if err=tx.Commit(ctx);err!=nil{return "","",err}
- return runID,streamID,nil
-}
-
-func(s *server)failOrphanedRuns(ctx context.Context)error{
- _,err:=s.pg.Exec(ctx,`UPDATE managed_runs r
-  SET status='failed',
-      error_message='Interrupted run with no active lease; check committed checkpoint before retry',
-      finished_at=clock_timestamp()
-  WHERE r.status IN ('queued','running')
-    AND r.requested_at<clock_timestamp()-interval '10 minutes'
-    AND NOT EXISTS (
-      SELECT 1 FROM sync_checkpoints c
-      WHERE c.stream_id=r.stream_id AND c.lease_owner=r.id
-        AND c.lease_expires_at>clock_timestamp()
-    )`)
- return err
+   AND NOT EXISTS (
+    SELECT 1 FROM managed_runs r
+    WHERE r.stream_id=ms.stream_id AND r.status IN ('queued','running')
+   )
+  ORDER BY ms.next_run_at LIMIT 1
+  FOR UPDATE OF ms SKIP LOCKED`).Scan(&scheduleID,&streamID,&interval)
+ if err!=nil{return err}
+ if _,err=tx.Exec(ctx,`INSERT INTO managed_runs(stream_id,status) VALUES($1::uuid,'queued')`,streamID);err!=nil{return err}
+ if _,err=tx.Exec(ctx,`UPDATE managed_schedules SET next_run_at=clock_timestamp()
+  +($2::integer*interval '1 second'),updated_at=now() WHERE id=$1::uuid`,
+ scheduleID,interval);err!=nil{return err}
+ return tx.Commit(ctx)
 }
