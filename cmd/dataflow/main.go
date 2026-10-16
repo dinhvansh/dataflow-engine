@@ -134,6 +134,7 @@ func main(){
  mux.HandleFunc("/api/v1/transform/table/runs",svc.tableRunsAPI)
  mux.HandleFunc("/api/v1/transform/table/action",svc.tableActionAPI)
  mux.HandleFunc("/api/v1/transform/lineage",svc.lineageAPI)
+ mux.HandleFunc("/api/v1/transform/auto-build",svc.autoBuildAPI)
  port:=8080;if p:=os.Getenv("PORT");p!=""{if v,e:=strconv.Atoi(p);e==nil&&v>0&&v<65536{port=v}}
  srv:=&http.Server{Addr:fmt.Sprintf(":%d",port),Handler:mux,ReadHeaderTimeout:5*time.Second}
  checkCtx,checkCancel:=context.WithTimeout(context.Background(),10*time.Second)
@@ -144,11 +145,15 @@ func main(){
  managedSchemaErr:=svc.checkManagedSchema(managedCtx)
  managedStop()
  if managedSchemaErr!=nil{log.Fatal(managedSchemaErr)}
+ flowCtx,flowCancel:=context.WithTimeout(context.Background(),10*time.Second)
+ flowErr:=svc.checkFlowSchema(flowCtx);flowCancel()
+ if flowErr!=nil{log.Fatal(flowErr)}
  root,stop:=signal.NotifyContext(context.Background(),os.Interrupt,syscall.SIGTERM)
  defer stop()
  svc.startManagedDispatcher(root)
  svc.startManagedScheduler(root)
  svc.startSQLDAGDispatcher(root)
+ svc.startAutoBuildCoordinator(root)
  go func(){
   <-root.Done()
   shutdownCtx,done:=context.WithTimeout(context.Background(),15*time.Second)

@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useMemo,useState} from "react";
 import {AlertTriangle,ArrowRight,Database,GitBranch,RefreshCw,Search,ShieldCheck,Workflow} from "lucide-react";
 import {Button} from "./ui/button";
-import {transformApi,type DbtRun,type LineageGraph,type LineageNode} from "../lib/transformApi";
+import {transformApi,type AutoBuildRun,type DbtRun,type LineageGraph,type LineageNode} from "../lib/transformApi";
 
 type Positioned={node:LineageNode;x:number;y:number;depth:number};
 const NODE_WIDTH=218,NODE_HEIGHT=82,X_STEP=270,Y_STEP=100;
@@ -43,6 +43,30 @@ export function DataLineage({token,onTokenChange}:{token:string;onTokenChange:(t
  const[filter,setFilter]=useState("");
  const[loading,setLoading]=useState(false);
  const[error,setError]=useState("");
+ const[flow,setFlow]=useState<AutoBuildRun|null>(null);
+ const[flowBusy,setFlowBusy]=useState(false);
+ const[flowError,setFlowError]=useState("");
+ const runChain=async()=>{
+  if(!token||!current||current.kind!=="model")return;
+  setFlowBusy(true);setFlowError("");
+  try{
+   const {models}=await transformApi.models(token);
+   const selectedModel=models.find(m=>m.name===current.label);
+   if(!selectedModel)throw new Error("Không tìm thấy model đã lưu");
+   const result=await transformApi.autoBuild(selectedModel.id,token);
+   setFlow(result);
+  }catch(e){setFlowError(String(e))}
+  finally{setFlowBusy(false)}
+ };
+ useEffect(()=>{
+  if(!flow||!token||!["queued","running"].includes(flow.status))return;
+  let live=true;
+  const timer=window.setInterval(()=>{
+   void transformApi.autoBuildStatus(flow.run_id,token).then(next=>{if(live)setFlow(next)}).catch(e=>{if(live)setFlowError(String(e))});
+  },2500);
+  return()=>{live=false;window.clearInterval(timer)};
+ },[flow?.run_id,flow?.status,token]);
+
  const refresh=useCallback(async()=>{
   if(!token){setError("Nhập API token để xem Lineage");return}
   setLoading(true);setError("");
@@ -117,6 +141,21 @@ export function DataLineage({token,onTokenChange}:{token:string;onTokenChange:(t
       <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3"><div className="muted text-xs">{current.kind}</div><p className="mt-1 break-all font-semibold">{current.label}</p><p className="muted mt-1 text-xs">{current.target||"External / input source"}</p></div>
       <div><p className="mb-2 text-xs font-semibold text-slate-300">Đọc dữ liệu từ</p>{parents.length?parents.map(x=><div key={x} className="my-1 rounded bg-slate-800 p-2 text-xs">{x}</div>):<p className="muted text-xs">Không có upstream model được khai báo.</p>}</div>
       <div><p className="mb-2 text-xs font-semibold text-slate-300">Model trực tiếp phía sau</p>{children.length?children.map(x=><div key={x} className="my-1 flex items-center gap-2 rounded bg-slate-800 p-2 text-xs"><ArrowRight size={13}/>{x}</div>):<p className="muted text-xs">Không có downstream trực tiếp.</p>}</div>
+      {current.kind==="model"&&<div className="space-y-2 rounded-lg border border-sky-700/50 bg-sky-950/20 p-3">
+       <div className="text-xs font-semibold text-sky-200">Auto Build Dependencies · v1.2 TEST</div>
+       <p className="muted text-xs">Chọn {current.label} → tự Build các View upstream theo thứ tự; nếu một model lỗi hoặc không đạt DQ, Flow dừng.</p>
+       <Button disabled={!token||flowBusy} onClick={()=>void runChain()}>{flowBusy?"Đang xếp hàng...":"▶ Run Model + Dependencies"}</Button>
+       {flowError&&<p role="alert" className="text-xs text-rose-300">{flowError}</p>}
+       {flow&&<div className="space-y-1 rounded-md bg-slate-950/60 p-2">
+        <div className="text-xs font-semibold">Flow: {flow.status} · {flow.target_model}</div>
+        <div className="break-all font-mono text-[10px] text-slate-400">{flow.run_id}</div>
+        {flow.error&&<p role="alert" className="text-xs text-rose-300">{flow.error}</p>}
+        {(flow.steps||[]).map((step,i)=><div key={step.index} className="flex items-center justify-between gap-2 rounded border border-slate-700/70 p-2 text-xs">
+          <span>{i+1}. {step.model_name}</span>
+          <span className={step.status==="succeeded"?"text-emerald-300":step.status==="failed"?"text-rose-300":"text-sky-300"}>{step.status}{step.status==="succeeded"?(" · "+step.rows_verified+" rows"):""}</span>
+        </div>)}
+       </div>}
+      </div>}
       {current.kind==="model"&&<div className="rounded-lg border border-amber-800/50 bg-amber-950/20 p-3"><p className="text-xs font-semibold text-amber-200">Impact nếu sửa model này</p><p className="mt-1 text-2xl font-semibold">{[...affected].filter(id=>id.startsWith("model:")).length}</p><p className="muted text-xs">model downstream có thể cần kiểm tra hoặc build lại</p><div className="mt-2 flex flex-wrap gap-1">{[...affected].filter(id=>id.startsWith("model:")).sort().map(id=><span key={id} className="rounded border border-amber-800 px-2 py-1 text-[11px] text-amber-200">{id.replace("model:","")}</span>)}</div></div>}
       {newestRun&&<div className="border-t border-slate-700 pt-3 text-xs"><b>dbt run gần nhất</b><p className="muted mt-1">{newestRun.status} · {newestRun.target||"scratch"}</p><p className="muted mt-1">Trạng thái run gần nhất không có nghĩa model hiện tại đã build đúng phiên bản SQL mới nhất.</p></div>}
      </>}

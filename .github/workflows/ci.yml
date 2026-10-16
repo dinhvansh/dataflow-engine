@@ -69,7 +69,7 @@ jobs:
           DATAFLOW_INTEGRATION_CH_WRITER_PASSWORD: ci-test-password
           DATAFLOW_INTEGRATION_DBT_BIN: dbt
         run: |
-          go test ./cmd/dataflow -run 'Test(ManagedQueueIntegration|SQLDAGIntegration|TransformStudioIntegration|DBTRunAPIIntegration|LineageAPIIntegration|SafeTableAPIIntegration)$' -count=1 -v
+          go test ./cmd/dataflow -run 'Test(ManagedQueueIntegration|SQLDAGIntegration|TransformStudioIntegration|DBTRunAPIIntegration|LineageAPIIntegration|SafeTableAPIIntegration|AutoBuildRealDBTIntegration)$' -count=1 -v
           go test ./cmd/dataflow-dbt-worker -run 'Test(DBTQueueIntegration|DBTFullQueueIntegration|SafeTableFullIntegration)$' -count=1 -v
       - name: Build isolated dbt worker Docker image
         run: docker build -f deploy/dbt-worker/Dockerfile -t dataflow-dbt-worker:ci .
