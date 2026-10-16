@@ -188,8 +188,9 @@ def test_ui05_auto_build_action_and_order(ui):
     open_tab(page, "Data Lineage")
     page.locator('button[title="m_c"]').click()
     page.get_by_role("button", name=re.compile("Run Model \\+ Dependencies")).click()
-    assert any(c["path"] == "/api/v1/transform/auto-build" and c["method"] == "POST" for c in state["calls"])
+    # Wait for the asynchronous React/API update before inspecting captured calls.
     expect(page.get_by_text("succeeded", exact=False).first).to_be_visible()
+    assert any(c["path"] == "/api/v1/transform/auto-build" and c["method"] == "POST" for c in state["calls"])
 
 
 def test_ui06_incremental_publish_and_rollback_buttons(ui):
