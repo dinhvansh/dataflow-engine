@@ -7,6 +7,7 @@ import (
  "fmt"
  "log"
  "net/http"
+ "os"
  "regexp"
  "time"
 
@@ -173,4 +174,13 @@ func(s *server)executeManaged(runID,streamID string){
  // received a successful ClickHouse HTTP acknowledgment.
  if err=store.Commit(ctx,lease,reader.Upper);err!=nil{runError=fmt.Errorf("checkpoint not committed: %w",err);return}
  completed=true
+}
+
+func scratchDatabase()string{
+ if v:=os.Getenv("DATAFLOW_TEST_TARGET_DATABASE");v!=""{return v}
+ return "scratch"
+}
+func managedEnabled()bool{
+ return os.Getenv("DATAFLOW_ALLOW_TEST_LOAD")=="true" &&
+        os.Getenv("DATAFLOW_ENABLE_MANAGED_TEST")=="true"
 }
