@@ -64,7 +64,7 @@ func(c Client)DeltaStats(ctx context.Context,p DeltaPlan)(uint64,error){
  if _,err:=c.ValidateDeltaSchema(ctx,p.Target,p.Delta,p.Key);err!=nil{return 0,err}
  if p.Upper<=p.Lower{return 0,errors.New("delta window has no new version")}
  q:=fmt.Sprintf("SELECT count(),uniqExact(_df_version),countIf(_df_deleted NOT IN (0,1)) FROM scratch.%s WHERE _df_version>%d AND _df_version<=%d FORMAT TabSeparatedRaw",
- p.Key,p.Delta,p.Lower,p.Upper)
+ p.Delta,p.Lower,p.Upper)
  raw,err:=c.Query(ctx,q);if err!=nil{return 0,err}
  fields:=strings.Split(raw,"\t");if len(fields)!=3{return 0,errors.New("invalid delta stats")}
  total,e:=strconv.ParseUint(fields[0],10,64);if e!=nil{return 0,e}
