@@ -14,6 +14,10 @@ export type TransformModel={
 };
 export type CompileResult={sql:string;steps_sql:string[]};
 export type PreviewResult={sql:string;rows:number;data:Record<string,unknown>[];meta:TransformColumn[]};
+export type LineageNode={id:string;label:string;kind:"source"|"model"|"missing";status:string;target?:string};
+export type LineageEdge={from:string;to:string};
+export type LineageProblem={model:string;code:string;detail:string};
+export type LineageGraph={nodes:LineageNode[];edges:LineageEdge[];model_order:string[];problems:LineageProblem[];impact?:string[]};
 export type DbtRun={run_id:string;status:string;model_name?:string;target?:string;materialization?:string;attempts?:number;error?:string;log_tail?:string;run_results?:unknown};
 export type SavedTransform={id:string;name:string;model:TransformModel;sql:string;updated_at:string};
 
@@ -30,5 +34,6 @@ export const transformApi={
  save:(model:TransformModel,token:string)=>request<SavedTransform>("/api/v1/transform/models",token,"POST",{model}),
  dbtRun:(model_id:string,token:string)=>request<DbtRun>("/api/v1/transform/dbt/runs",token,"POST",{model_id,materialization:"view"}),
  dbtStatus:(id:string,token:string)=>request<DbtRun>("/api/v1/transform/dbt/runs?id="+encodeURIComponent(id),token,"GET"),
- dbtHistory:(token:string)=>request<{runs:DbtRun[]}>("/api/v1/transform/dbt/runs",token,"GET")
+ dbtHistory:(token:string)=>request<{runs:DbtRun[]}>("/api/v1/transform/dbt/runs",token,"GET"),
+ lineage:(token:string,impact?:string)=>request<LineageGraph>("/api/v1/transform/lineage"+(impact?"?impact="+encodeURIComponent(impact):""),token,"GET")
 };

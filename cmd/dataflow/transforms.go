@@ -13,6 +13,7 @@ import (
 
  "github.com/dinhvansh/dataflow-engine/internal/connectors/clickhouse"
  "github.com/dinhvansh/dataflow-engine/internal/transform"
+ "github.com/dinhvansh/dataflow-engine/internal/lineage"
 )
 
 type transformInput struct {
@@ -118,10 +119,26 @@ func(s *server)transformModels(w http.ResponseWriter,r *http.Request){
   data,err:=json.Marshal(input.Model);if err!=nil{http.Error(w,"serialization failed",500);return}
   var result transformSaved
   result.Model=input.Model;result.SQL=compiled.SQL
-  err=s.pg.QueryRow(ctx,`INSERT INTO transform_models(name,definition,compiled_sql) VALUES($1,$2::jsonb,$3)
+  tx,err:=s.pg.Begin(ctx)
+  if err!=nil{http.Error(w,"model registry unavailable",503);return}
+  defer tx.Rollback(ctx)
+  // Serialize catalog edits across API processes to prevent races where
+  // concurrently submitted models form a dependency cycle.
+  if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(84721, 1)`);err!=nil{http.Error(w,"model registry lock unavailable",503);return}
+  current,err:=s.readLineageModels(ctx,tx)
+  if err!=nil{http.Error(w,"cannot validate current lineage",503);return}
+  candidate:=lineage.Model{Name:name,Mode:input.Model.Mode,Database:input.Model.Source.Database,Table:input.Model.Source.Table}
+  replaced:=false
+  for i:=range current{if current[i].Name==name{candidate.ID=current[i].ID;current[i]=candidate;replaced=true;break}}
+  if !replaced{current=append(current,candidate)}
+  graph,err:=lineage.Build(current)
+  if err!=nil{http.Error(w,"lineage validation failed: "+err.Error(),422);return}
+  if err=lineage.CheckCycle(graph);err!=nil{http.Error(w,err.Error(),422);return}
+  err=tx.QueryRow(ctx,`INSERT INTO transform_models(name,definition,compiled_sql) VALUES($1,$2::jsonb,$3)
    ON CONFLICT(name) DO UPDATE SET definition=EXCLUDED.definition,compiled_sql=EXCLUDED.compiled_sql,updated_at=now()
    RETURNING id::text,name,updated_at`,name,string(data),compiled.SQL).Scan(&result.ID,&result.Name,&result.UpdatedAt)
   if err!=nil{http.Error(w,"save failed (check migration 010)",500);return}
+  if err=tx.Commit(ctx);err!=nil{http.Error(w,"model commit failed",503);return}
   jsonResponse(w,201,result)
  default:http.Error(w,"method not allowed",405)
  }
