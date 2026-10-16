@@ -38,3 +38,13 @@ Refer to [Release Status v0.4](release-status-v04.md) and [Reconciliation Test G
 - [ ] True ClickHouse SQL transform jobs (INSERT INTO SELECT), permission isolation, materialization controls.
 - [ ] Distributed durable queue/restart recovery, cron, alerting.
 - [ ] SQL Server Epicor full 3-store integration with failure injection.
+
+## v0.6 stability milestone — 2026-10-16
+
+- [x] Durable PostgreSQL-dispatched SELECT-DAG queue, fenced lease ownership and restart replay.
+- [x] Fail-closed lease migration check; SIGTERM/SIGINT cancellation.
+- [x] Integration tests against disposable PostgreSQL 16 and ClickHouse 25.3 for expired leases, stale-worker rejection, no double claim and bounded retries.
+- [ ] Managed sync and reconciliation crash-safe queued worker recovery.
+- [ ] Epicor TEST + ClickHouse + PostgreSQL failure-injection E2E and performance acceptance.
+- [ ] Production-safe idempotent SQL materialization and deletion repairs.
+See [v0.6 status](release-status-v06.md).
