@@ -12,7 +12,6 @@ import(
  "strings"
  "time"
  "github.com/dinhvansh/dataflow-engine/internal/safetable"
- "github.com/jackc/pgx/v5"
 )
 var incrementalName=regexp.MustCompile("^[a-z][a-z0-9_]{0,75}$")
 var incrementalKey=regexp.MustCompile("^[A-Za-z_][A-Za-z0-9_]*$")
