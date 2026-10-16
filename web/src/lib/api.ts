@@ -19,3 +19,9 @@ export async function validatePipeline(plan:PipelinePlan,token:string):Promise<P
  if(r.status===422)return r.json() as Promise<PipelineValidation>;
  return parse<PipelineValidation>(r);
 }
+
+export type HistoryRun={run_id:string;status:string;source:string;target:string;rows_written:number;batches_written:number;error?:string;created_at:string;finished_at?:string};
+export type HistoryResponse={runs:HistoryRun[];count:number};
+export async function getRunHistory(token:string,limit=20):Promise<HistoryResponse>{
+ return parse<HistoryResponse>(await fetch(`/api/v1/bootstrap/history?limit=${limit}`,{headers:{Authorization:`Bearer ${token}`}}))
+}
