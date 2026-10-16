@@ -28,10 +28,13 @@ func (r *KeySnapshotReader) Read(ctx context.Context,emit func(engine.Batch)erro
  cols,err:=DiscoverColumns(ctx,r.DB,r.Schema,r.Table);if err!=nil{return err}
  rowID,rev:=false,false
  for _,c:=range cols{
-  if strings.EqualFold(c.Name,"SysRowID") && strings.EqualFold(c.SQLType,"uniqueidentifier") && c.PrimaryKey{rowID=true}
+  if strings.EqualFold(c.Name,"SysRowID") && strings.EqualFold(c.SQLType,"uniqueidentifier"){rowID=true}
   if strings.EqualFold(c.Name,"SysRevID") && c.CursorCandidate{rev=true}
  }
- if !rowID||!rev{return errors.New("key snapshot requires PK SysRowID uniqueidentifier and SysRevID rowversion")}
+ if !rowID||!rev{return errors.New("key snapshot requires SysRowID uniqueidentifier and SysRevID rowversion")}
+ unique,err:=HasUniqueSysRowID(ctx,r.DB,r.Schema,r.Table)
+ if err!=nil{return fmt.Errorf("source unique index discovery: %w",err)}
+ if !unique{return errors.New("source SysRowID requires a declared unfiltered single-key UNIQUE index; no source DDL will be attempted")}
  tx,err:=r.DB.BeginTx(ctx,&sql.TxOptions{Isolation:sql.LevelSnapshot,ReadOnly:true})
  if err!=nil{return fmt.Errorf("SQL Server SNAPSHOT unavailable: %w",err)}
  defer tx.Rollback()
