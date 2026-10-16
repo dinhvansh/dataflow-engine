@@ -132,9 +132,14 @@ func main(){
  schemaErr:=svc.checkSQLDAGSchema(checkCtx)
  checkCancel()
  if schemaErr!=nil{log.Fatal(schemaErr)}
+ managedCtx,managedStop:=context.WithTimeout(context.Background(),10*time.Second)
+ managedSchemaErr:=svc.checkManagedSchema(managedCtx)
+ managedStop()
+ if managedSchemaErr!=nil{log.Fatal(managedSchemaErr)}
  root,stop:=signal.NotifyContext(context.Background(),os.Interrupt,syscall.SIGTERM)
  defer stop()
- svc.startManagedScheduler()
+ svc.startManagedDispatcher(root)
+ svc.startManagedScheduler(root)
  svc.startSQLDAGDispatcher(root)
  go func(){
   <-root.Done()
