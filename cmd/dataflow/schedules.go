@@ -70,6 +70,11 @@ func(s *server)startManagedScheduler(){
   tick:=time.NewTicker(15*time.Second);defer tick.Stop()
   log.Print("managed interval scheduler enabled: 15-second due scan")
   for range tick.C{
+   // Fail orphaned runs only after a grace period and only when no
+   // matching PostgreSQL lease remains active. Never auto-reset cursor.
+   recoveryCtx,recoveryCancel:=context.WithTimeout(context.Background(),10*time.Second)
+   if err:=s.failOrphanedRuns(recoveryCtx);err!=nil{log.Printf("scheduler orphan scan: %v",err)}
+   recoveryCancel()
    // A bounded number of schedules per tick avoids monopolizing API capacity.
    for attempt:=0;attempt<2;attempt++{
     slotAcquired:=false
@@ -113,4 +118,19 @@ func(s *server)claimScheduled(ctx context.Context)(string,string,error){
  if err!=nil{return "","",err}
  if err=tx.Commit(ctx);err!=nil{return "","",err}
  return runID,streamID,nil
+}
+
+func(s *server)failOrphanedRuns(ctx context.Context)error{
+ _,err:=s.pg.Exec(ctx,`UPDATE managed_runs r
+  SET status='failed',
+      error_message='Interrupted run with no active lease; check committed checkpoint before retry',
+      finished_at=clock_timestamp()
+  WHERE r.status IN ('queued','running')
+    AND r.requested_at<clock_timestamp()-interval '10 minutes'
+    AND NOT EXISTS (
+      SELECT 1 FROM sync_checkpoints c
+      WHERE c.stream_id=r.stream_id AND c.lease_owner=r.id
+        AND c.lease_expires_at>clock_timestamp()
+    )`)
+ return err
 }
