@@ -39,6 +39,8 @@ func TestSQLDAGIntegration(t *testing.T){
  t.Setenv("DATAFLOW_CH_READONLY_USER",os.Getenv("DATAFLOW_INTEGRATION_CH_USER"))
  t.Setenv("DATAFLOW_CH_READONLY_PASSWORD",os.Getenv("DATAFLOW_INTEGRATION_CH_PASSWORD"))
  s:=&server{pg:pool,chURL:chURL,managedSlots:make(chan struct{},2)}
+ if err:=s.checkSQLDAGSchema(ctx);err!=nil{t.Fatalf("migration readiness: %v",err)}
+
  var id1,id2,dagID string
  if err=pool.QueryRow(ctx,"INSERT INTO sql_jobs(name,database_name,query_text,enabled) VALUES('ci_first','scratch','SELECT 1 AS answer',true) RETURNING id::text").Scan(&id1);err!=nil{t.Fatal(err)}
  if err=pool.QueryRow(ctx,"INSERT INTO sql_jobs(name,database_name,query_text,enabled) VALUES('ci_second','scratch','SELECT 2 AS answer',true) RETURNING id::text").Scan(&id2);err!=nil{t.Fatal(err)}
