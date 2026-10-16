@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS dag_runs (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  dag_id uuid NOT NULL REFERENCES dag_definitions(id),
  status text NOT NULL CHECK(status IN ('queued','running','succeeded','failed')),
+ snapshot jsonb NOT NULL,
  result jsonb,
  error_message text,
  created_at timestamptz NOT NULL DEFAULT now(),
