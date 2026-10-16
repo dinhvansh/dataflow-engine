@@ -29,7 +29,7 @@ type RunRequest struct {
 type server struct {pg *pgxpool.Pool; sql *sql.DB; chURL,chUser,chPass,token string}
 func (s *server) run(w http.ResponseWriter,r *http.Request){
  if r.Method!=http.MethodPost{http.Error(w,"POST required",405);return}
- if r.Header.Get("Authorization")!="Bearer "+s.token{http.Error(w,"unauthorized",401);return}
+ if !s.validBearer(r){http.Error(w,"unauthorized",401);return}
  r.Body=http.MaxBytesReader(w,r.Body,16384)
  var req RunRequest
  if err:=json.NewDecoder(r.Body).Decode(&req);err!=nil{http.Error(w,err.Error(),400);return}
@@ -56,7 +56,7 @@ func (s *server) run(w http.ResponseWriter,r *http.Request){
  _=json.NewEncoder(w).Encode(map[string]any{"run_id":id,"status":status,"rows_written":stats.Rows,"batches_written":stats.Batches,"elapsed_seconds":time.Since(started).Seconds(),"error":message})
 }
 func(s *server) status(w http.ResponseWriter,r *http.Request){
- if r.Header.Get("Authorization")!="Bearer "+s.token{http.Error(w,"unauthorized",401);return}
+ if !s.validBearer(r){http.Error(w,"unauthorized",401);return}
  id:=r.URL.Query().Get("id")
  var status,source,target string;var rows,batches int64;var msg *string
  err:=s.pg.QueryRow(r.Context(),`SELECT status,source_table,target_table,rows_written,batches_written,error_message FROM bootstrap_runs WHERE id::text=$1`,id).Scan(&status,&source,&target,&rows,&batches,&msg)
@@ -78,6 +78,9 @@ func main(){
  mux.HandleFunc("/healthz",func(w http.ResponseWriter,r *http.Request){_,_=w.Write([]byte("ok"))})
  mux.HandleFunc("/api/v1/bootstrap/runs",svc.run)
  mux.HandleFunc("/api/v1/bootstrap/status",svc.status)
+ mux.HandleFunc("/api/v1/source/tables",svc.sourceAPI)
+ mux.HandleFunc("/api/v1/source/columns",svc.sourceAPI)
+ mux.HandleFunc("/api/v1/source/rowversion-upper",svc.sourceAPI)
  port:=8080;if p:=os.Getenv("PORT");p!=""{if v,e:=strconv.Atoi(p);e==nil&&v>0&&v<65536{port=v}}
  srv:=&http.Server{Addr:fmt.Sprintf(":%d",port),Handler:mux,ReadHeaderTimeout:5*time.Second}
  log.Printf("DataFlow bootstrap listening on :%d",port)
