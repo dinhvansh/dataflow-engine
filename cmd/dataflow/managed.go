@@ -170,8 +170,13 @@ func(s *server)executeManaged(runID,streamID string){
  if err!=nil{runError=fmt.Errorf("stream load: %w",err);return}
  if err=ctx.Err();err!=nil{runError=err;return}
  upper=reader.Upper.Bytes()
- // Engine success means source snapshot committed and every emitted batch
- // received a successful ClickHouse HTTP acknowledgment.
+ // Require ClickHouse to return the exact number of events for this run.
+ // A mismatched or unverifiable write NEVER advances the cursor.
+ observed,verifyErr:=target.CountRunRows(ctx,runID)
+ if verifyErr!=nil{runError=fmt.Errorf("cannot verify destination count: %w",verifyErr);return}
+ if observed!=stats.Rows{runError=fmt.Errorf("destination mismatch: expected %d events, found %d",stats.Rows,observed);return}
+ // Engine success also means source snapshot committed and each batch returned
+ // a successful destination acknowledgment.
  if err=store.Commit(ctx,lease,reader.Upper);err!=nil{runError=fmt.Errorf("checkpoint not committed: %w",err);return}
  completed=true
 }
