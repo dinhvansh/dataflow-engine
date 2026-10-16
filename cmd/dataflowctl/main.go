@@ -39,6 +39,9 @@ func run(args []string)error{
  case "health":
   if len(args)!=1{return errors.New("health accepts no arguments")}
   return c.request("GET","/healthz",nil)
+ case "runs":
+  if len(args)!=1{return errors.New("runs takes no arguments")}
+  return c.request("GET","/api/v1/bootstrap/history?limit=50",nil)
  case "tables":
   if len(args)!=2{return errors.New("tables requires source schema")}
   return c.request("GET","/api/v1/source/tables?schema="+url.QueryEscape(args[1]),nil)
