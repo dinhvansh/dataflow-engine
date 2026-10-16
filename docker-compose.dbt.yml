@@ -1,0 +1,29 @@
+# Start explicitly: docker compose --profile dbt-preview -f docker-compose.yml -f docker-compose.dbt.yml up -d --build dbt-worker
+# This worker must be restricted to a TEST-only ClickHouse scratch user.
+services:
+  dbt-worker:
+    profiles: ["dbt-preview"]
+    build:
+      context: .
+      dockerfile: deploy/dbt-worker/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      DATAFLOW_POSTGRES_DSN: "postgres://dataflow:${DATAFLOW_PG_PASSWORD:?set DATAFLOW_PG_PASSWORD}@postgres:5432/dataflow?sslmode=disable"
+      DATAFLOW_ALLOW_TEST_LOAD: "${DATAFLOW_ALLOW_TEST_LOAD:-false}"
+      DATAFLOW_ENABLE_DBT_TEST: "${DATAFLOW_ENABLE_DBT_TEST:-false}"
+      DATAFLOW_TEST_TARGET_DATABASE: "${DATAFLOW_TEST_TARGET_DATABASE:-scratch}"
+      DATAFLOW_DBT_CH_HOST: "${DATAFLOW_DBT_CH_HOST:?set test ClickHouse hostname}"
+      DATAFLOW_DBT_CH_PORT: "${DATAFLOW_DBT_CH_PORT:-8123}"
+      DATAFLOW_DBT_CH_USER: "${DATAFLOW_DBT_CH_USER:?set limited scratch view writer}"
+      DATAFLOW_DBT_CH_PASSWORD: "${DATAFLOW_DBT_CH_PASSWORD:?set dedicated password}"
+      DATAFLOW_DBT_CH_SECURE: "${DATAFLOW_DBT_CH_SECURE:-false}"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=128m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 2g
+    pids_limit: 128
