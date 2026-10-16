@@ -28,7 +28,7 @@ jobs:
           DATAFLOW_INTEGRATION_CH_URL: http://127.0.0.1:8123
           DATAFLOW_INTEGRATION_CH_USER: default
           DATAFLOW_INTEGRATION_CH_PASSWORD: ci-test-password
-        run: go test ./internal/connectors/clickhouse -run TestSnapshotDiffIntegration -count=1 -v
+        run: go test ./internal/connectors/clickhouse -run Integration -count=1 -v
       - name: ClickHouse logs on failure
         if: failure()
         run: docker logs df-clickhouse --tail 100 || true
