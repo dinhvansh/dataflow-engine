@@ -45,3 +45,34 @@ No database integration tests have been run against the user's Epicor/ClickHouse
 
 ## Operational note
 Manage stream configs on the test target only. The backend permits changing batch/worker/queue settings of an existing stream; such changes affect subsequent runs, not already-started runs. Never manually move checkpoints ahead.
+
+
+## Interval scheduler (optional dev feature)
+Apply PostgreSQL migration 005 before enabling. Set `DATAFLOW_ENABLE_MANAGED_SCHEDULER=true` together with the two managed-test flags, then restart the Go server. The UI provides a scheduler section under Managed Streams. This scheduler uses fixed intervals of 60–86400 seconds (not cron).
+
+```bash
+# Create/update a disabled schedule (safe default).
+curl -X POST http://localhost:8080/api/v1/managed/schedules \
+ -H "Authorization: Bearer $DATAFLOW_API_TOKEN" -H 'Content-Type: application/json' \
+ -d '{"stream_id":"<stream-uuid>","interval_seconds":300,"enabled":false}'
+
+# Explicitly enable by updating the same stream schedule:
+curl -X POST http://localhost:8080/api/v1/managed/schedules \
+ -H "Authorization: Bearer $DATAFLOW_API_TOKEN" -H 'Content-Type: application/json' \
+ -d '{"stream_id":"<stream-uuid>","interval_seconds":300,"enabled":true}'
+
+curl -H "Authorization: Bearer $DATAFLOW_API_TOKEN" \
+ http://localhost:8080/api/v1/managed/schedules
+```
+
+Scheduler claims a due schedule using PostgreSQL `FOR UPDATE SKIP LOCKED`, inserts the run record in the same transaction, and starts a bounded local worker. If the Go process crashes between the transaction commit and worker start, a queued record can remain; this is **not yet** a fully durable worker queue. A schedule is delayed while a recent queued/running job exists for the same stream. Do not use this implementation for strict SLA delivery or multiple active service replicas.
+
+### Definition of a successful test run
+- API returns 202 and eventually `status=succeeded`.
+- ClickHouse `count() WHERE _run_id` equals the reported rows.
+- PostgreSQL `sync_checkpoints.lower_cursor` advanced to the run's `upper_exclusive` exactly once.
+- A second run without source changes processes zero rows.
+- After forcing one destination failure, checkpoint does **not** advance.
+- After killing Go during a run, restart and wait for lease expiry (up to five minutes); re-trigger after ensuring the first process is fully stopped, then verify no logical duplicates in `scratch.dataflow_latest`.
+
+These tests require real SQL Server/PostgreSQL/ClickHouse connections. They have not yet been run here.
