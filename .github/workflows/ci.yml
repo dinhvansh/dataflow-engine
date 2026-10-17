@@ -1,7 +1,14 @@
 name: CI
 on:
   push:
+    branches:
+      - main
   pull_request:
+# Keep full Go/DB and frontend validation on each open PR, but never duplicate
+# it with a push run for the same feature branch.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   go:
     runs-on: ubuntu-latest
