@@ -595,3 +595,39 @@ def test_ui19_visual_pipeline_builder_edits_draft_and_validates_without_executio
     assert len(validation) == 1 and validation[0]["body"] == {"nodes": []}
     assert all(c["path"] not in ("/api/v1/sql/dags", "/api/v1/sql/dag-runs") for c in state["calls"])
     assert not any(c["method"] in ("PUT", "PATCH", "DELETE") for c in state["calls"])
+
+
+def test_ui20_pipeline_drag_drop_responsive_light_dark(ui):
+    """Use real browser HTML5 drag/drop and inspect canvas at mobile/tablet/desktop."""
+    page, state = ui
+    page.get_by_role("button", name="Pipelines", exact=True).click()
+    page.get_by_label("Pipeline API token").fill(TOKEN)
+    page.get_by_role("button", name="Load registered SQL jobs").click()
+
+    palette_job = page.get_by_label("Drag SQL job revenue_quality_check", exact=True)
+    canvas = page.get_by_label("Editable dependency canvas", exact=True)
+    expect(palette_job).to_have_attribute("draggable", "true")
+    palette_job.drag_to(canvas, target_position={"x": 360, "y": 175})
+    expect(page.locator(".df-pipeline-graph-node")).to_have_count(1)
+    assert json.loads(page.get_by_label("Pipeline definition JSON").input_value())["nodes"][0]["job_id"] == "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+
+    for width, height in [(1440, 900), (1366, 768), (390, 844)]:
+        page.set_viewport_size({"width": width, "height": height})
+        expect(canvas).to_be_visible()
+        expect(page.locator(".df-pipeline-graph-node")).to_have_count(1)
+        measurements = page.evaluate("""() => ({
+            documentWidth: document.documentElement.scrollWidth,
+            viewportWidth: document.documentElement.clientWidth,
+            canvasWidth: document.querySelector(".df-pipeline-edit-canvas").clientWidth,
+            canvasHeight: document.querySelector(".df-pipeline-edit-canvas").clientHeight
+        })""")
+        assert measurements["documentWidth"] <= measurements["viewportWidth"], measurements
+        assert measurements["canvasWidth"] > 0 and measurements["canvasHeight"] >= 400, measurements
+
+    page.get_by_role("button", name="Switch to light mode").click()
+    expect(canvas).to_be_visible()
+    assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-card').trim()") == "#ffffff"
+    page.get_by_role("button", name="Switch to dark mode").click()
+    expect(canvas).to_be_visible()
+    assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-card').trim()") != "#ffffff"
+    assert all(c["method"] == "GET" for c in state["calls"] if c["path"].startswith("/api/v1/sql/"))
