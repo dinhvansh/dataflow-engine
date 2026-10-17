@@ -440,3 +440,43 @@ def test_ui15_lineage_and_incremental_workspace_mounts(ui):
     expect(page.locator(".df-incremental-workspace")).to_be_visible()
     expect(page.get_by_text("OPERATIONS / INCREMENTAL / 01")).to_be_visible()
     assert all(c["method"] == "GET" for c in state["calls"])
+
+
+def test_ui16_all_frontend_screens_use_semantic_palette():
+    """Keep freshly added screens from reverting to fixed Tailwind blue/slate styles."""
+    root = Path(__file__).resolve().parents[2]
+    source_files = [root / "web/src/App.tsx", *sorted((root / "web/src/components").rglob("*.tsx"))]
+    forbidden = re.compile(
+        r"(?<![\\w-])(?:hover:|focus-visible:)?"
+        r"(?:bg|text|border|ring|outline)-"
+        r"(?:slate|sky|cyan|emerald|rose|red|amber|indigo|gray|blue|green)-[0-9]+"
+    )
+    offenses = {str(path.relative_to(root)): forbidden.findall(path.read_text(encoding="utf-8"))
+                for path in source_files}
+    offenses = {path: matches for path, matches in offenses.items() if matches}
+    assert not offenses, f"Legacy palette utilities detected: {offenses}"
+    assert not any("window.confirm(" in p.read_text(encoding="utf-8") for p in source_files)
+
+
+def test_ui17_all_ten_navigation_screens_mount_in_light_mode(ui):
+    page, state = ui
+    page.get_by_role("button", name="Switch to light mode").click()
+    screens = [
+        ("Overview", "One workspace for your data pipelines."),
+        ("Connections", "Connector Hub"),
+        ("Sync Jobs", "Experimental full-load / rowversion-window trial"),
+        ("Transform Studio", "Data Preview"),
+        ("Data Lineage", "Dependency Map"),
+        ("SQL Jobs", "Query editor"),
+        ("Operations Center", "Pipeline Operations Center"),
+        ("Pipelines", "Pipeline Definition (JSON)"),
+        ("Incremental CDC", "Safe Incremental CDC"),
+        ("Run Inspector", "Recent Runs"),
+    ]
+    for label, visible_text in screens:
+        page.get_by_role("button", name=label, exact=True).click()
+        expect(page.get_by_text(visible_text, exact=False).first).to_be_visible()
+        assert page.evaluate(
+            "getComputedStyle(document.documentElement).getPropertyValue('--console-card').trim()"
+        ) == "#ffffff"
+    assert not any(c["method"] in ("DELETE", "PUT", "PATCH") for c in state["calls"])
