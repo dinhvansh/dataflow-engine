@@ -1,51 +1,96 @@
-import {useState} from "react";
-import {GitFork,ShieldCheck,AlertTriangle} from "lucide-react";
+import {useMemo,useState} from "react";
+import {AlertTriangle,Code2,GitFork,ShieldCheck} from "lucide-react";
 import {Button} from "./ui/button";
-import {validatePipeline,type PipelinePlan,type PipelineValidation} from "../lib/api";
+import {VisualPipelineCanvas} from "./VisualPipelineCanvas";
+import {sqlDAGApi,validatePipeline,type PipelineNode,type PipelinePlan,type PipelineValidation,type SQLJob} from "../lib/api";
 
-const example:PipelinePlan={nodes:[
- {id:"sync_invc_head",job_id:"invc-head-sync",requires:[]},
- {id:"sync_invc_dtl",job_id:"invc-dtl-sync",requires:[]},
- {id:"transform_revenue",job_id:"revenue-sql-job",requires:["sync_invc_head","sync_invc_dtl"]},
- {id:"quality_gate",job_id:"revenue-quality",requires:["transform_revenue"]}
-]};
 type Props={token:string;onTokenChange:(value:string)=>void};
+function readPlan(raw:string):{plan:PipelinePlan|null;issue:string}{
+ try{
+  const value:unknown=JSON.parse(raw);
+  if(!value||typeof value!=="object"||!Array.isArray((value as {nodes?:unknown}).nodes)){
+   return {plan:null,issue:"Definition must be an object with a nodes array."};
+  }
+  const nodes=(value as {nodes:unknown[]}).nodes;
+  const valid=(item:unknown):item is PipelineNode=>{
+   if(!item||typeof item!=="object")return false;
+   const n=item as Partial<PipelineNode>;
+   return typeof n.id==="string"&&n.id.trim().length>0&&
+    typeof n.job_id==="string"&&n.job_id.trim().length>0&&
+    Array.isArray(n.requires)&&n.requires.every(dep=>typeof dep==="string");
+  };
+  if(!nodes.every(valid))return {plan:null,issue:"Each node needs a nonempty id, job_id and string[] requires."};
+  const typed=nodes as PipelineNode[];
+  if(new Set(typed.map(n=>n.id)).size!==typed.length)return {plan:null,issue:"Node IDs must be unique."};
+  return {plan:{nodes:typed.map(n=>({id:n.id,job_id:n.job_id,requires:[...n.requires]}))},issue:""};
+ }catch{
+  return {plan:null,issue:"Invalid JSON syntax. Fix the definition before editing the canvas."};
+ }
+}
 export function PipelineEditor({token,onTokenChange}:Props){
- const[definition,setDefinition]=useState(JSON.stringify(example,null,2));
- const[result,setResult]=useState<PipelineValidation|null>(null);
- const[busy,setBusy]=useState(false);
+ const[definition,setDefinition]=useState('{\n  "nodes": []\n}');
+ const[jobs,setJobs]=useState<SQLJob[]>([]);
+ const[busyJobs,setBusyJobs]=useState(false);
+ const[busyValidation,setBusyValidation]=useState(false);
+ const[jobError,setJobError]=useState("");
  const[error,setError]=useState("");
- const validate=async()=>{
-  setBusy(true);setError("");setResult(null);
-  try{
-   const raw=JSON.parse(definition) as PipelinePlan;
-   if(!raw||!Array.isArray(raw.nodes)){throw new Error("JSON must have a nodes array")}
-   setResult(await validatePipeline(raw,token));
-  }catch(e){setError(String(e))}finally{setBusy(false)}
+ const[result,setResult]=useState<PipelineValidation|null>(null);
+ const parsed=useMemo(()=>readPlan(definition),[definition]);
+ const updatePlan=(plan:PipelinePlan)=>{
+  setDefinition(JSON.stringify(plan,null,2));
+  setResult(null);setError("");
  };
- return <div className="df-studio-workspace df-pipeline-workspace grid gap-5 xl:grid-cols-2">
-  <section className="df-studio-panel section space-y-4">
-   <div className="flex items-center gap-2 font-semibold"><GitFork size={19}/>Pipeline Definition (JSON)</div>
-   <p className="muted text-sm">Edit node dependencies and validate against the Go DAG engine. Execution/scheduling are not enabled yet.</p>
-   <label className="block text-xs df-text-neutral">API Token</label><input className="field" type="password" value={token} onChange={e=>onTokenChange(e.target.value)} autoComplete="off"/>
-   <textarea className="field min-h-[340px] font-mono text-xs leading-5" spellCheck={false} value={definition} onChange={e=>setDefinition(e.target.value)} aria-label="Pipeline definition JSON"/>
-   <Button disabled={busy||!token} onClick={validate}><ShieldCheck size={16}/>{busy?"Validating…":"Validate DAG"}</Button>
-   {error&&<p role="alert" className="rounded-md df-bg-error-soft p-3 text-sm df-text-error">{error}</p>}
-  </section>
-  <section className="section space-y-4">
-   <div className="font-semibold">Dependency Preview</div>
-   {(()=>{
-    try{
-     const p=JSON.parse(definition) as PipelinePlan;
-     if(!Array.isArray(p.nodes))return <p className="muted text-sm">Expected nodes array</p>;
-     return <div className="space-y-2">{p.nodes.map((n,i)=><div key={n.id+"-"+i} className="rounded-lg border df-border-neutral df-surface-soft p-3"><div className="font-mono text-sm font-semibold df-text-accent">{n.id}</div><div className="muted text-xs">Job: {n.job_id}</div><div className="mt-1 text-xs df-text-neutral">{n.requires?.length?"Depends on: "+n.requires.join(", "):"Entry node · no dependencies"}</div></div>)}</div>
-    }catch{return <p className="muted text-sm">Fix JSON syntax to preview nodes</p>}
-   })()}
-   {result&&<div className={result.valid?"rounded-lg border df-border-success df-bg-success-soft p-3":"rounded-lg border df-border-warning df-bg-warning-soft p-3"}>
+ const updateJSON=(value:string)=>{
+  setDefinition(value);setResult(null);setError("");
+ };
+ const loadJobs=async()=>{
+  if(!token)return;
+  setBusyJobs(true);setJobError("");
+  try{
+   const response=await sqlDAGApi.jobs(token);
+   setJobs(response.jobs);
+  }catch(e){setJobs([]);setJobError(String(e));}finally{setBusyJobs(false);}
+ };
+ const validate=async()=>{
+  if(!parsed.plan||!token)return;
+  setBusyValidation(true);setError("");setResult(null);
+  try{setResult(await validatePipeline(parsed.plan,token));}
+  catch(e){setError(String(e));}
+  finally{setBusyValidation(false);}
+ };
+ return <section className="df-studio-workspace df-pipeline-workspace space-y-5">
+  <div className="df-studio-panel section space-y-4">
+   <div className="flex flex-wrap items-start justify-between gap-3">
+    <div><h2 className="flex items-center gap-2 text-lg font-semibold"><GitFork size={19}/>Visual Pipeline Builder <span className="signal-inline-code">/ V2.1</span></h2>
+     <p className="muted mt-1 max-w-3xl text-sm">Canvas and JSON describe the same DAG draft. This stage can load SQL Jobs and validate a plan; it cannot save, schedule or execute a pipeline. Existing executable SQL DAGs remain managed below.</p></div>
+    <span className="df-pipeline-stat">DESIGN / VALIDATE ONLY</span>
+   </div>
+   <label className="block max-w-lg space-y-1"><span className="muted text-xs">API token (memory only)</span>
+    <input aria-label="Pipeline API token" className="field" type="password" autoComplete="off" value={token} onChange={event=>{onTokenChange(event.target.value);setJobs([]);setJobError("");}}/>
+   </label>
+   {jobError&&<p role="alert" className="df-text-error text-xs">Could not load SQL Jobs: {jobError}</p>}
+   {parsed.plan?
+    <VisualPipelineCanvas plan={parsed.plan} jobs={jobs} onChange={updatePlan} onReloadJobs={()=>{void loadJobs();}} loadingJobs={busyJobs} canLoadJobs={Boolean(token)}/>:
+    <div className="rounded border df-border-warning df-bg-warning-soft p-4 text-sm df-text-warning" role="alert"><AlertTriangle size={16} className="mr-2 inline"/>Canvas paused: {parsed.issue}</div>
+   }
+  </div>
+  <div className="df-studio-panel section space-y-4">
+   <div className="flex flex-wrap items-center justify-between gap-2">
+    <h3 className="flex items-center gap-2 font-semibold"><Code2 size={17}/>Pipeline Definition (JSON)</h3>
+    <span className="muted text-xs">Advanced edit · changes update the graph immediately when valid</span>
+   </div>
+   <textarea aria-label="Pipeline definition JSON" spellCheck={false} className="field min-h-[170px] font-mono text-xs leading-5" value={definition} onChange={event=>updateJSON(event.target.value)}/>
+   {parsed.issue&&<p className="df-text-error text-xs" role="alert">{parsed.issue}</p>}
+   <div className="flex flex-wrap items-center gap-3">
+    <Button type="button" disabled={busyValidation||!token||!parsed.plan} onClick={()=>{void validate();}}><ShieldCheck size={16}/>{busyValidation?"Validating…":"Validate DAG"}</Button>
+    <p className="muted text-xs">Validation calls the existing Go endpoint. No SQL Job is executed.</p>
+   </div>
+   {error&&<p role="alert" className="rounded border df-border-error df-bg-error-soft p-3 text-sm df-text-error">{error}</p>}
+   {result&&<div role="status" className={result.valid?"rounded border df-border-success df-bg-success-soft p-3":"rounded border df-border-warning df-bg-warning-soft p-3"}>
     <div className="flex items-center gap-2 text-sm font-semibold">{result.valid?<ShieldCheck size={16}/>:<AlertTriangle size={16}/>} {result.valid?"DAG valid":"DAG invalid"}</div>
-    <p className="mt-1 text-sm">{result.valid?`Node count: ${result.nodes}. Initially ready: ${result.ready_on_start?.join(", ")||"none"}`:result.error}</p>
+    <p className="muted mt-1 text-xs">{result.valid?"Node count: "+result.nodes+". Initially ready: "+(result.ready_on_start?.join(", ")||"none"):result.error}</p>
     <p className="muted mt-2 text-xs">Validation only — no jobs were started.</p>
    </div>}
-  </section>
- </div>;
+  </div>
+ </section>;
 }
