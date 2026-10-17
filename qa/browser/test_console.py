@@ -59,7 +59,22 @@ def ui(browser, request):
         body = json.loads(req.post_data) if req.post_data else {}
         state["calls"].append({"method": method, "path": path, "body": body})
         result = None
-        if path == "/api/v1/sql/jobs":
+        if path == "/api/v1/connections":
+            result = {"connections": [
+                {"id": "env-sqlserver-source", "name": "SQL Server source", "kind": "source",
+                 "driver": "sqlserver", "usage": "Read-only source discovery and test ingestion",
+                 "configuration_state": "configured", "management_mode": "server_environment",
+                 "supports_multiple_instances": False, "supports_test_connection": False},
+                {"id": "env-clickhouse-target", "name": "ClickHouse scratch target", "kind": "destination",
+                 "driver": "clickhouse", "usage": "Disposable scratch warehouse only",
+                 "configuration_state": "configured", "management_mode": "server_environment",
+                 "supports_multiple_instances": False, "supports_test_connection": False},
+                {"id": "env-postgres-control", "name": "PostgreSQL control plane", "kind": "internal",
+                 "driver": "postgresql", "usage": "Metadata, queue and run state; not a selectable data source/sink",
+                 "configuration_state": "configured", "management_mode": "server_environment",
+                 "supports_multiple_instances": False, "supports_test_connection": False},
+            ]}
+        elif path == "/api/v1/sql/jobs":
             if method == "POST":
                 saved = {"id": "88888888-8888-4888-8888-888888888888",
                          "name": body.get("name", "qa_sql_job"),
@@ -804,3 +819,36 @@ def test_ui24_canvas_run_rechecks_server_before_execution(ui):
     expect(page.get_by_text("Saved DAG changed or was disabled before Run.", exact=False)).to_be_visible()
     assert not any(c["method"] == "POST" and c["path"] == "/api/v1/sql/dag-runs" for c in state["calls"])
     assert any(c["method"] == "GET" and c["path"] == "/api/v1/sql/dags" for c in state["calls"])
+
+
+
+def test_ui25_connection_inventory_requires_token_and_never_exposes_secrets(ui):
+    """Authenticated GET-only configuration inventory; no live network test or credential leak."""
+    page, state = ui
+    page.get_by_role("button", name="Connections", exact=True).click()
+    inventory = page.get_by_label("Configured connection inventory")
+    expect(inventory).to_be_visible()
+    load = page.get_by_role("button", name="Refresh configured connections")
+    expect(load).to_be_disabled()
+    assert not any(c["path"] == "/api/v1/connections" for c in state["calls"])
+
+    token = page.get_by_label("Connection API token")
+    token.fill(TOKEN)
+    load.click()
+    expect(page.get_by_label("Connection env-sqlserver-source")).to_be_visible()
+    expect(page.get_by_label("Connection env-clickhouse-target")).to_be_visible()
+    expect(page.get_by_label("Connection env-postgres-control")).to_be_visible()
+    expect(inventory.get_by_text("3 server slots listed", exact=False)).to_be_visible()
+    assert inventory.get_by_text("Configured · not tested", exact=True).count() == 3
+    assert all(c["method"] == "GET" and c["body"] == {} for c in state["calls"]
+               if c["path"] == "/api/v1/connections")
+    assert len([c for c in state["calls"] if c["path"] == "/api/v1/connections"]) == 1
+    rendered = inventory.inner_text().lower()
+    for sensitive in [TOKEN.lower(), "sqlserver://", "postgres://", "password", "private-host", "admin@"]:
+        assert sensitive not in rendered
+
+    # A changed token must never leave the last authenticated inventory visible.
+    token.fill("another-synthetic-token")
+    expect(page.get_by_label("Connection env-sqlserver-source")).to_have_count(0)
+    assert not any(c["path"] == "/api/v1/connections" and c["method"] != "GET"
+                   for c in state["calls"])
