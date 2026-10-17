@@ -480,3 +480,55 @@ def test_ui17_all_ten_navigation_screens_mount_in_light_mode(ui):
             "getComputedStyle(document.documentElement).getPropertyValue('--console-card').trim()"
         ) == "#ffffff"
     assert not any(c["method"] in ("DELETE", "PUT", "PATCH") for c in state["calls"])
+
+def test_ui18_sql_line_gutter_and_source_metadata_filters_are_local(ui):
+    """Editing and filtering are browser-only; no ERP or backend mutations."""
+    page, state = ui
+    page.get_by_role("button", name="Connections", exact=True).click()
+    page.get_by_label("Source API token").fill(TOKEN)
+    page.get_by_role("button", name="List", exact=True).click()
+    table_filter = page.get_by_label("Filter available tables")
+    expect(table_filter).to_be_visible()
+    table_filter.fill("not_a_real_table")
+    expect(page.get_by_text("No tables match this filter.")).to_be_visible()
+    table_filter.fill("PartTran")
+    expect(page.get_by_role("button", name="PartTran", exact=True)).to_be_visible()
+    page.get_by_role("button", name="Inspect", exact=True).click()
+    column_filter = page.get_by_label("Filter inspected columns")
+    expect(column_filter).to_be_visible()
+    column_filter.fill("SysRevID")
+    expect(page.get_by_text("SysRevID", exact=True)).to_be_visible()
+    expect(page.get_by_text("SysRowID", exact=True)).not_to_be_visible()
+    # Changing source identity must not show columns from the previous table.
+    page.get_by_role("textbox", name="SQL Server table", exact=True).fill("NewTable")
+    expect(page.get_by_label("Inspected SQL Server columns")).not_to_be_visible()
+    page.get_by_label("SQL Server schema").fill("OtherSchema")
+    expect(page.get_by_label("Inspected SQL Server columns")).not_to_be_visible()
+
+    page.get_by_role("button", name="SQL Jobs", exact=True).click()
+    query = page.get_by_label("SQL SELECT query")
+    query.fill("SELECT 1\nFROM scratch.events")
+    expect(page.locator(".df-studio-line-numbers > div")).to_have_count(2)
+    expect(page.get_by_text("2 lines", exact=False)).to_be_visible()
+    page.get_by_label("SQL Jobs API token").fill(TOKEN)
+    page.get_by_role("button", name="Refresh Jobs").click()
+    page.get_by_label("Search SQL jobs").fill("inventory")
+    expect(page.get_by_role("button", name="Clear SQL job search")).to_be_visible()
+    page.get_by_role("button", name="Clear SQL job search").click()
+    expect(page.get_by_label("Search SQL jobs")).to_have_value("")
+    # A long SQL query must scroll inside the editor, with a synchronized gutter.
+    query.fill("\n".join(f"SELECT {i}" for i in range(60)))
+    expect(page.locator(".df-studio-line-numbers > div")).to_have_count(60)
+    scrolled = query.evaluate("""(el) => {
+        el.scrollTop = 120;
+        el.dispatchEvent(new Event("scroll", { bubbles: true }));
+        return { top: el.scrollTop, viewport: el.clientHeight, content: el.scrollHeight };
+    }""")
+    assert scrolled["content"] > scrolled["viewport"], "SQL editor must have a vertical scrolling viewport"
+    assert scrolled["top"] > 0, "SQL editor must accept vertical scrolling"
+    gutter = page.locator(".df-studio-line-numbers")
+    gutter_size = gutter.evaluate("(el) => ({ viewport: el.clientHeight, content: el.scrollHeight })")
+    assert gutter_size["content"] > gutter_size["viewport"], "Gutter must have a bounded scrollable viewport"
+    assert gutter_size["viewport"] == scrolled["viewport"], "Gutter and SQL editor viewport heights must match"
+    expect(gutter).to_have_js_property("scrollTop", scrolled["top"])
+    assert all(c["method"] == "GET" for c in state["calls"])

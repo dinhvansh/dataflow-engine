@@ -1,4 +1,4 @@
-import {useMemo,useState} from "react";
+import {useMemo,useRef,useState} from "react";
 import {CheckCircle2,Code2,Database,FileCode2,Info,Play,RefreshCw,Save,Search,ShieldAlert,TerminalSquare} from "lucide-react";
 import {Button} from "./ui/button";
 import {Badge} from "./ui/badge";
@@ -14,6 +14,8 @@ export function SQLJobStudio({token,onTokenChange}:{token:string;onTokenChange:(
  const[onlyEnabled,setOnlyEnabled]=useState(false);
  const[editingId,setEditingId]=useState("");
  const[error,setError]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false);
+ const gutterRef=useRef<HTMLDivElement>(null);
+ const lineCount=query.split("\n").length;
  const filtered=useMemo(()=>jobs.filter(j=>(!onlyEnabled||j.enabled)&&(j.name+" "+j.id+" "+j.database).toLowerCase().includes(search.trim().toLowerCase())),[jobs,onlyEnabled,search]);
  const load=async()=>{setBusy(true);setError("");try{setJobs((await sqlDAGApi.jobs(token)).jobs);setLoaded(true)}catch(e){setError(String(e))}finally{setBusy(false)}};
  const save=async()=>{setBusy(true);setError("");setNotice("");try{
@@ -37,8 +39,14 @@ export function SQLJobStudio({token,onTokenChange}:{token:string;onTokenChange:(
      <label className="block space-y-1"><span className="df-studio-label">ClickHouse database</span><input className="field" aria-label="SQL job database" value={database} onChange={e=>setDatabase(e.target.value)}/></label>
     </div>
     <div className="df-studio-code-box overflow-hidden rounded-md border"><div className="df-studio-code-toolbar flex items-center justify-between px-3 py-2"><span className="flex items-center gap-2 text-xs font-semibold"><FileCode2 size={14}/>query.sql</span><span className="df-studio-kicker">CLICKHOUSE / SELECT</span></div>
-     <label htmlFor="df-sql-job-query" className="sr-only">SQL SELECT query</label><textarea id="df-sql-job-query" spellCheck={false} className="df-studio-sql-area block min-h-[270px] w-full resize-y p-4 font-mono text-xs leading-6 outline-none" value={query} onChange={e=>setQuery(e.target.value)}/>
-     <div className="df-studio-code-toolbar flex items-center justify-between px-3 py-2 text-[11px]"><span>Read-only query contract</span><span className="tabular-nums">{query.split("\n").length} lines · {query.length} chars</span></div>
+     <div className="df-studio-code-editor flex min-w-0">
+      <div ref={gutterRef} aria-hidden="true" className="df-studio-line-numbers min-h-[270px] shrink-0 overflow-hidden py-4 pr-2 text-right font-mono text-xs leading-6">
+       {Array.from({length:lineCount},(_,i)=><div key={i}>{i+1}</div>)}
+      </div>
+      <label htmlFor="df-sql-job-query" className="sr-only">SQL SELECT query</label>
+      <textarea id="df-sql-job-query" spellCheck={false} wrap="off" className="df-studio-sql-area block min-h-[270px] min-w-0 flex-1 resize-y overflow-auto p-4 pl-3 font-mono text-xs leading-6 outline-none" value={query} onChange={e=>setQuery(e.target.value)} onScroll={e=>{if(gutterRef.current)gutterRef.current.scrollTop=e.currentTarget.scrollTop}}/>
+     </div>
+     <div className="df-studio-code-toolbar flex items-center justify-between px-3 py-2 text-[11px]"><span>Read-only query contract</span><span className="tabular-nums">{lineCount} lines · {query.length} chars</span></div>
     </div>
     <label className="df-studio-check flex items-start gap-3 rounded-md border p-3 text-sm"><input type="checkbox" className="mt-0.5" checked={enabled} onChange={e=>setEnabled(e.target.checked)}/><span><b>Enable this test SQL Job</b><span className="muted mt-1 block text-xs">Enabling a saved definition does not enqueue or execute a DAG.</span></span></label>
     <div className="flex flex-wrap items-center gap-2"><Button disabled={!token||busy} onClick={save}><Save size={15}/>{busy?"Working…":"Save SQL Job"}</Button><Button variant="outline" disabled={!token||busy} onClick={load}><RefreshCw size={15}/>Refresh Jobs</Button>{editingId&&<span className="muted ml-auto font-mono text-[11px]">{editingId.slice(0,12)}…</span>}</div>
@@ -47,7 +55,7 @@ export function SQLJobStudio({token,onTokenChange}:{token:string;onTokenChange:(
    </section>
    <aside className="df-studio-panel section min-w-0 space-y-4" aria-label="Registered SQL jobs">
     <div className="flex items-start justify-between gap-2"><div><h3 className="font-semibold">Registered SQL Jobs</h3><p className="muted mt-1 text-xs">{loaded?`${jobs.length} loaded jobs`:"Load saved jobs to browse and edit."}</p></div><Badge variant="neutral">{filtered.length} shown</Badge></div>
-    <label className="relative block"><Search size={16} className="muted absolute left-3 top-3"/><input aria-label="Search SQL jobs" className="field pl-10" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, database, ID"/></label>
+    <div className="relative"><Search size={16} className="muted pointer-events-none absolute left-3 top-3"/><input aria-label="Search SQL jobs" className="field pl-10 pr-16" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, database, ID"/>{search&&<button type="button" className="df-studio-clear-search absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-xs" aria-label="Clear SQL job search" onClick={()=>setSearch("")}>Clear</button>}</div>
     <label className="muted flex items-center gap-2 text-xs"><input type="checkbox" checked={onlyEnabled} onChange={e=>setOnlyEnabled(e.target.checked)}/>Enabled only</label>
     {!loaded&&<div className="df-studio-empty rounded-md border p-6 text-center"><Database className="muted mx-auto mb-2" size={25}/><p className="text-sm font-semibold">Nothing loaded yet</p><p className="muted mt-1 text-xs">Refresh Jobs uses the existing registry API.</p></div>}
     {loaded&&jobs.length===0&&<p className="df-studio-empty rounded-md border p-5 text-center text-sm">No registered SQL jobs.</p>}
