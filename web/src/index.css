@@ -458,3 +458,12 @@ body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
 .df-status-fill-warning{background-color:var(--signal-status-warning)}
 :root.theme-light .df-code-surface{background-color:#f6f8f6}
 :root.theme-dark .df-code-surface{background-color:#131b16}
+
+/* Confirmed destructive / publish operations use a branded accessible modal.
+   HTMLDialogElement manages modal focus, backdrop, keyboard escape and inert background. */
+.df-action-dialog{position:fixed;inset:0;margin:auto;background:var(--console-card);color:var(--console-text);border:1px solid var(--console-border);box-shadow:0 24px 60px rgba(0,0,0,.30);max-height:min(85vh,640px);overflow:auto}
+.df-action-dialog::backdrop{background:rgba(8,20,13,.62);backdrop-filter:blur(3px)}
+.df-action-dialog-symbol{background:var(--signal-soft);color:var(--console-accent)}
+.df-action-dialog-symbol.is-danger{background:var(--df-danger-soft,rgba(180,35,50,.09));color:var(--signal-status-error)}
+.df-action-dialog-target{background:var(--console-field);border-color:var(--console-border)}
+.df-action-dialog button:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}
