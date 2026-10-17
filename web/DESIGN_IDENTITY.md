@@ -20,3 +20,19 @@ The previous interface had the typical generic AI dashboard look: saturated blue
 ## Boundaries
 
 Components remain local shadcn-style React/Tailwind primitives. No Ant Design and no CDN font requirement. Existing API contracts and on-click callbacks unchanged. PR can be reverted independently.
+
+## Palette 02 · Graphite / Deep Teal / Signal Volt
+
+Color research: [PaletaColor Pro library](https://paletacolorpro.com/en/library). Reference palettes: [High Contrast Green](https://paletacolorpro.com/en/palette/high-contrast-green/004d40-00796b-ffffff-e0f2f1-1a1a1a), [Easy Reading](https://paletacolorpro.com/en/palette/easy-reading/2d2d2d-4a4a4a-ffffff-fff8dc-006400), [Accessible Alert](https://paletacolorpro.com/en/palette/accessible-alert/b71c1c-1b5e20-e65100-01579b-ffffff).
+
+| Token | Dark | Light | Meaning |
+|---|---|---|---|
+| `--console-bg` | `#161D1B` | `#EFF6F3` | base graphite/mineral |
+| `--console-card` | `#202A26` | `#FFFFFF` | readable panels |
+| `--console-accent` | `#C0F273` | `#006C61` | active command, focus and brand |
+| `--signal-teal` | `#75D5C5` | `#00796B` | secondary information, not success |
+| `--signal-status-success` | `#78DBAD` | `#1B5E20` | actual observed successful state |
+| `--signal-status-error` | `#F29890` | `#B71C1C` | actual observed failure |
+| `--signal-status-warning` | `#EDCA83` | `#93450E` | queued/running/unverified |
+
+Keep **brand accent** distinct from **execution success**. Accessible Alert shades are adjusted for context; validate text contrast for both themes and don't use color alone to convey status. Xyflow CSS reads the same semantic variables as cards, status rails and side navigation. No images copied from PaletaColor Pro.

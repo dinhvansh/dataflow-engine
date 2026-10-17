@@ -1,5 +1,4 @@
 @tailwind base;@tailwind components;@tailwind utilities;
-@import '@xyflow/react/dist/style.css';
 :root{--background:222 23% 8%;--foreground:210 30% 95%;--card:222 20% 11%;--muted:220 17% 18%;--border:220 15% 24%;--primary:198 94% 56%;--primary-foreground:222 23% 8%;color-scheme:dark}*{border-color:hsl(var(--border))}body{margin:0;background:hsl(var(--background));color:hsl(var(--foreground));font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}input,select{color-scheme:dark} .field{display:block;width:100%;border:1px solid hsl(var(--border));border-radius:.5rem;background:hsl(var(--muted));padding:.57rem .72rem;font-size:.86rem;outline:none}.field:focus{border-color:hsl(var(--primary))}.section{border:1px solid hsl(var(--border));background:hsl(var(--card));border-radius:.85rem;padding:1.1rem}.muted{color:#91a0b7}.navbtn{display:flex;align-items:center;gap:.65rem;width:100%;padding:.7rem .85rem;border-radius:.55rem;text-align:left}.navbtn:hover,.navbtn.active{background:#253144;color:#7dd3fc}
 
 /* v1.5 Enterprise console: semantic light/dark palette and responsive chrome. */
@@ -204,3 +203,44 @@ body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
 .xyflow-signal-canvas .react-flow__attribution{background:var(--console-card);color:var(--console-muted)}
 :root.theme-light .xyflow-signal-canvas .react-flow__controls-button svg{fill:var(--console-text)}
 @media(max-width:640px){.xyflow-signal-canvas{height:350px}.xyflow-signal-node{width:208px;padding:10px}.signal-node-name{font-size:12px}}
+
+
+/* SIGNALROOM PALETTE 02 — curated with PaletaColor Pro library.
+   High Contrast Green #004D40 / #00796B / #E0F2F1 / #1A1A1A;
+   Accessible Monochrome #2D2D2D / #FFFFFF and Accessible Alert
+   #B71C1C / #1B5E20 are semantic references, not instructions
+   to use any palette color as body text without contrast checks.
+   Signature volt remains unique DataFlow brand signal. */
+:root.theme-dark{
+ --background:156 13% 9%; --foreground:160 24% 94%; --card:155 13% 14%;
+ --muted:155 10% 19%; --border:156 14% 26%; --primary:85 83% 70%;
+ --console-bg:#161d1b; --console-sidebar:#111816; --console-header:#202a26;
+ --console-card:#202a26; --console-field:#18231e; --console-text:#eff7f3;
+ --console-muted:#afc2b9; --console-border:#40534a; --console-hover:#2b3a32;
+ --console-accent:#c0f273; --signal-teal:#75d5c5; --signal-volt:#c0f273;
+ --signal-grid:rgba(145,198,176,.10); --signal-soft:rgba(117,213,197,.07);
+ --signal-status-success:#78dbad; --signal-status-error:#f29890; --signal-status-warning:#edca83;
+}
+:root.theme-light{
+ --background:158 23% 95%; --foreground:159 39% 16%; --card:0 0% 100%;
+ --muted:165 26% 92%; --border:159 16% 81%; --primary:173 100% 21%;
+ --console-bg:#eff6f3; --console-sidebar:#e0f2f1; --console-header:#ffffff;
+ --console-card:#ffffff; --console-field:#f5faf8; --console-text:#183b32;
+ --console-muted:#526b61; --console-border:#c6d9d0; --console-hover:#e0f0e9;
+ --console-accent:#006c61; --signal-teal:#00796b; --signal-volt:#c0f273;
+ --signal-grid:rgba(0,77,64,.10); --signal-soft:rgba(0,121,107,.06);
+ --signal-status-success:#1b5e20; --signal-status-error:#b71c1c; --signal-status-warning:#93450e;
+}
+:root.theme-dark .enterprise-badge-success{color:var(--signal-status-success)}
+:root.theme-light .enterprise-badge-success{color:var(--signal-status-success)}
+:root.theme-dark .enterprise-badge-danger{color:var(--signal-status-error)}
+:root.theme-light .enterprise-badge-danger{color:var(--signal-status-error)}
+:root.theme-dark .enterprise-badge-warning{color:var(--signal-status-warning)}
+:root.theme-light .enterprise-badge-warning{color:var(--signal-status-warning)}
+.xyflow-signal-canvas .react-flow{--xy-background-color:var(--console-bg);--xy-node-color:var(--console-text);--xy-edge-stroke:var(--console-muted);--xy-controls-button-background-color:var(--console-card);--xy-controls-button-color:var(--console-text);--xy-minimap-background-color:var(--console-card)}
+:root.theme-light .xyflow-signal-canvas .react-flow__attribution{color:var(--console-muted)}
+.xyflow-signal-node.status-succeeded{border-left-color:var(--signal-status-success)}
+.xyflow-signal-node.status-failed{border-left-color:var(--signal-status-error)}
+.xyflow-signal-node.status-running,.xyflow-signal-node.status-queued{border-left-color:var(--signal-status-warning)}
+:root.theme-dark .xyflow-signal-canvas .react-flow__minimap-mask{fill:rgba(22,29,27,.52)}
+:root.theme-light .xyflow-signal-canvas .react-flow__minimap-mask{fill:rgba(239,246,243,.62)}
