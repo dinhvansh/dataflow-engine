@@ -466,7 +466,7 @@ def test_ui17_all_ten_navigation_screens_mount_in_light_mode(ui):
         ("Connections", "Connector Hub"),
         ("Sync Jobs", "Experimental full-load / rowversion-window trial"),
         ("Transform Studio", "Data Preview"),
-        ("Data Lineage", "Dependency Map"),
+        ("Data Lineage", "Data Lineage & Impact Analysis"),
         ("SQL Jobs", "Query editor"),
         ("Operations Center", "Pipeline Operations Center"),
         ("Pipelines", "Pipeline Definition (JSON)"),
