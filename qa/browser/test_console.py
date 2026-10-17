@@ -251,12 +251,18 @@ def test_ui05_auto_build_action_and_order(ui):
 def test_ui06_incremental_publish_and_rollback_buttons(ui):
     page, state = ui
     open_tab(page, "Incremental CDC")
-    page.on("dialog", lambda dialog: dialog.accept())
     page.get_by_role("button", name=re.compile("Build Delta Staging")).click()
     expect(page.get_by_text("ready", exact=True)).to_be_visible()
     page.get_by_role("button", name=re.compile("Approve & Publish \\+ Cursor")).click()
+    expect(page.get_by_role("dialog", name="Confirm incremental publish")).to_be_visible()
+    page.get_by_role("button", name="Cancel").click()
+    assert not any(c["path"] == "/api/v1/transform/incremental/action" for c in state["calls"])
+    page.get_by_role("button", name=re.compile("Approve & Publish \\+ Cursor")).click()
+    page.get_by_role("button", name="Confirm publish").click()
     expect(page.get_by_text("published", exact=True)).to_be_visible()
     page.get_by_role("button", name=re.compile("Rollback Data \\+ Cursor")).click()
+    expect(page.get_by_role("dialog", name="Confirm incremental rollback")).to_be_visible()
+    page.get_by_role("button", name="Confirm rollback").click()
     expect(page.get_by_text("rolled_back", exact=True)).to_be_visible()
     actions = [c["body"].get("confirm") for c in state["calls"]
                if c["path"] == "/api/v1/transform/incremental/action"]

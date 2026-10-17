@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState,type DragEvent} from "react";
 import {ArrowDown,ArrowUp,Braces,CheckCircle2,ChevronDown,Code2,Database,Eye,Filter,GripVertical,Layers3,Plus,RefreshCw,Save,ShieldAlert,Table2,Trash2,Undo2} from "lucide-react";
 import {Button} from "./ui/button";
+import {ConfirmActionDialog} from "./ui/confirm-action-dialog";
 import {transformApi,type TableRun,type DbtRun,type TransformColumn,type TransformKind,type TransformModel,type TransformStep,type SavedTransform,type CompileResult,type PreviewResult} from "../lib/transformApi";
 
 const operationDetails:{kind:TransformKind;name:string;hint:string}[]=[
@@ -81,6 +82,7 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
  const[tableRun,setTableRun]=useState<TableRun|null>(null);
  const[uniqueKey,setUniqueKey]=useState("");
  const[tableBusy,setTableBusy]=useState(false);
+ const[pendingTableAction,setPendingTableAction]=useState<"publish"|"rollback"|null>(null);
  const active=useMemo(()=>model.steps.filter(s=>s.enabled!==false),[model.steps]);
  const selectedStep=model.steps.find(s=>s.id===selected);
  const selectedIndex=selected==="source"?0:Math.max(0,active.findIndex(s=>s.id===selected)+1);
@@ -153,8 +155,7 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
  };
  const tableAction=async(action:"publish"|"rollback")=>{
   if(!tableRun)return;
-  const msg=action==="publish"?"Xác nhận publish bảng đã kiểm tra vào scratch? Bảng đang dùng sẽ được giữ làm bản rollback.":"Xác nhận khôi phục bảng cũ? Chỉ dùng khi bản trước còn nguyên.";
-  if(!window.confirm(msg))return;
+  setPendingTableAction(null);
   setTableBusy(true);setError("");
   try{
    const result=await transformApi.tableAction(tableRun.run_id,action,token);
@@ -265,8 +266,8 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
    {tableRun.error&&<div role="alert" className="df-text-error">{tableRun.error}</div>}
    {tableRun.log_tail&&<pre className="max-h-36 overflow-auto whitespace-pre-wrap df-code-surface p-2 text-xs">{tableRun.log_tail}</pre>}
    <div className="flex gap-2 flex-wrap">
-    <Button disabled={tableBusy||tableRun.state!=="ready"} onClick={()=>void tableAction("publish")}>Approve & Publish</Button>
-    <Button variant="outline" disabled={tableBusy||tableRun.state!=="published"||!tableRun.has_backup} onClick={()=>void tableAction("rollback")}>Rollback previous table</Button>
+    <Button disabled={tableBusy||tableRun.state!=="ready"} onClick={()=>setPendingTableAction("publish")}>Approve & Publish</Button>
+    <Button variant="outline" disabled={tableBusy||tableRun.state!=="published"||!tableRun.has_backup} onClick={()=>setPendingTableAction("rollback")}>Rollback previous table</Button>
    </div>
    <p className="text-xs df-text-warning">Chỉ áp dụng cho bản TEST; chưa xác nhận an toàn với dashboard production hoặc Epicor.</p>
   </section>}
@@ -276,6 +277,15 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
   {dbtRun.error&&<p className="mt-2 text-xs df-text-error">{dbtRun.error}</p>}
   {dbtRun.log_tail&&<pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded df-code-surface p-3 text-xs">{dbtRun.log_tail}</pre>}
  </div>}
+ {pendingTableAction&&tableRun&&<ConfirmActionDialog
+   title={pendingTableAction==="publish"?"Confirm staging table publish":"Confirm staging table rollback"}
+   message={pendingTableAction==="publish"?"Publish the verified staging table to scratch. The previous table is retained for rollback.":"Restore the previous scratch table only when the backup remains valid."}
+   target={tableRun.target||("scratch."+model.name)}
+   confirmLabel={pendingTableAction==="publish"?"Confirm publish":"Confirm rollback"}
+   destructive={pendingTableAction==="rollback"}
+   onCancel={()=>setPendingTableAction(null)}
+   onConfirm={()=>void tableAction(pendingTableAction)}
+  />}
  {info&&<div role="status" className="rounded-md border df-border-success df-bg-success-soft p-3 text-sm df-text-success">{info}</div>}
  </div>;
 }

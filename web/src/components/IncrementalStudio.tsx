@@ -1,6 +1,7 @@
 import {useEffect,useState} from "react";
 import {AlertTriangle,CheckCircle2,Database,Play,RefreshCw,RotateCcw} from "lucide-react";
 import {Button} from "./ui/button";
+import {ConfirmActionDialog} from "./ui/confirm-action-dialog";
 import {transformApi,type IncrementalRun} from "../lib/transformApi";
 
 const working=new Set(["queued","building","publishing","rolling_back"]);
@@ -12,6 +13,7 @@ export function IncrementalStudio({token,onTokenChange}:{token:string;onTokenCha
  const[latest,setLatest]=useState<IncrementalRun|null>(null);
  const[history,setHistory]=useState<IncrementalRun[]>([]);
  const[busy,setBusy]=useState(false);
+ const[pendingAction,setPendingAction]=useState<"publish"|"rollback"|null>(null);
  const[error,setError]=useState("");
  const[info,setInfo]=useState("");
  const refresh=async()=>{
@@ -47,10 +49,7 @@ export function IncrementalStudio({token,onTokenChange}:{token:string;onTokenCha
  };
  const action=async(type:"publish"|"rollback")=>{
   if(!latest)return;
-  const message=type==="publish"?
-    "Xác nhận Publish bản Incremental đã kiểm tra? Cursor sẽ tăng sau khi đổi bảng thành công.":
-    "Xác nhận Rollback bản dữ liệu trước? Cursor cũng sẽ quay về mốc cũ.";
-  if(!window.confirm(message))return;
+  setPendingAction(null);
   setBusy(true);setError("");
   try{
    const res=await transformApi.incrementalAction(latest.run_id,type,token);
@@ -89,11 +88,20 @@ export function IncrementalStudio({token,onTokenChange}:{token:string;onTokenCha
    </div>
    {latest.error&&<p role="alert" className="text-xs df-text-error">{latest.error}</p>}
    <div className="flex flex-wrap gap-2">
-    <Button disabled={busy||latest.state!=="ready"} onClick={()=>void action("publish")}><CheckCircle2 size={15}/>Approve & Publish + Cursor</Button>
-    <Button variant="outline" disabled={busy||latest.state!=="published"||!latest.has_backup} onClick={()=>void action("rollback")}><RotateCcw size={15}/>Rollback Data + Cursor</Button>
+    <Button disabled={busy||latest.state!=="ready"} onClick={()=>setPendingAction("publish")}><CheckCircle2 size={15}/>Approve & Publish + Cursor</Button>
+    <Button variant="outline" disabled={busy||latest.state!=="published"||!latest.has_backup} onClick={()=>setPendingAction("rollback")}><RotateCcw size={15}/>Rollback Data + Cursor</Button>
    </div>
    <p className="muted text-xs">Checkpoint chỉ tăng khi Publish hoàn tất. Nếu không có sự kiện mới, run kết thúc với trạng thái no_changes.</p>
   </div>}
+  {pendingAction&&latest&&<ConfirmActionDialog
+   title={pendingAction==="publish"?"Confirm incremental publish":"Confirm incremental rollback"}
+   message={pendingAction==="publish"?"Publish verified scratch data and advance the cursor only after backend commit.":"Restore the previous scratch data and checkpoint; no production data will be touched."}
+   target={latest.target||("scratch."+target)}
+   confirmLabel={pendingAction==="publish"?"Confirm publish":"Confirm rollback"}
+   destructive={pendingAction==="rollback"}
+   onCancel={()=>setPendingAction(null)}
+   onConfirm={()=>void action(pendingAction)}
+  />}
   {history.length>0&&<div className="section"><h3 className="mb-2 font-semibold">Run History</h3>
    <div className="max-h-72 overflow-auto">{history.map(item=>
     <button key={item.run_id} className="flex w-full flex-wrap items-center justify-between gap-2 border-b df-border-neutral px-2 py-2 text-left text-xs df-hover-bg-neutral" onClick={()=>setLatest(item)}>
