@@ -38,17 +38,20 @@ func (r *KeySnapshotReader) Read(ctx context.Context,emit func(engine.Batch)erro
  tx,err:=r.DB.BeginTx(ctx,&sql.TxOptions{Isolation:sql.LevelSnapshot})
  if err!=nil{return fmt.Errorf("SQL Server SNAPSHOT unavailable: %w",err)}
  defer tx.Rollback()
- query:="SELECT CONVERT(varchar(36),[SysRowID]), CONVERT(varchar(18),[SysRevID],1) FROM "+schema+"."+table+" ORDER BY [SysRowID]"
+ // Binary avoids driver-dependent truncation of the 8-byte rowversion when
+ // SQL Server casts it to varchar. Source access remains strictly SELECT-only.
+ query:="SELECT CONVERT(varchar(36),[SysRowID]), CONVERT(binary(8),[SysRevID]) FROM "+schema+"."+table+" ORDER BY [SysRowID]"
  rows,err:=tx.QueryContext(ctx,query);if err!=nil{return err}
  defer rows.Close()
  seq:=uint64(0)
  batch:=engine.Batch{Rows:make([]map[string]any,0,r.BatchSize)}
  for rows.Next(){
-  var pk,rv string
-  if err=rows.Scan(&pk,&rv);err!=nil{return err}
+  var pk string
+  var rawVersion []byte
+  if err=rows.Scan(&pk,&rawVersion);err!=nil{return err}
   if pk=="" {return errors.New("empty source PK")}
-  version,parseErr:=cursor.ParseRowVersion(rv);if parseErr!=nil{return parseErr}
-  batch.Rows=append(batch.Rows,map[string]any{"SysRowID":strings.ToLower(pk),"SysRevID":version.String()})
+  version,parseErr:=snapshotRowVersion(rawVersion);if parseErr!=nil{return parseErr}
+  batch.Rows=append(batch.Rows,map[string]any{"SysRowID":strings.ToLower(pk),"SysRevID":version})
   if len(batch.Rows)>=r.BatchSize{
    batch.Sequence=seq
    if err=emit(batch);err!=nil{return err}
@@ -59,4 +62,12 @@ func (r *KeySnapshotReader) Read(ctx context.Context,emit func(engine.Batch)erro
  if err=rows.Close();err!=nil{return err}
  if len(batch.Rows)>0{batch.Sequence=seq;if err=emit(batch);err!=nil{return err}}
  return tx.Commit()
+}
+
+// snapshotRowVersion accepts only a genuine 8-byte SQL Server rowversion.
+// Never pad or truncate a malformed source cursor: fail closed instead.
+func snapshotRowVersion(raw []byte) (string,error) {
+ version,err:=cursor.FromBytes(raw)
+ if err!=nil{return "",err}
+ return version.String(),nil
 }
