@@ -94,7 +94,7 @@ function buildGraph(plan:PipelineNode[]|undefined,state:Record<string,string>,at
   for(const prerequisite of item.requires??[]){
    if(!names.has(prerequisite)||prerequisite===item.id)continue;
    const outcome=state[item.id];
-   const stroke=outcome==="failed"?"#dd6c61":outcome==="succeeded"?"#4baf7e":"var(--console-muted)";
+   const stroke=outcome==="failed"?"var(--signal-status-error)":outcome==="succeeded"?"var(--signal-status-success)":"var(--console-muted)";
    edges.push({
     id:`dependency:${prerequisite}:${item.id}`,source:prerequisite,target:item.id,
     type:"smoothstep",animated:outcome==="running",
@@ -130,7 +130,7 @@ export function DagExecutionMap({theme,plan,state,attempts,errors}:Props){
     <Background variant={BackgroundVariant.Lines} gap={24} size={0.7} color="var(--signal-grid)"/>
     <MiniMap pannable zoomable position="bottom-right" nodeColor={n=>{
      const st=(n.data as EvidenceNodeData)?.status;
-     return st==="failed"?"#dd6c61":st==="succeeded"?"#4baf7e":st==="running"?"#e1be70":"#879c8b";
+     return st==="failed"?"var(--signal-status-error)":st==="succeeded"?"var(--signal-status-success)":st==="running"?"var(--signal-status-warning)":"var(--console-muted)";
     }}/>
     <Controls showInteractive={false} position="bottom-left"/>
    </ReactFlow>
