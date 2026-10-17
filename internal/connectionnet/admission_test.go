@@ -100,6 +100,8 @@ func TestEndpointAdmissionRejectsSpoofingAndUnsafeOperatorPolicy(t *testing.T){
 		{[]HostPort{{Host:"erp.lab.internal",Port:0}},good,f},
 		{allowed,[]netip.Prefix{cidr("10.20.0.1/24")},f},
 		{allowed,[]netip.Prefix{cidr("::ffff:10.10.0.0/120")},f},
+		{allowed,[]netip.Prefix{cidr("0.0.0.0/0")},f},
+		{allowed,[]netip.Prefix{cidr("::/0")},f},
 	}{
 		if _,err:=NewPolicy(bad.hosts,bad.cidrs,bad.resolver);!errors.Is(err,ErrDenied){t.Fatalf("unsafe operator policy admitted: %+v %v",bad,err)}
 	}
