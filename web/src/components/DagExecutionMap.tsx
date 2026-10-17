@@ -1,80 +1,136 @@
-import {AlertTriangle,ArrowRight,CheckCircle2,CircleDashed,Clock3,GitBranch,PlayCircle,XCircle} from "lucide-react";
+import {memo,useMemo} from "react";
+import {AlertTriangle,CheckCircle2,CircleDashed,Clock3,GitBranch,PlayCircle,XCircle} from "lucide-react";
+import {
+ Background,BackgroundVariant,Controls,Handle,MarkerType,MiniMap,
+ Position,ReactFlow,type Edge,type Node,type NodeProps,
+} from "@xyflow/react";
 import type {PipelineNode} from "../lib/api";
 import {Badge} from "./ui/badge";
 
+type EvidenceNodeData={
+ label:string; jobId?:string; status?:string; attempts?:number;
+ error?:string; requires:string[];
+} & Record<string,unknown>;
+type EvidenceNode=Node<EvidenceNodeData,"evidence">;
 type Props={
  plan?:PipelineNode[];
  state?:Record<string,string>;
  attempts?:Record<string,number>;
  errors?:Record<string,string>;
 };
-type VisualNode={id:string;requires:string[];level:number;status?:string;attempts?:number;error?:string};
-
-function buildLevels(plan:PipelineNode[]|undefined,state:Record<string,string>={},attempts:Record<string,number>={},errors:Record<string,string>={}):VisualNode[][]{
- const source=plan?.length?plan.map(n=>({id:n.id,requires:n.requires??[]})):Object.keys(state).sort().map(id=>({id,requires:[] as string[]}));
- const known=new Set(source.map(n=>n.id));
- // Server validates persisted DAGs; this bounded layout still fails safe if
- // a historical definition is incomplete or references a removed step.
- const level=new Map(source.map(n=>[n.id,0]));
- for(let i=0;i<source.length;i++){
-  let changed=false;
-  for(const n of source){
-   const upstream=n.requires.filter(dep=>known.has(dep));
-   const next=upstream.length?Math.max(...upstream.map(dep=>level.get(dep)??0))+1:0;
-   if(next>(level.get(n.id)??0)){level.set(n.id,next);changed=true}
-  }
-  if(!changed)break;
- }
- const result=new Map<number,VisualNode[]>();
- for(const n of source.slice(0,80)){
-  // A cyclic/malformed stored DAG must not create unlimited screen columns.
-  const depth=Math.min(level.get(n.id)??0,Math.min(source.length,12));
-  result.set(depth,[...(result.get(depth)??[]),{id:n.id,requires:n.requires,level:depth,status:state[n.id],attempts:attempts[n.id],error:errors[n.id]}]);
- }
- return [...result].sort(([a],[b])=>a-b).map(([,nodes])=>nodes);
-}
-function variant(status:string|undefined):"success"|"danger"|"warning"|"neutral"{
+const MAX_RENDERED=80;
+const MAX_LEVEL=12;
+function variant(status?:string):"success"|"danger"|"warning"|"neutral"{
  if(status==="succeeded")return "success";
  if(status==="failed"||status==="cancelled")return "danger";
  if(status==="queued"||status==="running")return "warning";
  return "neutral";
 }
 function StateIcon({status}:{status?:string}){
- if(status==="succeeded")return <CheckCircle2 className="text-emerald-400" size={17}/>;
- if(status==="failed"||status==="cancelled")return <XCircle className="text-red-400" size={17}/>;
- if(status==="running")return <PlayCircle className="text-amber-400" size={17}/>;
- if(status==="queued")return <Clock3 className="text-amber-400" size={17}/>;
- return <CircleDashed className="muted" size={17}/>;
+ if(status==="succeeded")return <CheckCircle2 className="text-emerald-400" size={16}/>;
+ if(status==="failed"||status==="cancelled")return <XCircle className="text-red-400" size={16}/>;
+ if(status==="running")return <PlayCircle className="text-amber-400" size={16}/>;
+ if(status==="queued")return <Clock3 className="text-amber-400" size={16}/>;
+ return <CircleDashed className="muted" size={16}/>;
+}
+const SignalNode=memo(function SignalNode({data,selected}:NodeProps<EvidenceNode>){
+ return <div className={`xyflow-signal-node ${selected?"is-selected":""} ${data.status?"status-"+data.status:"status-unreported"}`}>
+  <Handle type="target" position={Position.Left} isConnectable={false} className="xyflow-handle"/>
+  <div className="flex items-center justify-between gap-2">
+   <span className="signal-node-kicker">JOB / STEP</span>
+   <StateIcon status={data.status}/>
+  </div>
+  <p className="signal-node-name mt-2 break-all">{data.label}</p>
+  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+   <Badge variant={variant(data.status)}>{data.status??"No result yet"}</Badge>
+   <span className="signal-node-attempts">Attempts: {data.attempts??"Not reported"}</span>
+  </div>
+  {data.error&&<p className="signal-node-error mt-3 break-words"><AlertTriangle size={12} className="mr-1 inline"/>{data.error}</p>}
+  {data.requires.length>0&&<p className="signal-node-dependencies mt-2 break-words">Needs: {data.requires.join(", ")}</p>}
+  <Handle type="source" position={Position.Right} isConnectable={false} className="xyflow-handle"/>
+ </div>;
+});
+const nodeTypes={evidence:SignalNode};
+
+function buildGraph(plan:PipelineNode[]|undefined,state:Record<string,string>,attempts:Record<string,number>,errors:Record<string,string>){
+ const source=plan?.length?plan: Object.keys(state).sort().map(id=>({id,job_id:"",requires:[] as string[]}));
+ const included=source.slice(0,MAX_RENDERED);
+ const names=new Set(included.map(n=>n.id));
+ const ranks=new Map(included.map(n=>[n.id,0]));
+ for(let i=0;i<included.length;i++){
+  let changed=false;
+  for(const item of included){
+   const parents=(item.requires??[]).filter(k=>names.has(k));
+   const rank=parents.length?Math.max(...parents.map(k=>ranks.get(k)??0))+1:0;
+   const bounded=Math.min(rank,MAX_LEVEL);
+   if(bounded>(ranks.get(item.id)??0)){ranks.set(item.id,bounded);changed=true}
+  }
+  if(!changed)break;
+ }
+ const columns=new Map<number,PipelineNode[]>();
+ for(const item of included){
+  const rank=ranks.get(item.id)??0;
+  columns.set(rank,[...(columns.get(rank)??[]),item]);
+ }
+ const nodes:EvidenceNode[]=[];
+ for(const [level,items] of [...columns].sort(([a],[b])=>a-b)){
+  const height=items.length*158-18;
+  items.forEach((item,index)=>{
+   nodes.push({
+    id:item.id,type:"evidence",
+    position:{x:level*318,y:index*158-Math.floor(height/2)},
+    draggable:false,selectable:true,
+    data:{label:item.id,jobId:item.job_id,status:state[item.id],attempts:attempts[item.id],error:errors[item.id],requires:item.requires??[]},
+   });
+  });
+ }
+ const edges:Edge[]=[];
+ for(const item of included){
+  for(const prerequisite of item.requires??[]){
+   if(!names.has(prerequisite)||prerequisite===item.id)continue;
+   const outcome=state[item.id];
+   const stroke=outcome==="failed"?"#dd6c61":outcome==="succeeded"?"#4baf7e":"var(--console-muted)";
+   edges.push({
+    id:`dependency:${prerequisite}:${item.id}`,source:prerequisite,target:item.id,
+    type:"smoothstep",animated:outcome==="running",
+    style:{stroke,strokeWidth:outcome==="running"?2.5:1.7},
+    markerEnd:{type:MarkerType.ArrowClosed,color:stroke},
+   });
+  }
+ }
+ return {nodes,edges,total:source.length};
 }
 export function DagExecutionMap({plan,state,attempts,errors}:Props){
- const columns=buildLevels(plan,state,attempts,errors);
- const visibleCount=columns.reduce((sum,column)=>sum+column.length,0);
- const evidenceCount=Object.keys(state??{}).length;
- if(visibleCount===0)return <div className="muted rounded-xl border border-border px-4 py-8 text-center text-sm">No DAG definition or node execution evidence is available for this run.</div>;
+ const safeState=state??{},safeAttempts=attempts??{},safeErrors=errors??{};
+ const graph=useMemo(()=>buildGraph(plan,safeState,safeAttempts,safeErrors),[plan,state,attempts,errors]);
+ if(graph.nodes.length===0)return <div className="muted rounded border border-border px-4 py-8 text-center text-sm">No DAG definition or node execution evidence is available for this run.</div>;
  return <section className="space-y-3" aria-label="DAG execution map">
   <div className="flex flex-wrap items-center justify-between gap-3">
-   <div><h4 className="flex items-center gap-2 text-sm font-semibold"><GitBranch size={16}/>Execution graph</h4><p className="muted mt-1 text-xs">Each node shows its actual stored state and recorded dependencies.</p></div>
-   <div className="flex flex-wrap gap-2"><Badge variant="neutral">{visibleCount} shown</Badge><Badge variant="default">{evidenceCount} node results</Badge></div>
+   <div><h4 className="flex items-center gap-2 text-sm font-semibold"><GitBranch size={16}/>Execution graph <span className="signal-inline-code">/ XYFLOW</span></h4>
+    <p className="muted mt-1 text-xs">Pan, zoom and inspect real dependency edges and recorded node outcomes.</p></div>
+   <div className="flex flex-wrap gap-2"><Badge variant="neutral">{graph.nodes.length} shown</Badge><Badge variant="default">{Object.keys(safeState).length} node results</Badge></div>
   </div>
-  <div className="enterprise-dag-canvas overflow-x-auto rounded-xl border border-border p-4">
-   <div className="flex min-w-max items-stretch gap-3">
-    {columns.map((column,i)=><div key={i} className="flex items-center gap-3">
-     {i>0&&<ArrowRight size={18} className="shrink-0 text-primary" aria-hidden="true"/>}
-     <div className="flex w-[250px] flex-col gap-3">
-      <div className="muted text-[11px] font-semibold uppercase tracking-wider">Stage {i+1}</div>
-      {column.map(node=><div className="enterprise-dag-node rounded-xl border p-3" key={node.id}>
-       <div className="flex items-start justify-between gap-2"><div className="flex min-w-0 items-center gap-2"><StateIcon status={node.status}/><span className="break-all text-xs font-bold">{node.id}</span></div><Badge variant={variant(node.status)}>{node.status??"No result yet"}</Badge></div>
-       <div className="mt-3 space-y-1.5 text-[11px]">
-        <p className="muted">Attempts: {node.attempts===undefined?"Not reported":node.attempts}</p>
-        {node.requires.length>0?<div className="muted flex flex-wrap items-start gap-1"><span>Needs:</span>{node.requires.map(dep=><span key={dep} className="enterprise-dependency rounded px-1.5 py-0.5 font-mono">{dep}</span>)}</div>:<p className="muted">Entry node</p>}
-       </div>
-       {node.error&&<div className="enterprise-node-error mt-3 flex items-start gap-2 rounded-lg p-2 text-[11px]"><AlertTriangle size={13} className="mt-0.5 shrink-0"/><span className="min-w-0 break-words">{node.error}</span></div>}
-      </div>)}
-     </div>
-    </div>)}
-   </div>
+  <div className="xyflow-signal-canvas" role="img" aria-label="Interactive pipeline execution diagram">
+   <ReactFlow<EvidenceNode,Edge>
+    nodes={graph.nodes} edges={graph.edges} nodeTypes={nodeTypes}
+    fitView fitViewOptions={{padding:0.24,maxZoom:1.15}}
+    minZoom={0.25} maxZoom={1.7}
+    nodesDraggable={false} nodesConnectable={false}
+    elementsSelectable={true} edgesReconnectable={false}
+    deleteKeyCode={null} multiSelectionKeyCode={null}
+    panOnDrag zoomOnScroll zoomOnPinch zoomOnDoubleClick={false}
+    colorMode="dark"
+    proOptions={{hideAttribution:false}}
+   >
+    <Background variant={BackgroundVariant.Lines} gap={24} size={0.7} color="var(--signal-grid)"/>
+    <MiniMap pannable zoomable position="bottom-right" nodeColor={n=>{
+     const st=(n.data as EvidenceNodeData)?.status;
+     return st==="failed"?"#dd6c61":st==="succeeded"?"#4baf7e":st==="running"?"#e1be70":"#879c8b";
+    }}/>
+    <Controls showInteractive={false} position="bottom-left"/>
+   </ReactFlow>
   </div>
-  {plan&&plan.length>80&&<p className="muted text-xs">Showing the first 80 nodes out of {plan.length}. Open the full DAG definition to inspect the rest.</p>}
-  <p className="muted text-xs">Stage columns are a layout of the saved dependencies, not a timestamped execution trace. A missing state means the API did not report an outcome.</p>
+  {graph.total>MAX_RENDERED&&<p className="muted text-xs">Showing first {MAX_RENDERED} of {graph.total} DAG nodes. Open the saved DAG definition to inspect additional nodes.</p>}
+  <p className="muted text-xs">Edges reflect saved dependencies, not chronological execution. Missing node results and timing remain unreported; dragging cannot change the pipeline.</p>
  </section>;
 }
