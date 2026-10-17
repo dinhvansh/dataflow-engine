@@ -46,7 +46,18 @@ def ui(browser, request):
         body = json.loads(req.post_data) if req.post_data else {}
         state["calls"].append({"method": method, "path": path, "body": body})
         result = None
-        if path == "/api/v1/source/tables":
+        if path == "/api/v1/bootstrap/history":
+            result = {"count": 2, "runs": [
+                {"run_id": "11111111-1111-4111-8111-111111111111", "status": "succeeded",
+                 "source": "Erp.Part", "target": "scratch.part",
+                 "rows_written": 1000, "batches_written": 1,
+                 "created_at": "2026-10-16T05:00:00Z"},
+                {"run_id": "22222222-2222-4222-8222-222222222222", "status": "failed",
+                 "source": "Erp.PartTran", "target": "scratch.parttran",
+                 "rows_written": 0, "batches_written": 0,
+                 "created_at": "2026-10-16T06:00:00Z"},
+            ]}
+        elif path == "/api/v1/source/tables":
             result = [{"schema": "Erp", "name": "PartTran"}]
         elif path == "/api/v1/source/columns":
             result = [
@@ -206,3 +217,40 @@ def test_ui06_incremental_publish_and_rollback_buttons(ui):
     actions = [c["body"].get("confirm") for c in state["calls"]
                if c["path"] == "/api/v1/transform/incremental/action"]
     assert actions == ["PUBLISH", "ROLLBACK"]
+
+
+def test_ui07_enterprise_overview_light_dark_persist_and_shortcuts(ui):
+    page, state = ui
+    expect(page.get_by_role("heading", name="One workspace for your data pipelines.")).to_be_visible()
+    expect(page.get_by_text("Current browser session only")).to_be_visible()
+
+    page.get_by_role("button", name="Switch to light mode").click()
+    expect(page.locator("html")).to_have_class(re.compile("theme-light"))
+    assert page.evaluate("localStorage.getItem('dataflow-theme')") == "light"
+    page.reload(wait_until="domcontentloaded")
+    expect(page.locator("html")).to_have_class(re.compile("theme-light"))
+    page.get_by_role("button", name="Switch to dark mode").click()
+    expect(page.locator("html")).to_have_class(re.compile("theme-dark"))
+
+    page.get_by_role("button", name="Collapse sidebar").click()
+    expect(page.get_by_role("button", name="Connections", exact=True)).to_be_visible()
+    page.get_by_role("button", name="Connections", exact=True).click()
+    expect(page.get_by_text("Connector Hub", exact=True)).to_be_visible()
+    assert all(c["method"] == "GET" for c in state["calls"])
+
+
+def test_ui08_recent_runs_filter_uses_loaded_rows_only(ui):
+    page, state = ui
+    page.get_by_role("button", name="Run Inspector", exact=True).click()
+    page.locator("input[type=password]").first.fill(TOKEN)
+    page.get_by_role("button", name="Refresh", exact=True).click()
+    expect(page.get_by_text("Erp.PartTran", exact=True)).to_be_visible()
+    expect(page.get_by_text("Erp.Part", exact=True)).to_be_visible()
+    page.get_by_label("Search recent runs").fill("PartTran")
+    expect(page.get_by_text("Erp.PartTran", exact=True)).to_be_visible()
+    expect(page.get_by_text("Erp.Part", exact=True)).not_to_be_visible()
+    page.get_by_label("Search recent runs").fill("")
+    page.get_by_label("Filter run status").select_option("failed")
+    expect(page.get_by_text("Erp.PartTran", exact=True)).to_be_visible()
+    expect(page.get_by_text("Erp.Part", exact=True)).not_to_be_visible()
+    assert len([c for c in state["calls"] if c["path"] == "/api/v1/bootstrap/history"]) == 1
