@@ -350,7 +350,7 @@ body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
 .df-studio-empty{border-style:dashed;color:var(--console-text)}
 .df-studio-code-box{border-color:var(--console-border);background:var(--console-field)}
 .df-studio-code-toolbar{background:var(--console-hover);color:var(--console-muted);font:11px "IBM Plex Mono",Consolas,monospace;letter-spacing:.025em}
-.df-studio-sql-area{background:var(--console-card);color:var(--console-text);border:0;caret-color:var(--console-accent);font-family:"IBM Plex Mono",Consolas,monospace;tab-size:2}
+.df-studio-sql-area{height:340px;max-height:min(60vh,560px);overflow-y:auto;background:var(--console-card);color:var(--console-text);border:0;caret-color:var(--console-accent);font-family:"IBM Plex Mono",Consolas,monospace;tab-size:2}
 .df-studio-sql-area:focus-visible{outline:2px solid var(--console-accent);outline-offset:-2px}
 .df-studio-sql-area::selection{background:var(--signal-soft)}
 .df-studio-registry-item{transition:border-color .16s,background .16s}

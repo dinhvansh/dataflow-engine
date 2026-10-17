@@ -500,7 +500,7 @@ def test_ui18_sql_line_gutter_and_source_metadata_filters_are_local(ui):
     expect(page.get_by_text("SysRevID", exact=True)).to_be_visible()
     expect(page.get_by_text("SysRowID", exact=True)).not_to_be_visible()
     # Changing source identity must not show columns from the previous table.
-    page.get_by_label("SQL Server table").fill("NewTable")
+    page.get_by_role("textbox", name="SQL Server table", exact=True).fill("NewTable")
     expect(page.get_by_label("Inspected SQL Server columns")).not_to_be_visible()
     page.get_by_label("SQL Server schema").fill("OtherSchema")
     expect(page.get_by_label("Inspected SQL Server columns")).not_to_be_visible()
@@ -516,4 +516,11 @@ def test_ui18_sql_line_gutter_and_source_metadata_filters_are_local(ui):
     expect(page.get_by_role("button", name="Clear SQL job search")).to_be_visible()
     page.get_by_role("button", name="Clear SQL job search").click()
     expect(page.get_by_label("Search SQL jobs")).to_have_value("")
+    # A long SQL query must scroll inside the editor, with a synchronized gutter.
+    query.fill("\n".join(f"SELECT {i}" for i in range(60)))
+    expect(page.locator(".df-studio-line-numbers > div")).to_have_count(60)
+    scrolled = query.evaluate("(el) => { el.scrollTop = 120; return { top: el.scrollTop, viewport: el.clientHeight, content: el.scrollHeight }; }")
+    assert scrolled["content"] > scrolled["viewport"], "SQL editor must have a vertical scrolling viewport"
+    assert scrolled["top"] > 0, "SQL editor must accept vertical scrolling"
+    expect(page.locator(".df-studio-line-numbers")).to_have_js_property("scrollTop", scrolled["top"])
     assert all(c["method"] == "GET" for c in state["calls"])
