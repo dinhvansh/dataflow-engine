@@ -304,3 +304,22 @@ def test_ui09_sql_dag_operations_read_only_inspector(ui):
     expect(graph.get_by_text("Row count mismatch")).to_be_visible()
     operations_calls = [c for c in state["calls"] if c["path"].startswith("/api/v1/sql/")]
     assert operations_calls and all(c["method"] == "GET" for c in operations_calls)
+
+
+def test_ui10_signalroom_design_tokens_in_both_themes(ui):
+    page, state = ui
+    expect(page.locator("html")).to_have_class(re.compile("theme-dark"))
+    assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-accent').trim()") == "#c0f273"
+    expect(page.get_by_text("SIGNAL / DATA OPS", exact=True)).to_be_visible()
+    page.get_by_role("button", name="Operations Center", exact=True).click()
+    page.get_by_label("Operations API token").fill(TOKEN)
+    page.get_by_role("button", name="Refresh runs").click()
+    page.get_by_role("button", name="Inspect pipeline run 66666666-6666-4666-8666-666666666666").click()
+    expect(page.get_by_label("DAG execution map")).to_be_visible()
+    assert page.locator(".enterprise-dag-canvas").evaluate(
+        "(el) => getComputedStyle(el).backgroundImage.includes('linear-gradient')"
+    )
+    page.get_by_role("button", name="Switch to light mode").click()
+    expect(page.locator("html")).to_have_class(re.compile("theme-light"))
+    assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-accent').trim()") == "#436b28"
+    assert all(c["method"] == "GET" for c in state["calls"])

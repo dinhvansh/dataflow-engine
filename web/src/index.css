@@ -83,3 +83,99 @@ body{background:var(--console-bg);color:var(--console-text);transition:backgroun
 .enterprise-dependency{background:var(--console-hover);color:var(--console-accent)}
 .enterprise-node-error{background:rgba(239,68,68,.09);color:#fca5a5}
 :root.theme-light .enterprise-node-error{color:#b91c1c}
+
+
+/* ─────────────────────────────────────────────────────────────────
+   DATAFLOW // SIGNALROOM v1
+   Distinct operational identity: graphite + volt, editorial monospace
+   annotations, square-cut surfaces, visible grid and signal rails.
+   This extends existing shadcn-style primitives; no library swap.
+   ───────────────────────────────────────────────────────────────── */
+:root.theme-dark {
+  --background:142 14% 7%; --foreground:72 26% 94%;
+  --card:143 11% 11%; --muted:148 13% 15%; --border:143 13% 23%;
+  --primary:86 77% 69%; --primary-foreground:142 20% 8%;
+  --console-bg:#101612; --console-card:#1a221c; --console-field:#141c17;
+  --console-text:#f0f4e9; --console-muted:#9eafa2; --console-border:#35453a;
+  --console-accent:#c0f273; --console-sidebar:#111913; --console-header:#171f19;
+  --console-hover:#263329; --console-shadow:none;
+  --signal-grid:rgba(169,208,155,.09); --signal-soft:rgba(192,242,115,.07);
+}
+:root.theme-light {
+  --background:73 23% 95%; --foreground:150 19% 14%;
+  --card:70 33% 99%; --muted:90 20% 92%; --border:105 13% 80%;
+  --primary:100 51% 27%; --primary-foreground:0 0% 100%;
+  --console-bg:#f0f2e9; --console-card:#fbfcf7; --console-field:#f2f4eb;
+  --console-text:#213126; --console-muted:#63746a; --console-border:#cbd4c7;
+  --console-accent:#436b28; --console-sidebar:#e8ede2; --console-header:#fbfcf7;
+  --console-hover:#e0ead9; --console-shadow:none;
+  --signal-grid:rgba(68,97,63,.10); --signal-soft:rgba(67,107,40,.045);
+}
+body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;letter-spacing:-.008em}
+.console-shell{background:var(--console-bg)}
+.console-sidebar{position:relative;border-right:1px solid var(--console-border)!important}
+.console-sidebar:before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--console-accent) 0 24%,transparent 24% 30%,var(--console-accent) 30% 39%,transparent 39%)}
+.brand-mark{background:var(--console-accent);border-radius:3px;color:var(--console-sidebar);box-shadow:none;transform:skew(-5deg)}
+.brand-accent{display:inline-block;padding-left:1px;font-weight:400;color:var(--console-accent)}
+.sidebar-caption,.eyebrow,.signal-eyebrow,.env-tag,.enterprise-table-head,.enterprise-card-rule,.enterprise-badge,.enterprise-dag-canvas .muted,.sidebar-status{
+  font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+}
+.sidebar-caption{font-size:9px;letter-spacing:.11em}
+.navbtn{border-radius:3px;padding:.62rem .8rem;font-size:12.5px;font-weight:600;min-height:36px}
+.navbtn.active{background:var(--signal-soft);box-shadow:inset 3px 0 0 var(--console-accent);color:var(--console-accent)}
+.sidebar-status{border-radius:4px;padding:12px;line-height:1.5}
+.console-header{border-radius:5px;position:relative;overflow:hidden;padding-top:17px;padding-bottom:17px}
+.console-header:before{content:"";position:absolute;top:0;left:0;width:100%;height:2px;background:var(--console-accent);opacity:.75}
+.console-header h1{letter-spacing:-.045em}
+.eyebrow{letter-spacing:.09em;font-size:9px}
+.signal-eyebrow{font-size:10px;letter-spacing:.11em;color:var(--console-muted);font-weight:700}
+.signal-inline-code{font-family:Consolas,monospace;font-size:10px;letter-spacing:.04em;color:var(--console-accent);vertical-align:middle}
+.env-tag{color:var(--console-accent);background:var(--signal-soft);border:1px solid var(--console-border);border-radius:3px;letter-spacing:.07em;font-weight:600}
+.theme-toggle,.sidebar-collapse{border-radius:3px}
+.section,.enterprise-card{border-radius:5px!important;box-shadow:none}
+.enterprise-hero{border-radius:5px;position:relative;border:1px solid var(--console-border);border-left:3px solid var(--console-accent);background:var(--console-card);padding-top:23px;padding-bottom:23px}
+:root.theme-light .enterprise-hero{background:var(--console-card)}
+.enterprise-hero:after{content:"DF / 001";position:absolute;right:14px;bottom:8px;font:9px Consolas,monospace;letter-spacing:.14em;color:var(--console-muted);opacity:.5}
+.enterprise-hero h2{font-weight:800;letter-spacing:-.045em}
+.enterprise-hero p{max-width:68ch}
+.enterprise-hero .enterprise-badge-neutral{border-style:dashed}
+.enterprise-card{position:relative;overflow:hidden}
+.enterprise-card:before{content:"";position:absolute;top:0;left:0;width:26px;height:2px;background:var(--console-accent);opacity:.72}
+.enterprise-card h3{letter-spacing:-.035em}
+.enterprise-link-card{border-radius:5px;box-shadow:none;transition:border-color .12s,background .12s}
+.enterprise-link-card:hover{transform:none;box-shadow:none;background:var(--signal-soft)}
+.enterprise-link-card .enterprise-icon{border-radius:3px}
+.enterprise-card-rule{letter-spacing:.01em;font-size:10px}
+.enterprise-badge{border-radius:3px;text-transform:uppercase;letter-spacing:.035em;font-size:9px}
+.enterprise-badge-default{border-color:var(--console-accent);background:var(--signal-soft)}
+.enterprise-badge-neutral{border-style:solid}
+.enterprise-table-head{font-size:9px;letter-spacing:.07em;background:var(--console-hover)}
+.enterprise-table-row:hover{background:var(--signal-soft)}
+.enterprise-text-action{font-family:Consolas,monospace;text-transform:uppercase;letter-spacing:.04em}
+.field{border-radius:3px}
+.enterprise-dag-canvas{
+  border-radius:3px;background-color:var(--console-bg);
+  background-image:linear-gradient(var(--signal-grid) 1px,transparent 1px),linear-gradient(90deg,var(--signal-grid) 1px,transparent 1px);
+  background-size:24px 24px;
+}
+.enterprise-dag-node{border-radius:4px;box-shadow:none;border-left:3px solid var(--console-border)}
+.enterprise-dag-node:has(.enterprise-badge-success){border-left-color:#2eab72}
+.enterprise-dag-node:has(.enterprise-badge-danger){border-left-color:#e56b62}
+.enterprise-dag-node:has(.enterprise-badge-warning){border-left-color:#d2ad53}
+.enterprise-icon,.enterprise-dependency,.enterprise-node-error{border-radius:3px}
+.enterprise-dag-canvas .enterprise-icon{font-family:Consolas,monospace}
+.enterprise-stage-arrow{color:var(--console-accent)}
+.console-shell button.bg-sky-400{background:var(--console-accent)!important;color:var(--console-sidebar)!important;border-radius:3px}
+.console-shell button.bg-sky-400:hover{filter:brightness(.93)}
+:root.theme-light .text-sky-200,:root.theme-light .text-sky-300,:root.theme-light .text-sky-400{color:var(--console-accent)}
+:root.theme-light .text-amber-200,:root.theme-light .text-amber-300{color:#8a6326}
+:root.theme-light .enterprise-badge-success{color:#216b49}
+:root.theme-dark .enterprise-badge-success{color:#7bddab}
+:root.theme-dark .enterprise-badge-danger{color:#ffa099}
+:root.theme-light .enterprise-badge-danger{color:#af3e35}
+:root.theme-dark .enterprise-badge-warning{color:#e9c97c}
+:root.theme-light .enterprise-badge-warning{color:#795d20}
+:root.theme-dark .bg-slate-800{background-color:var(--console-hover)}
+:root.theme-dark .border-slate-700,:root.theme-dark .border-slate-800{border-color:var(--console-border)}
+/* Quiet motion: explicit user actions, never decorative bouncing. */
+@media(prefers-reduced-motion:reduce){.enterprise-link-card,.navbtn{transition:none}}
