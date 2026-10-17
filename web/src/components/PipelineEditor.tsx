@@ -23,8 +23,8 @@ export function PipelineEditor({token,onTokenChange}:Props){
    setResult(await validatePipeline(raw,token));
   }catch(e){setError(String(e))}finally{setBusy(false)}
  };
- return <div className="grid gap-5 xl:grid-cols-2">
-  <section className="section space-y-4">
+ return <div className="df-studio-workspace df-pipeline-workspace grid gap-5 xl:grid-cols-2">
+  <section className="df-studio-panel section space-y-4">
    <div className="flex items-center gap-2 font-semibold"><GitFork size={19}/>Pipeline Definition (JSON)</div>
    <p className="muted text-sm">Edit node dependencies and validate against the Go DAG engine. Execution/scheduling are not enabled yet.</p>
    <label className="block text-xs text-slate-400">API Token</label><input className="field" type="password" value={token} onChange={e=>onTokenChange(e.target.value)} autoComplete="off"/>

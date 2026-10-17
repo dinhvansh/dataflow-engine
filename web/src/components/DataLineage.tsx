@@ -90,9 +90,9 @@ export function DataLineage({token,onTokenChange}:{token:string;onTokenChange:(t
   if(node.status==="untracked_sql")return "border-amber-700/50 bg-amber-900/10";
   return node.kind==="source"?"border-slate-600 bg-slate-800/80":"border-sky-700/60 bg-[#10293c]";
  };
- return <div className="space-y-4">
-  <div className="section flex flex-wrap items-center justify-between gap-3">
-   <div><h2 className="flex items-center gap-2 text-lg font-semibold"><GitBranch size={20}/>Data Lineage & Impact Analysis</h2><p className="muted mt-1 text-sm">Xem dữ liệu đi qua những model nào và biết sửa một model sẽ ảnh hưởng đến đâu.</p></div>
+ return <div className="df-studio-workspace df-lineage-workspace space-y-4">
+  <div className="df-studio-hero section flex flex-wrap items-center justify-between gap-3">
+   <div><p className="df-studio-kicker mb-2">DEVELOPMENT / LINEAGE / 03</p><h2 className="flex items-center gap-2 text-xl font-bold"><GitBranch size={20}/>Data Lineage & Impact Analysis</h2><p className="muted mt-1 text-sm">Xem dữ liệu đi qua những model nào và biết sửa một model sẽ ảnh hưởng đến đâu.</p></div>
    <Button variant="outline" disabled={loading||!token} onClick={refresh}><RefreshCw size={16}/>Refresh Graph</Button>
   </div>
   <div className="section grid items-end gap-3 md:grid-cols-[1fr_1fr]">
@@ -110,7 +110,7 @@ export function DataLineage({token,onTokenChange}:{token:string;onTokenChange:(t
    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
     <div className="section min-w-0">
      <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-semibold"><Workflow size={18}/>Dependency Map</h3><span className="muted text-xs">Bấm một node để xem impact · cuộn ngang khi đồ thị lớn</span></div>
-     <div className="max-h-[680px] overflow-auto rounded-lg border border-slate-700 bg-slate-950/60">
+     <div className="df-studio-lineage-canvas max-h-[680px] overflow-auto rounded-md border">
       {graph.nodes.length>100&&<p className="p-2 text-xs text-amber-300">Chỉ hiển thị 100 node đầu để giữ giao diện mượt; backend vẫn phân tích đủ toàn bộ danh sách.</p>}
       <div className="relative" style={{width:layout.width,height:layout.height}}>
        <svg aria-hidden="true" className="absolute inset-0 pointer-events-none" width={layout.width} height={layout.height}>
