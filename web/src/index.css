@@ -65,3 +65,10 @@ body{background:var(--console-bg);color:var(--console-text);transition:backgroun
 :root.theme-light .enterprise-hero{background:linear-gradient(130deg,#ecf8ff,#f3f7ff 60%,#fff)}
 @media(max-width:767px){.console-sidebar nav{margin-top:.75rem}.console-sidebar nav>div{flex-shrink:0}.console-sidebar nav .sidebar-caption{display:none}.console-sidebar nav>div>div{display:flex;gap:.2rem}.console-sidebar nav{align-items:center}}
 @media(prefers-reduced-motion:reduce){.enterprise-link-card{transition:none}.enterprise-link-card:hover{transform:none}}
+
+/* Accessible lightweight data-grid shell; all filtering is client-side over loaded rows. */
+.enterprise-table-head{background:var(--console-hover);color:var(--console-muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.enterprise-table-row:hover{background:var(--console-hover)}
+.enterprise-text-action{color:var(--console-accent)}
+.enterprise-text-action:hover{text-decoration:underline}
+.enterprise-text-action:focus-visible{outline:2px solid var(--console-accent);outline-offset:3px}
