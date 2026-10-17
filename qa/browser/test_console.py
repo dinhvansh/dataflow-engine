@@ -502,7 +502,7 @@ def test_ui18_sql_line_gutter_and_source_metadata_filters_are_local(ui):
 
     page.get_by_role("button", name="SQL Jobs", exact=True).click()
     query = page.get_by_label("SQL SELECT query")
-    query.fill("SELECT 1\\nFROM scratch.events")
+    query.fill("SELECT 1\nFROM scratch.events")
     expect(page.locator(".df-studio-line-numbers > div")).to_have_count(2)
     expect(page.get_by_text("2 lines", exact=False)).to_be_visible()
     page.get_by_label("SQL Jobs API token").fill(TOKEN)
