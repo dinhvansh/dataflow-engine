@@ -333,3 +333,22 @@ body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
 .hub-source-th{color:var(--console-muted);background:var(--console-field)}
 .hub-source-column{color:var(--console-accent)}
 .hub-source-cursor{color:var(--signal-status-success)}
+
+
+/* Shared shadcn-style controls: semantic Action/Outline/Ghost/Danger.
+   No hardcoded sky-blue buttons; keep brand accent green in Light and volt in Dark. */
+.df-button{border-radius:4px;outline-offset:2px;transition:background-color .14s,color .14s,border-color .14s}
+.df-button:focus-visible{outline:2px solid var(--console-accent)}
+.df-btn-primary{background:var(--console-accent);color:var(--console-sidebar);border:1px solid var(--console-accent)}
+.df-btn-primary:hover:not(:disabled){filter:brightness(.94)}
+.df-btn-outline{background:var(--console-card);color:var(--console-text);border:1px solid var(--console-border)}
+.df-btn-outline:hover:not(:disabled){background:var(--console-hover);border-color:var(--console-accent)}
+.df-btn-ghost{background:transparent;color:var(--console-text);border:1px solid transparent}
+.df-btn-ghost:hover:not(:disabled){background:var(--console-hover)}
+.df-btn-danger{color:#fff;background:#b42332;border:1px solid #b42332}
+.df-btn-danger:hover:not(:disabled){background:#941c2a}
+.field:hover:not(:disabled){border-color:var(--console-muted)}
+.field:focus,.field:focus-visible{border-color:var(--console-accent);outline:2px solid transparent;box-shadow:0 0 0 3px var(--signal-soft)}
+:root.theme-light .df-btn-primary{color:#fff}
+:root.theme-dark .df-btn-primary{color:#111816}
+@media(prefers-reduced-motion:reduce){.df-button{transition:none}}
