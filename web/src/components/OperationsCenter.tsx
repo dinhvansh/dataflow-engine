@@ -94,9 +94,9 @@ export function OperationsCenter({token,onTokenChange,onOpenPipelines}:Props){
  return <div className="space-y-5">
   <section className="enterprise-hero rounded-2xl p-5 sm:p-6">
    <div className="flex flex-wrap items-start justify-between gap-4">
-    <div className="max-w-2xl"><div className="mb-2 flex items-center gap-2"><Activity size={20} className="text-primary"/><Badge variant="neutral">SQL DAG execution</Badge></div>
+    <div className="max-w-2xl"><div className="mb-2 flex items-center gap-2"><Activity size={20} className="text-primary"/><Badge variant="neutral">OPS / 01</Badge><span className="signal-eyebrow">SQL DAG EXECUTION</span></div>
      <h2 className="text-2xl font-bold tracking-tight">Pipeline Operations Center</h2>
-     <p className="muted mt-2 text-sm leading-relaxed">Inspect real SQL DAG run records and per-node execution evidence. List endpoint provides the most recent 50 runs; detailed attempts and errors load on demand.</p></div>
+     <p className="muted mt-2 text-sm leading-relaxed">A focused signal view of recorded SQL DAG executions. 50 latest run records; node evidence is loaded only when you inspect a run.</p></div>
     <Button type="button" variant="outline" onClick={onOpenPipelines}><Workflow size={16}/>Pipeline builder <ArrowRight size={14}/></Button>
    </div>
   </section>
@@ -105,7 +105,7 @@ export function OperationsCenter({token,onTokenChange,onOpenPipelines}:Props){
   </div>
   <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(350px,1fr)]">
   <section className="section space-y-4" aria-label="SQL DAG run history">
-   <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="font-semibold">Execution history</h3><p className="muted mt-1 text-xs">Read-only monitoring · no automatic retries or pipeline mutations.</p></div>
+   <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="font-semibold">Execution history</h3><p className="muted mt-1 text-xs">NO WRITE ACTIONS · SNAPSHOT VIEW · FILTER CLIENT-SIDE</p></div>
     <Button type="button" onClick={()=>void refresh()} disabled={!token||loading}><RefreshCw className={loading?"animate-spin":""} size={16}/>{loading?"Loading…":"Refresh runs"}</Button></div>
    <label className="block space-y-1.5"><span className="muted text-xs">DataFlow API token (memory only)</span><input aria-label="Operations API token" className="field max-w-md" type="password" autoComplete="off" value={token} onChange={e=>onTokenChange(e.target.value)} placeholder="Enter token to fetch SQL DAG runs"/></label>
    {error&&<div role="alert" className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm text-red-300">{error}</div>}
@@ -129,7 +129,7 @@ export function OperationsCenter({token,onTokenChange,onOpenPipelines}:Props){
    {loaded&&runs.length>0&&<div className="flex flex-wrap items-center justify-between gap-2"><span className="muted text-xs">{filtered.length===0?0:actualPage*pageSize+1}–{Math.min((actualPage+1)*pageSize,filtered.length)} of {filtered.length} matching runs</span><div className="flex items-center gap-2"><Button size="sm" variant="outline" onClick={()=>setPage(p=>Math.max(0,p-1))} disabled={actualPage===0}>Previous</Button><span className="muted text-xs tabular-nums">{actualPage+1} / {totalPages}</span><Button size="sm" variant="outline" onClick={()=>setPage(p=>Math.min(totalPages-1,p+1))} disabled={actualPage>=totalPages-1}>Next</Button></div></div>}
   </section>
   {selectedId&&<Card aria-label="Pipeline run inspector">
-   <CardHeader><div className="flex flex-wrap items-center justify-between gap-2"><div><CardTitle>Run inspector</CardTitle><CardDescription className="mt-1 break-all font-mono text-xs">{selectedId}</CardDescription></div><div className="flex flex-wrap items-center gap-2">
+   <CardHeader><div className="flex flex-wrap items-center justify-between gap-2"><div><CardTitle>Run inspector <span className="signal-inline-code">/ DETAILS</span></CardTitle><CardDescription className="mt-1 break-all font-mono text-xs">{selectedId}</CardDescription></div><div className="flex flex-wrap items-center gap-2">
     {detail&&<Badge variant={variant(detail.status)}>{detail.status}</Badge>}
     <Button size="sm" variant="outline" onClick={()=>void loadDetail(selectedId)} disabled={!token||detailLoading}><RefreshCw size={14} className={detailLoading?"animate-spin":""}/>Refresh detail</Button>
    </div></div></CardHeader>
