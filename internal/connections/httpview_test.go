@@ -7,7 +7,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -148,6 +147,3 @@ func TestSecureViewHTTPIntegration(t *testing.T) {
 	// append-only security audit MUST NOT be deleted for cleanup.
 }
 
-func TestSecureViewMissingMigrationFailsClosed(t *testing.T) {
-	if !errors.Is(ErrForbidden, ErrForbidden) {t.Fatal("unexpected error sentinel")}
-}
