@@ -1,6 +1,6 @@
 # DataFlow Engine — Project Context / Chat Handoff
 
-> **Latest handoff:** [docs/PROJECT_HANDOFF_LATEST.md](docs/PROJECT_HANDOFF_LATEST.md) — V3.2A and recent PRs supersede the historical snapshot below. Always inspect live GitHub main/PRs/Actions first.
+> **Canonical current status:** [Latest handoff](docs/PROJECT_HANDOFF_LATEST.md) + [Full master roadmap, completion matrix and acceptance gates](docs/MASTER_ROADMAP_AND_STATUS.md). This long original context is historical; always check current GitHub main/PRs/Actions before using old SHAs or runner observations.
 
 
 > **Purpose:** Persistent, public-safe source of truth for resuming the DataFlow project in a new ChatGPT or Codex conversation without carrying a huge chat transcript.
