@@ -63,6 +63,10 @@ def ui(browser, request):
                 result = saved
             else:
                 result = {"jobs": state["sql_jobs"]}
+        elif path == "/api/v1/pipelines/validate":
+            nodes = body.get("nodes", [])
+            result = {"valid": True, "nodes": len(nodes),
+                      "ready_on_start": [n.get("id") for n in nodes if not n.get("requires")]}
         elif path == "/api/v1/sql/dags":
             result = {"pipelines": [
                 {"id": "33333333-3333-4333-8333-333333333333", "name": "revenue_reporting",
@@ -532,3 +536,62 @@ def test_ui18_sql_line_gutter_and_source_metadata_filters_are_local(ui):
     assert gutter_size["viewport"] == scrolled["viewport"], "Gutter and SQL editor viewport heights must match"
     expect(gutter).to_have_js_property("scrollTop", scrolled["top"])
     assert all(c["method"] == "GET" for c in state["calls"])
+
+
+def test_ui19_visual_pipeline_builder_edits_draft_and_validates_without_execution(ui):
+    """Visual canvas and JSON stay in sync; runtime endpoints must not be invoked."""
+    page, state = ui
+    page.get_by_role("button", name="Pipelines", exact=True).click()
+    expect(page.get_by_label("Visual pipeline builder")).to_be_visible()
+    expect(page.get_by_label("Editable dependency canvas")).to_be_visible()
+    json_editor = page.get_by_label("Pipeline definition JSON")
+    assert json.loads(json_editor.input_value()) == {"nodes": []}
+
+    page.get_by_label("Pipeline API token").fill(TOKEN)
+    page.get_by_role("button", name="Load registered SQL jobs").click()
+    expect(page.get_by_role("option", name="revenue_quality_check")).to_have_count(1)
+    page.get_by_label("Registered SQL Job").select_option("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+    page.get_by_role("button", name="Add SQL job").click()
+    first = json.loads(json_editor.input_value())["nodes"]
+    assert len(first) == 1 and first[0]["job_id"] == "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    assert first[0]["requires"] == []
+
+    page.get_by_label("Registered SQL Job").select_option("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+    page.get_by_role("button", name="Add SQL job").click()
+    nodes = json.loads(json_editor.input_value())["nodes"]
+    assert len(nodes) == 2 and nodes[0]["id"] != nodes[1]["id"]
+    assert nodes[1]["job_id"] == "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    assert page.locator(".df-pipeline-graph-node").count() == 2
+
+    page.get_by_label("Inspect pipeline node").select_option(nodes[1]["id"])
+    page.get_by_label("Dependency source").select_option(nodes[0]["id"])
+    page.get_by_role("button", name="Connect dependency").click()
+    assert json.loads(json_editor.input_value())["nodes"][1]["requires"] == [nodes[0]["id"]]
+    expect(page.locator(".df-pipeline-edit-canvas .react-flow__edge")).to_have_count(1)
+
+    # A backwards dependency would introduce a cycle, which the UI must reject.
+    page.get_by_label("Inspect pipeline node").select_option(nodes[0]["id"])
+    page.get_by_label("Dependency source").select_option(nodes[1]["id"])
+    page.get_by_role("button", name="Connect dependency").click()
+    expect(page.get_by_text("Connection rejected: it would introduce a dependency cycle.")).to_be_visible()
+    assert json.loads(json_editor.input_value())["nodes"][0]["requires"] == []
+
+    page.get_by_role("button", name="Remove node").click()
+    remaining = json.loads(json_editor.input_value())["nodes"]
+    assert len(remaining) == 1 and remaining[0]["requires"] == []
+    expect(page.locator(".df-pipeline-graph-node")).to_have_count(1)
+
+    # Manual JSON edits are bidirectional; malformed JSON never becomes an API request.
+    json_editor.fill('{"nodes": [')
+    expect(page.get_by_text("Canvas paused:", exact=False)).to_be_visible()
+    expect(page.get_by_role("button", name="Validate DAG")).to_be_disabled()
+    json_editor.fill('{"nodes": []}')
+    expect(page.get_by_label("Editable dependency canvas")).to_be_visible()
+    page.get_by_role("button", name="Validate DAG").click()
+    expect(page.get_by_text("DAG valid", exact=True)).to_be_visible()
+
+    assert any(c["path"] == "/api/v1/sql/jobs" and c["method"] == "GET" for c in state["calls"])
+    validation = [c for c in state["calls"] if c["path"] == "/api/v1/pipelines/validate"]
+    assert len(validation) == 1 and validation[0]["body"] == {"nodes": []}
+    assert all(c["path"] not in ("/api/v1/sql/dags", "/api/v1/sql/dag-runs") for c in state["calls"])
+    assert not any(c["method"] in ("PUT", "PATCH", "DELETE") for c in state["calls"])

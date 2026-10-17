@@ -456,3 +456,29 @@ body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
 .df-studio-clear-search:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}
 .hub-source-chip.is-selected{background:var(--signal-soft);border-color:var(--console-accent);color:var(--console-accent)}
 .hub-source-chip:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}
+
+
+/* Visual Pipeline Builder V2.1 — editable React Flow nodes, enterprise identity. */
+.df-pipeline-builder{color:var(--console-text)}
+.df-pipeline-stat{display:inline-flex;align-items:center;border:1px solid var(--console-border);background:var(--console-field);color:var(--console-muted);border-radius:3px;padding:5px 9px;font:11px "IBM Plex Mono",Consolas,monospace}
+.df-pipeline-palette{background:var(--console-card);min-width:0}
+.df-pipeline-palette-job{border-color:var(--console-border);background:var(--console-field);color:var(--console-text);cursor:grab;user-select:none;transition:background .15s,border-color .15s}
+.df-pipeline-palette-job:hover{border-color:var(--console-accent);background:var(--signal-soft)}
+.df-pipeline-palette-job:active{cursor:grabbing}
+.df-pipeline-edit-canvas{position:relative;height:510px;width:100%;min-width:0;overflow:hidden;border:1px solid var(--console-border);border-radius:4px;background:var(--console-bg)}
+.df-pipeline-edit-canvas .react-flow{--xy-background-color:var(--console-bg);--xy-node-color:var(--console-text);--xy-edge-stroke:var(--console-accent);--xy-controls-button-background-color:var(--console-card);--xy-controls-button-color:var(--console-text);--xy-minimap-background-color:var(--console-card)}
+.df-pipeline-edit-canvas .react-flow__node{border:0;background:transparent;box-shadow:none;width:auto}
+.df-pipeline-edit-canvas .react-flow__node:focus-visible{outline:2px solid var(--console-accent);outline-offset:3px}
+.df-pipeline-graph-node{width:240px;min-height:122px;padding:12px;background:var(--console-card);color:var(--console-text);border:1px solid var(--console-border);border-left:3px solid var(--console-accent);border-radius:4px;box-shadow:0 4px 14px rgba(0,0,0,.09);cursor:grab}
+.df-pipeline-graph-node.is-selected{outline:2px solid var(--console-accent);outline-offset:2px}
+.df-pipeline-kicker{font:10px "IBM Plex Mono",Consolas,monospace;letter-spacing:.1em;color:var(--console-accent)}
+.df-pipeline-handle{height:10px!important;width:10px!important;border:2px solid var(--console-card)!important;background:var(--console-accent)!important}
+.df-pipeline-edit-canvas .react-flow__controls{border:1px solid var(--console-border);border-radius:3px;box-shadow:none;background:var(--console-card)}
+.df-pipeline-edit-canvas .react-flow__controls-button{background:var(--console-card);border-color:var(--console-border);color:var(--console-text);fill:var(--console-text)}
+.df-pipeline-edit-canvas .react-flow__controls-button svg{fill:var(--console-text)}
+.df-pipeline-edit-canvas .react-flow__minimap{border:1px solid var(--console-border);border-radius:3px;background:var(--console-card)}
+.df-pipeline-canvas-empty{color:var(--console-muted)}
+:root.theme-light .df-pipeline-edit-canvas .react-flow__minimap-mask{fill:rgba(250,251,250,.64)}
+:root.theme-dark .df-pipeline-edit-canvas .react-flow__minimap-mask{fill:rgba(22,29,27,.60)}
+@media(max-width:640px){.df-pipeline-edit-canvas{height:420px}.df-pipeline-graph-node{width:215px;padding:10px}}
+@media(prefers-reduced-motion:reduce){.df-pipeline-palette-job{transition:none}}
