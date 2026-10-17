@@ -1,2 +1,458 @@
 @tailwind base;@tailwind components;@tailwind utilities;
 :root{--background:222 23% 8%;--foreground:210 30% 95%;--card:222 20% 11%;--muted:220 17% 18%;--border:220 15% 24%;--primary:198 94% 56%;--primary-foreground:222 23% 8%;color-scheme:dark}*{border-color:hsl(var(--border))}body{margin:0;background:hsl(var(--background));color:hsl(var(--foreground));font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}input,select{color-scheme:dark} .field{display:block;width:100%;border:1px solid hsl(var(--border));border-radius:.5rem;background:hsl(var(--muted));padding:.57rem .72rem;font-size:.86rem;outline:none}.field:focus{border-color:hsl(var(--primary))}.section{border:1px solid hsl(var(--border));background:hsl(var(--card));border-radius:.85rem;padding:1.1rem}.muted{color:#91a0b7}.navbtn{display:flex;align-items:center;gap:.65rem;width:100%;padding:.7rem .85rem;border-radius:.55rem;text-align:left}.navbtn:hover,.navbtn.active{background:#253144;color:#7dd3fc}
+
+/* v1.5 Enterprise console: semantic light/dark palette and responsive chrome. */
+:root{--console-bg:#0b1220;--console-card:#131e2f;--console-field:#202f44;--console-text:#edf4ff;--console-muted:#a4b2c8;--console-border:#2c3a50;--console-accent:#38bdf8;--console-sidebar:#0e1727;--console-header:#121d2f;--console-hover:#26354b;--console-shadow:0 10px 32px rgba(0,0,0,.12)}
+:root.theme-light{--background:210 35% 97%;--foreground:222 38% 15%;--card:0 0% 100%;--muted:210 30% 95%;--border:214 25% 86%;--primary:201 92% 43%;--primary-foreground:0 0% 100%;--console-bg:#f4f7fc;--console-card:#ffffff;--console-field:#f8fafc;--console-text:#162339;--console-muted:#596a80;--console-border:#dce4ee;--console-accent:#0369a1;--console-sidebar:#fff;--console-header:#fff;--console-hover:#edf5ff;--console-shadow:0 12px 32px rgba(26,56,93,.06);color-scheme:light}
+:root.theme-dark{color-scheme:dark}
+body{background:var(--console-bg);color:var(--console-text);transition:background-color .2s,color .2s}
+.console-shell{background:var(--console-bg);color:var(--console-text)}
+.console-sidebar{background:var(--console-sidebar);border-color:var(--console-border);transition:width .2s ease,background .2s ease;flex-shrink:0}
+.console-main{min-width:0}
+.console-header{background:var(--console-header);border:1px solid var(--console-border);box-shadow:var(--console-shadow)}
+.brand-mark{color:white;background:linear-gradient(135deg,#0284c7,#14b8a6);box-shadow:0 6px 18px rgba(14,165,233,.18)}
+.brand-accent{color:var(--console-accent)}
+.eyebrow{color:var(--console-accent)}
+.sidebar-caption{color:var(--console-muted)}
+.sidebar-collapse,.theme-toggle{border:1px solid var(--console-border);background:var(--console-card);color:var(--console-text);transition:background .15s ease,border-color .15s ease}
+.sidebar-collapse:hover,.theme-toggle:hover{background:var(--console-hover);border-color:var(--console-accent)}
+.sidebar-status{background:var(--console-hover);border:1px solid var(--console-border)}
+.env-tag{border:1px solid rgba(245,158,11,.32);background:rgba(245,158,11,.09);color:#d69a31}
+.section{background:var(--console-card);border-color:var(--console-border);box-shadow:var(--console-shadow);border-radius:1rem}
+.field{background:var(--console-field);border-color:var(--console-border);color:var(--console-text);transition:border-color .15s ease,box-shadow .15s ease}
+.field:focus{border-color:var(--console-accent);box-shadow:0 0 0 3px rgba(14,165,233,.12)}
+.muted{color:var(--console-muted)}
+.navbtn{color:var(--console-muted);transition:background .15s,color .15s}
+.navbtn:hover{background:var(--console-hover);color:var(--console-text)}
+.navbtn.active{background:rgba(14,165,233,.12);color:var(--console-accent);box-shadow:inset 3px 0 0 var(--console-accent)}
+:root.theme-light select,:root.theme-light input{color-scheme:light}
+@media(max-width:767px){.console-sidebar{min-height:auto}.console-sidebar nav{display:flex;gap:.2rem;overflow-x:auto;margin-top:.75rem;padding-bottom:.25rem}.console-sidebar .sidebar-caption,.console-sidebar .sidebar-status{display:none}.console-sidebar .navbtn{white-space:nowrap;width:auto;padding:.65rem .8rem}.console-header{align-items:flex-start}}
+@media(prefers-reduced-motion:reduce){.console-sidebar,.navbtn,.field,body{transition:none}}
+
+
+/* Enterprise UI primitives layered over the existing shadcn-style console. */
+.enterprise-card{background:var(--console-card);color:var(--console-text);border-color:var(--console-border);box-shadow:var(--console-shadow)}
+.enterprise-badge{white-space:nowrap}
+.enterprise-badge-default{border-color:rgba(14,165,233,.3);background:rgba(14,165,233,.1);color:var(--console-accent)}
+.enterprise-badge-success{border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.11);color:#34d399}
+.enterprise-badge-warning{border-color:rgba(245,158,11,.32);background:rgba(245,158,11,.10);color:#fbbf24}
+.enterprise-badge-neutral{border-color:var(--console-border);background:var(--console-hover);color:var(--console-muted)}
+.enterprise-hero{background:linear-gradient(125deg,rgba(14,165,233,.10),rgba(20,184,166,.055) 65%,transparent);border:1px solid var(--console-border)}
+.enterprise-hero-status{background:var(--console-card);border-color:var(--console-border)}
+.enterprise-link-card{background:var(--console-card);color:var(--console-text);border-color:var(--console-border);box-shadow:var(--console-shadow);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.enterprise-link-card:hover{border-color:var(--console-accent);transform:translateY(-2px);box-shadow:0 14px 32px rgba(9,44,80,.13)}
+.enterprise-icon{background:rgba(14,165,233,.10);color:var(--console-accent)}
+.enterprise-card-rule{color:var(--console-accent);border-top:1px solid var(--console-border)}
+.navbtn:focus-visible,.theme-toggle:focus-visible,.sidebar-collapse:focus-visible,.enterprise-link-card:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}
+:root.theme-light .enterprise-badge-success{color:#047857}
+:root.theme-light .enterprise-badge-warning{color:#92400e}
+:root.theme-light .enterprise-hero{background:linear-gradient(130deg,#ecf8ff,#f3f7ff 60%,#fff)}
+@media(max-width:767px){.console-sidebar nav{margin-top:.75rem}.console-sidebar nav>div{flex-shrink:0}.console-sidebar nav .sidebar-caption{display:none}.console-sidebar nav>div>div{display:flex;gap:.2rem}.console-sidebar nav{align-items:center}}
+@media(prefers-reduced-motion:reduce){.enterprise-link-card{transition:none}.enterprise-link-card:hover{transform:none}}
+
+/* Accessible lightweight data-grid shell; all filtering is client-side over loaded rows. */
+.enterprise-table-head{background:var(--console-hover);color:var(--console-muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.enterprise-table-row:hover{background:var(--console-hover)}
+.enterprise-text-action{color:var(--console-accent)}
+.enterprise-text-action:hover{text-decoration:underline}
+.enterprise-text-action:focus-visible{outline:2px solid var(--console-accent);outline-offset:3px}
+
+/* Read-only SQL DAG operations statuses. */
+.enterprise-badge-danger{border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.11);color:#fca5a5}
+:root.theme-light .enterprise-badge-danger{color:#b91c1c}
+
+/* Evidence-driven operations DAG: layout stages, not fabricated timings. */
+.enterprise-dag-canvas{background:radial-gradient(circle at 1px 1px,var(--console-border) 1px,transparent 0);background-size:21px 21px;background-color:var(--console-bg)}
+.enterprise-dag-node{border-color:var(--console-border);background:var(--console-card);box-shadow:var(--console-shadow)}
+.enterprise-dependency{background:var(--console-hover);color:var(--console-accent)}
+.enterprise-node-error{background:rgba(239,68,68,.09);color:#fca5a5}
+:root.theme-light .enterprise-node-error{color:#b91c1c}
+
+
+/* ─────────────────────────────────────────────────────────────────
+   DATAFLOW // SIGNALROOM v1
+   Distinct operational identity: graphite + volt, editorial monospace
+   annotations, square-cut surfaces, visible grid and signal rails.
+   This extends existing shadcn-style primitives; no library swap.
+   ───────────────────────────────────────────────────────────────── */
+:root.theme-dark {
+  --background:142 14% 7%; --foreground:72 26% 94%;
+  --card:143 11% 11%; --muted:148 13% 15%; --border:143 13% 23%;
+  --primary:86 77% 69%; --primary-foreground:142 20% 8%;
+  --console-bg:#101612; --console-card:#1a221c; --console-field:#141c17;
+  --console-text:#f0f4e9; --console-muted:#9eafa2; --console-border:#35453a;
+  --console-accent:#c0f273; --console-sidebar:#111913; --console-header:#171f19;
+  --console-hover:#263329; --console-shadow:none;
+  --signal-grid:rgba(169,208,155,.09); --signal-soft:rgba(192,242,115,.07);
+}
+:root.theme-light {
+  --background:73 23% 95%; --foreground:150 19% 14%;
+  --card:70 33% 99%; --muted:90 20% 92%; --border:105 13% 80%;
+  --primary:100 51% 27%; --primary-foreground:0 0% 100%;
+  --console-bg:#f0f2e9; --console-card:#fbfcf7; --console-field:#f2f4eb;
+  --console-text:#213126; --console-muted:#63746a; --console-border:#cbd4c7;
+  --console-accent:#436b28; --console-sidebar:#e8ede2; --console-header:#fbfcf7;
+  --console-hover:#e0ead9; --console-shadow:none;
+  --signal-grid:rgba(68,97,63,.10); --signal-soft:rgba(67,107,40,.045);
+}
+body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;letter-spacing:-.008em}
+.console-shell{background:var(--console-bg)}
+.console-sidebar{position:relative;border-right:1px solid var(--console-border)!important}
+.console-sidebar:before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--console-accent) 0 24%,transparent 24% 30%,var(--console-accent) 30% 39%,transparent 39%)}
+.brand-mark{background:var(--console-accent);border-radius:3px;color:var(--console-sidebar);box-shadow:none;transform:skew(-5deg)}
+.brand-accent{display:inline-block;padding-left:1px;font-weight:400;color:var(--console-accent)}
+.sidebar-caption,.eyebrow,.signal-eyebrow,.env-tag,.enterprise-table-head,.enterprise-card-rule,.enterprise-badge,.enterprise-dag-canvas .muted,.sidebar-status{
+  font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+}
+.sidebar-caption{font-size:9px;letter-spacing:.11em}
+.navbtn{border-radius:3px;padding:.62rem .8rem;font-size:12.5px;font-weight:600;min-height:36px}
+.navbtn.active{background:var(--signal-soft);box-shadow:inset 3px 0 0 var(--console-accent);color:var(--console-accent)}
+.sidebar-status{border-radius:4px;padding:12px;line-height:1.5}
+.console-header{border-radius:5px;position:relative;overflow:hidden;padding-top:17px;padding-bottom:17px}
+.console-header:before{content:"";position:absolute;top:0;left:0;width:100%;height:2px;background:var(--console-accent);opacity:.75}
+.console-header h1{letter-spacing:-.045em}
+.eyebrow{letter-spacing:.09em;font-size:9px}
+.signal-eyebrow{font-size:10px;letter-spacing:.11em;color:var(--console-muted);font-weight:700}
+.signal-inline-code{font-family:Consolas,monospace;font-size:10px;letter-spacing:.04em;color:var(--console-accent);vertical-align:middle}
+.env-tag{color:var(--console-accent);background:var(--signal-soft);border:1px solid var(--console-border);border-radius:3px;letter-spacing:.07em;font-weight:600}
+.theme-toggle,.sidebar-collapse{border-radius:3px}
+.section,.enterprise-card{border-radius:5px!important;box-shadow:none}
+.enterprise-hero{border-radius:5px;position:relative;border:1px solid var(--console-border);border-left:3px solid var(--console-accent);background:var(--console-card);padding-top:23px;padding-bottom:23px}
+:root.theme-light .enterprise-hero{background:var(--console-card)}
+.enterprise-hero:after{content:"DF / 001";position:absolute;right:14px;bottom:8px;font:9px Consolas,monospace;letter-spacing:.14em;color:var(--console-muted);opacity:.5}
+.enterprise-hero h2{font-weight:800;letter-spacing:-.045em}
+.enterprise-hero p{max-width:68ch}
+.enterprise-hero .enterprise-badge-neutral{border-style:dashed}
+.enterprise-card{position:relative;overflow:hidden}
+.enterprise-card:before{content:"";position:absolute;top:0;left:0;width:26px;height:2px;background:var(--console-accent);opacity:.72}
+.enterprise-card h3{letter-spacing:-.035em}
+.enterprise-link-card{border-radius:5px;box-shadow:none;transition:border-color .12s,background .12s}
+.enterprise-link-card:hover{transform:none;box-shadow:none;background:var(--signal-soft)}
+.enterprise-link-card .enterprise-icon{border-radius:3px}
+.enterprise-card-rule{letter-spacing:.01em;font-size:10px}
+.enterprise-badge{border-radius:3px;text-transform:uppercase;letter-spacing:.035em;font-size:9px}
+.enterprise-badge-default{border-color:var(--console-accent);background:var(--signal-soft)}
+.enterprise-badge-neutral{border-style:solid}
+.enterprise-table-head{font-size:9px;letter-spacing:.07em;background:var(--console-hover)}
+.enterprise-table-row:hover{background:var(--signal-soft)}
+.enterprise-text-action{font-family:Consolas,monospace;text-transform:uppercase;letter-spacing:.04em}
+.field{border-radius:3px}
+.enterprise-dag-canvas{
+  border-radius:3px;background-color:var(--console-bg);
+  background-image:linear-gradient(var(--signal-grid) 1px,transparent 1px),linear-gradient(90deg,var(--signal-grid) 1px,transparent 1px);
+  background-size:24px 24px;
+}
+.enterprise-dag-node{border-radius:4px;box-shadow:none;border-left:3px solid var(--console-border)}
+.enterprise-dag-node:has(.enterprise-badge-success){border-left-color:#2eab72}
+.enterprise-dag-node:has(.enterprise-badge-danger){border-left-color:#e56b62}
+.enterprise-dag-node:has(.enterprise-badge-warning){border-left-color:#d2ad53}
+.enterprise-icon,.enterprise-dependency,.enterprise-node-error{border-radius:3px}
+.enterprise-dag-canvas .enterprise-icon{font-family:Consolas,monospace}
+.enterprise-stage-arrow{color:var(--console-accent)}
+.console-shell button.bg-sky-400{background:var(--console-accent)!important;color:var(--console-sidebar)!important;border-radius:3px}
+.console-shell button.bg-sky-400:hover{filter:brightness(.93)}
+:root.theme-light .enterprise-badge-success{color:#216b49}
+:root.theme-dark .enterprise-badge-success{color:#7bddab}
+:root.theme-dark .enterprise-badge-danger{color:#ffa099}
+:root.theme-light .enterprise-badge-danger{color:#af3e35}
+:root.theme-dark .enterprise-badge-warning{color:#e9c97c}
+:root.theme-light .enterprise-badge-warning{color:#795d20}
+/* Quiet motion: explicit user actions, never decorative bouncing. */
+@media(prefers-reduced-motion:reduce){.enterprise-link-card,.navbtn{transition:none}}
+
+
+/* React Flow 12 / Signalroom: zoomable true-edge DAG, read-only execution evidence. */
+.xyflow-signal-canvas{height:430px;width:100%;position:relative;overflow:hidden;border:1px solid var(--console-border);border-radius:4px;background:var(--console-bg)}
+.xyflow-signal-node{width:242px;min-height:116px;background:var(--console-card);color:var(--console-text);border:1px solid var(--console-border);border-left:3px solid var(--console-border);padding:12px 13px;border-radius:4px;box-shadow:0 5px 18px rgba(0,0,0,.12);cursor:pointer}
+.xyflow-signal-node.status-succeeded{border-left-color:#4baf7e}
+.xyflow-signal-node.status-failed{border-left-color:#dd6c61}
+.xyflow-signal-node.status-running,.xyflow-signal-node.status-queued{border-left-color:#e1be70}
+.xyflow-signal-node.is-selected{outline:2px solid var(--console-accent);outline-offset:3px}
+.xyflow-signal-canvas .react-flow__node{background:transparent;border:0;box-shadow:none;width:auto}
+.xyflow-signal-canvas .react-flow__node:focus,.xyflow-signal-canvas .react-flow__node:focus-visible{outline:none}
+.signal-node-kicker,.signal-node-attempts,.signal-node-dependencies{font:10px "IBM Plex Mono",Consolas,monospace;letter-spacing:.025em;color:var(--console-muted)}
+.signal-node-name{font-size:14px;line-height:1.3;letter-spacing:-.02em;font-weight:750}
+.signal-node-attempts{font-size:9px}
+.signal-node-error{font-size:10px;line-height:1.45;color:#e99089;background:rgba(221,108,97,.09);padding:7px;border-radius:3px}
+:root.theme-light .signal-node-error{color:#a5443a}
+.xyflow-handle{height:8px!important;width:8px!important;border:2px solid var(--console-bg)!important;background:var(--console-accent)!important}
+.xyflow-signal-canvas .react-flow__controls{border-radius:3px;border:1px solid var(--console-border);box-shadow:none;background:var(--console-card)}
+.xyflow-signal-canvas .react-flow__controls-button{background:var(--console-card);border-bottom:1px solid var(--console-border);fill:var(--console-text);color:var(--console-text)}
+.xyflow-signal-canvas .react-flow__controls-button svg{fill:var(--console-text)}
+.xyflow-signal-canvas .react-flow__minimap{border:1px solid var(--console-border);border-radius:3px;background:var(--console-card)}
+.xyflow-signal-canvas .react-flow__attribution{background:var(--console-card);color:var(--console-muted)}
+:root.theme-light .xyflow-signal-canvas .react-flow__controls-button svg{fill:var(--console-text)}
+@media(max-width:640px){.xyflow-signal-canvas{height:350px}.xyflow-signal-node{width:208px;padding:10px}.signal-node-name{font-size:12px}}
+
+
+/* SIGNALROOM PALETTE 02 — curated with PaletaColor Pro library.
+   High Contrast Green #004D40 / #00796B / #E0F2F1 / #1A1A1A;
+   Accessible Monochrome #2D2D2D / #FFFFFF and Accessible Alert
+   #B71C1C / #1B5E20 are semantic references, not instructions
+   to use any palette color as body text without contrast checks.
+   Signature volt remains unique DataFlow brand signal. */
+:root.theme-dark{
+ --background:156 13% 9%; --foreground:160 24% 94%; --card:155 13% 14%;
+ --muted:155 10% 19%; --border:156 14% 26%; --primary:85 83% 70%;
+ --console-bg:#161d1b; --console-sidebar:#111816; --console-header:#202a26;
+ --console-card:#202a26; --console-field:#18231e; --console-text:#eff7f3;
+ --console-muted:#afc2b9; --console-border:#40534a; --console-hover:#2b3a32;
+ --console-accent:#c0f273; --signal-teal:#75d5c5; --signal-volt:#c0f273;
+ --signal-grid:rgba(145,198,176,.10); --signal-soft:rgba(117,213,197,.07);
+ --signal-status-success:#78dbad; --signal-status-error:#f29890; --signal-status-warning:#edca83;
+}
+:root.theme-light{
+ --background:120 11% 99%; --foreground:150 20% 14%; --card:0 0% 100%;
+ --muted:135 10% 97%; --border:140 10% 89%; --primary:149 57% 31%;
+ --primary-foreground:0 0% 100%;
+ --console-bg:#fafbfa; --console-sidebar:#ffffff; --console-header:#ffffff;
+ --console-card:#ffffff; --console-field:#ffffff; --console-text:#1f3027;
+ --console-muted:#65736b; --console-border:#e3e9e5; --console-hover:#f2f6f3;
+ --console-accent:#238047; --signal-teal:#238047; --signal-volt:#c0f273;
+ --signal-grid:rgba(36,105,65,.085); --signal-soft:rgba(35,128,71,.075);
+ --signal-status-success:#16683b; --signal-status-error:#b42332; --signal-status-warning:#9b5816;
+}
+:root.theme-dark .enterprise-badge-success{color:var(--signal-status-success)}
+:root.theme-light .enterprise-badge-success{color:var(--signal-status-success)}
+:root.theme-dark .enterprise-badge-danger{color:var(--signal-status-error)}
+:root.theme-light .enterprise-badge-danger{color:var(--signal-status-error)}
+:root.theme-dark .enterprise-badge-warning{color:var(--signal-status-warning)}
+:root.theme-light .enterprise-badge-warning{color:var(--signal-status-warning)}
+.xyflow-signal-canvas .react-flow{--xy-background-color:var(--console-bg);--xy-node-color:var(--console-text);--xy-edge-stroke:var(--console-muted);--xy-controls-button-background-color:var(--console-card);--xy-controls-button-color:var(--console-text);--xy-minimap-background-color:var(--console-card)}
+:root.theme-light .xyflow-signal-canvas .react-flow__attribution{color:var(--console-muted)}
+.xyflow-signal-node.status-succeeded{border-left-color:var(--signal-status-success)}
+.xyflow-signal-node.status-failed{border-left-color:var(--signal-status-error)}
+.xyflow-signal-node.status-running,.xyflow-signal-node.status-queued{border-left-color:var(--signal-status-warning)}
+:root.theme-dark .xyflow-signal-canvas .react-flow__minimap-mask{fill:rgba(22,29,27,.52)}
+:root.theme-light .xyflow-signal-canvas .react-flow__minimap-mask{fill:rgba(239,246,243,.62)}
+
+
+/* SIGNALROOM LIGHT / WHITE + BLUE
+   White surfaces and subtle navy/ice contrast; deliberately NO mint page tint.
+   Dark graphite/volt mode remains unchanged. */
+:root.theme-light .enterprise-hero{background:var(--console-card);border-left-color:var(--console-accent)}
+:root.theme-light .enterprise-dag-canvas{background-color:var(--console-bg)}
+:root.theme-light .brand-mark{background:linear-gradient(135deg,#245fc3,#378ee3);color:#fff}
+:root.theme-light .env-tag{color:#245fc3;background:#f0f6ff;border-color:#dce7f4}
+:root.theme-light .signal-node-error{color:var(--signal-status-error)}
+:root.theme-light .enterprise-badge-default{color:var(--console-accent);background:var(--signal-soft)}
+:root.theme-light .xyflow-signal-canvas .react-flow__minimap-mask{fill:rgba(247,250,255,.62)}
+:root.theme-light .xyflow-signal-canvas .react-flow__controls-button{background:var(--console-card)}
+:root.theme-light .xyflow-signal-canvas{background:var(--console-bg)}
+:root.theme-light .enterprise-badge-success{color:var(--signal-status-success)}
+:root.theme-light .enterprise-badge-danger{color:var(--signal-status-error)}
+:root.theme-light .enterprise-badge-warning{color:var(--signal-status-warning)}
+
+
+/* SIGNALROOM PALETTE 04 — user-approved clean white + logo green
+   Pure-white surfaces, neutral off-white workspace, no mint/blue tint.
+   Brand/interaction green is reserved for selection, brand and actions;
+   statuses retain independent semantic warning/success/error cues. */
+:root.theme-light .enterprise-hero{background:#ffffff;border-left-color:var(--console-accent)}
+:root.theme-light .enterprise-card,.theme-light .section{background:#ffffff;box-shadow:none}
+:root.theme-light .brand-mark{background:#238047;color:#ffffff;box-shadow:none}
+:root.theme-light .env-tag{color:#237646;background:#f3f8f4;border-color:#e3e9e5}
+:root.theme-light .enterprise-badge-default{background:var(--signal-soft);color:var(--console-accent);border-color:rgba(35,128,71,.24)}
+:root.theme-light .enterprise-icon{background:var(--signal-soft);color:var(--console-accent)}
+:root.theme-light .enterprise-hero-status{background:#ffffff}
+:root.theme-light .xyflow-signal-canvas{background:#fcfdfc}
+:root.theme-light .xyflow-signal-canvas .react-flow__minimap-mask{fill:rgba(250,251,250,.6)}
+:root.theme-light .xyflow-signal-canvas .react-flow__controls-button{background:#ffffff}
+:root.theme-light .enterprise-dag-canvas{background-color:#fcfdfc}
+:root.theme-light .enterprise-table-head{background:#f5f7f5}
+:root.theme-light .enterprise-badge-success{color:var(--signal-status-success)}
+:root.theme-light .enterprise-badge-danger{color:var(--signal-status-error)}
+:root.theme-light .enterprise-badge-warning{color:var(--signal-status-warning)}
+
+
+/* DataFlow Signalroom / Connector Hub UI — white-green + graphite/volt.
+   Catalog remains presentation-only; reusable semantic theme variables. */
+.hub-hero,.hub-filter-panel,.hub-connector-card,.hub-route-panel,.hub-workflow-rail,.hub-explorer-wrap,.hub-empty{background:var(--console-card);border-color:var(--console-border)}
+.hub-hero{border-top:3px solid var(--console-accent);box-shadow:var(--console-shadow)}
+.hub-eyebrow,.hub-mono,.hub-tab-count{font:10px "IBM Plex Mono",Consolas,monospace;letter-spacing:.12em;font-weight:650;color:var(--console-muted)}
+.hub-hero-symbol{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:3px;background:var(--console-accent);color:var(--console-card)}
+.hub-metric{box-shadow:none;background:var(--console-field)}
+.hub-metric::before{width:24px}
+.hub-tabs{width:max-content;max-width:100%;background:var(--console-card);border-color:var(--console-border)}
+.hub-tab{color:var(--console-muted);transition:background-color .12s,color .12s}
+.hub-tab:hover{color:var(--console-text);background:var(--console-hover)}
+.hub-tab.is-active{background:var(--signal-soft);color:var(--console-accent);box-shadow:inset 0 -2px var(--console-accent)}
+.hub-tab-count{border:1px solid var(--console-border);padding:2px 4px;border-radius:2px}
+.hub-filter-panel{background:var(--console-card)}
+.hub-search-icon{color:var(--console-muted)}
+.hub-clear-search{color:var(--console-muted)}.hub-clear-search:hover{background:var(--console-hover)}
+.hub-filter{color:var(--console-muted);background:var(--console-card);border-color:var(--console-border);transition:background .12s}
+.hub-filter:hover{background:var(--console-hover)}.hub-filter.is-active{background:var(--signal-soft);color:var(--console-accent);border-color:var(--console-accent)}
+.hub-connector-card{border-left:3px solid var(--console-border);transition:background .15s,border-color .15s}
+.hub-connector-card:hover{background:var(--console-hover)}
+.hub-connector-card.is-ready{border-left-color:var(--console-accent)}
+.hub-icon-tile{background:var(--signal-soft);color:var(--console-accent)}
+.hub-card-footer{border-color:var(--console-border)}
+.hub-available-caption,.hub-accent{color:var(--console-accent)}
+.hub-route-panel{border-top:3px solid var(--console-accent)}
+.hub-route-endpoint{background:var(--console-field);border-color:var(--console-border)}
+.hub-route-arrow{color:var(--console-accent)}
+.hub-route-message{background:var(--console-field);border-color:var(--console-border)}
+.hub-route-message.supported{border-left:3px solid var(--signal-status-success)}
+.hub-route-message.planned{border-left:3px solid var(--signal-status-warning)}
+.hub-roadmap-step{border-color:var(--console-border);background:var(--console-field)}
+.hub-explorer-wrap{border-left:3px solid var(--console-accent)}
+.hub-tab:focus-visible,.hub-filter:focus-visible,.hub-clear-search:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}
+:root.theme-light .hub-hero-symbol{color:#fff}
+:root.theme-dark .hub-hero-symbol{color:#111816}
+:root.theme-light .hub-connector-card:hover{background:#fbfdfb}
+@media(max-width:640px){.hub-tab{padding:.65rem .75rem;font-size:12px}.hub-tabs{width:100%;justify-content:space-around}.hub-tab-count{display:none}}
+@media(prefers-reduced-motion:reduce){.hub-tab,.hub-filter,.hub-connector-card{transition:none}}
+
+/* SQL Server read-only explorer: semantic Light/Dark instead of hard-coded slate. */
+.hub-source-meta{border-color:var(--console-border);background:var(--signal-soft)}
+.hub-source-error{background:rgba(239,68,68,.08);color:var(--signal-status-error);border-color:rgba(239,68,68,.27)}
+.hub-source-chip{background:var(--console-field);border-color:var(--console-border);color:var(--console-text)}
+.hub-source-chip:hover,.hub-source-chip:focus-visible{border-color:var(--console-accent);background:var(--signal-soft)}
+.hub-source-th,.hub-source-tr{border-color:var(--console-border)}
+.hub-source-th{color:var(--console-muted);background:var(--console-field)}
+.hub-source-column{color:var(--console-accent)}
+.hub-source-cursor{color:var(--signal-status-success)}
+
+
+/* Shared shadcn-style controls: semantic Action/Outline/Ghost/Danger.
+   No hardcoded sky-blue buttons; keep brand accent green in Light and volt in Dark. */
+.df-button{border-radius:4px;outline-offset:2px;transition:background-color .14s,color .14s,border-color .14s}
+.df-button:focus-visible{outline:2px solid var(--console-accent)}
+.df-btn-primary{background:var(--console-accent);color:var(--console-sidebar);border:1px solid var(--console-accent)}
+.df-btn-primary:hover:not(:disabled){filter:brightness(.94)}
+.df-btn-outline{background:var(--console-card);color:var(--console-text);border:1px solid var(--console-border)}
+.df-btn-outline:hover:not(:disabled){background:var(--console-hover);border-color:var(--console-accent)}
+.df-btn-ghost{background:transparent;color:var(--console-text);border:1px solid transparent}
+.df-btn-ghost:hover:not(:disabled){background:var(--console-hover)}
+.df-btn-danger{color:#fff;background:#b42332;border:1px solid #b42332}
+.df-btn-danger:hover:not(:disabled){background:#941c2a}
+.field:hover:not(:disabled){border-color:var(--console-muted)}
+.field:focus,.field:focus-visible{border-color:var(--console-accent);outline:2px solid transparent;box-shadow:0 0 0 3px var(--signal-soft)}
+:root.theme-light .df-btn-primary{color:#fff}
+:root.theme-dark .df-btn-primary{color:#111816}
+@media(prefers-reduced-motion:reduce){.df-button{transition:none}}
+
+
+/* ─── DATAFLOW / DEVELOPMENT WORKSPACES ─────────────────────────────────────
+   UI-only enterprise design language shared by SQL, Transform, Lineage, DAG,
+   Incremental and Managed screens. Existing input/API behavior is unchanged. */
+.df-studio-workspace{min-width:0;color:var(--console-text)}
+.df-studio-workspace .section{min-width:0}
+.df-studio-kicker{font:10px "IBM Plex Mono",Consolas,monospace;letter-spacing:.12em;color:var(--console-accent);font-weight:700}
+.df-studio-label{color:var(--console-muted);font-size:11px;font-weight:650}
+.df-studio-hero{position:relative;border-top:3px solid var(--console-accent);background:var(--console-card)}
+.df-studio-hero h2{letter-spacing:-.035em}
+.df-studio-panel{background:var(--console-card)}
+.df-studio-notice{color:var(--signal-status-warning);background:color-mix(in srgb,var(--signal-status-warning) 7%,var(--console-card));border-color:color-mix(in srgb,var(--signal-status-warning) 27%,var(--console-border))}
+.df-studio-notice svg{flex-shrink:0}
+.df-studio-check,.df-studio-empty,.df-studio-registry-item{border-color:var(--console-border);background:var(--console-field)}
+.df-studio-empty{border-style:dashed;color:var(--console-text)}
+.df-studio-code-box{border-color:var(--console-border);background:var(--console-field)}
+.df-studio-code-toolbar{background:var(--console-hover);color:var(--console-muted);font:11px "IBM Plex Mono",Consolas,monospace;letter-spacing:.025em}
+.df-studio-sql-area{height:100%;min-height:0;max-height:100%;resize:none;overflow-y:auto;background:var(--console-card);color:var(--console-text);border:0;caret-color:var(--console-accent);font-family:"IBM Plex Mono",Consolas,monospace;tab-size:2}
+.df-studio-sql-area:focus-visible{outline:2px solid var(--console-accent);outline-offset:-2px}
+.df-studio-sql-area::selection{background:var(--signal-soft)}
+.df-studio-registry-item{transition:border-color .16s,background .16s}
+.df-studio-registry-item:hover,.df-studio-registry-item.is-active{border-color:var(--console-accent);background:var(--signal-soft)}
+.df-studio-registry-item:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}
+.df-studio-link{color:var(--console-accent)}
+.df-studio-muted-note{color:var(--console-muted);border-color:var(--console-border)}
+.df-studio-success{background:color-mix(in srgb,var(--signal-status-success) 8%,var(--console-card));border-color:color-mix(in srgb,var(--signal-status-success) 35%,var(--console-border));color:var(--signal-status-success)}
+.df-studio-error{background:color-mix(in srgb,var(--signal-status-error) 8%,var(--console-card));border-color:color-mix(in srgb,var(--signal-status-error) 35%,var(--console-border));color:var(--signal-status-error)}
+.df-studio-generated-sql{background:var(--console-field);color:var(--console-accent);border:1px solid var(--console-border)}
+.df-studio-workspace button[draggable="true"],.df-studio-steps [draggable="true"]{cursor:grab}
+.df-studio-workspace button[draggable="true"]:active,.df-studio-steps [draggable="true"]:active{cursor:grabbing}
+.df-studio-workspace button:focus-visible,.df-studio-workspace select:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}
+.df-studio-workspace input[type="checkbox"]{accent-color:var(--console-accent)}
+.df-studio-preview thead{background:var(--console-hover)}
+.df-studio-preview tbody tr:hover{background:var(--signal-soft)}
+.df-studio-preview td,.df-studio-preview th{border-color:var(--console-border)}
+.df-studio-preview table th{font-size:10px;letter-spacing:.035em}
+.df-studio-preview pre{tab-size:2}
+.df-studio-palette>button{border-radius:4px}
+.df-studio-palette>button:hover{border-color:var(--console-accent);background:var(--signal-soft)}
+.df-studio-steps button:hover{color:var(--console-accent)}
+.df-studio-lineage-canvas{background-color:var(--console-bg);border-color:var(--console-border);background-image:linear-gradient(var(--signal-grid) 1px,transparent 1px),linear-gradient(90deg,var(--signal-grid) 1px,transparent 1px);background-size:24px 24px}
+.df-studio-workspace textarea.field{min-width:0;resize:vertical}
+:root.theme-light .df-studio-sql-area{background:#fff;color:#1f3027}
+:root.theme-light .df-studio-code-toolbar{background:#f5f7f5;color:#65736b}
+:root.theme-light .df-studio-workspace [class*="bg-rose-"],:root.theme-light :root.theme-light .df-studio-workspace input[type="checkbox"]{accent-color:#238047}
+:root.theme-dark .df-studio-workspace input[type="checkbox"]{accent-color:#c0f273}
+@media(prefers-reduced-motion:reduce){.df-studio-registry-item{transition:none}}
+
+/* Lineage node material semantics: no hardcoded dark navy cards in Light. */
+.df-lineage-node{background:var(--console-card);color:var(--console-text);border-color:var(--console-border);border-left:3px solid var(--console-border);transition:border-color .12s,background-color .12s}
+.df-lineage-node-source{background:var(--console-field);border-left-color:var(--console-muted)}
+.df-lineage-node-model{background:var(--console-card);border-left-color:var(--console-accent)}
+.df-lineage-node-missing{background:color-mix(in srgb,var(--signal-status-error) 8%,var(--console-card));border-left-color:var(--signal-status-error)}
+.df-lineage-node-warning{background:color-mix(in srgb,var(--signal-status-warning) 9%,var(--console-card));border-left-color:var(--signal-status-warning)}
+.df-lineage-node.is-selected{outline:2px solid var(--console-accent);outline-offset:2px}
+.df-lineage-node.is-affected{border-color:var(--signal-status-warning)}
+.df-lineage-node:hover{border-color:var(--console-accent);background:var(--console-hover)}
+.df-lineage-node:focus-visible{outline:2px solid var(--console-accent);outline-offset:3px}
+
+/* ── FRONTEND SEMANTIC PALETTE V1 ──────────────────────────────────────────
+   Keep ALL features on logo-green white Light / graphite-volt Dark.
+   This replaces brittle Tailwind color overrides and does not alter data.
+   Status colors remain distinct from brand: success != accent. */
+.df-text-neutral{color:var(--console-muted)}
+.df-text-accent{color:var(--console-accent)}
+.df-text-success{color:var(--signal-status-success)}
+.df-text-error{color:var(--signal-status-error)}
+.df-text-warning{color:var(--signal-status-warning)}
+.df-border-neutral{border-color:var(--console-border)}
+.df-border-accent{border-color:var(--console-accent)}
+.df-border-success{border-color:var(--signal-status-success)}
+.df-border-error{border-color:var(--signal-status-error)}
+.df-border-warning{border-color:var(--signal-status-warning)}
+.df-bg-accent-soft{background-color:var(--signal-soft)}
+.df-bg-success-soft{background-color:color-mix(in srgb,var(--signal-status-success) 9%,var(--console-card))}
+.df-bg-error-soft{background-color:color-mix(in srgb,var(--signal-status-error) 8%,var(--console-card))}
+.df-bg-warning-soft{background-color:color-mix(in srgb,var(--signal-status-warning) 9%,var(--console-card))}
+.df-surface-soft{background-color:var(--console-field)}
+.df-code-surface{background-color:var(--console-field)}
+.df-hover-neutral:hover,.df-hover-bg-neutral:hover{border-color:var(--console-muted);background-color:var(--console-hover)}
+.df-hover-accent:hover{border-color:var(--console-accent)}
+.df-hover-bg-accent:hover{background-color:var(--signal-soft)}
+.df-hover-bg-success:hover{background-color:color-mix(in srgb,var(--signal-status-success) 12%,var(--console-card))}
+.df-hover-bg-error:hover{background-color:color-mix(in srgb,var(--signal-status-error) 12%,var(--console-card))}
+.df-hover-bg-warning:hover{background-color:color-mix(in srgb,var(--signal-status-warning) 12%,var(--console-card))}
+.df-ring-neutral{--tw-ring-color:var(--console-border)}
+.df-ring-accent{--tw-ring-color:var(--console-accent)}
+.df-ring-success{--tw-ring-color:var(--signal-status-success)}
+.df-ring-error{--tw-ring-color:var(--signal-status-error)}
+.df-ring-warning{--tw-ring-color:var(--signal-status-warning)}
+.df-focus-accent:focus-visible{outline-color:var(--console-accent)}
+.df-focus-neutral:focus-visible{outline-color:var(--console-muted)}
+.df-focus-error:focus-visible{outline-color:var(--signal-status-error)}
+.df-focus-warning:focus-visible{outline-color:var(--signal-status-warning)}
+.df-focus-success:focus-visible{outline-color:var(--signal-status-success)}
+.df-outline-accent{outline-color:var(--console-accent)}
+.df-outline-neutral{outline-color:var(--console-border)}
+.df-outline-error{outline-color:var(--signal-status-error)}
+.df-outline-warning{outline-color:var(--signal-status-warning)}
+.df-outline-success{outline-color:var(--signal-status-success)}
+.df-status-fill-success{background-color:var(--signal-status-success)}
+.df-status-fill-error{background-color:var(--signal-status-error)}
+.df-status-fill-warning{background-color:var(--signal-status-warning)}
+:root.theme-light .df-code-surface{background-color:#f6f8f6}
+:root.theme-dark .df-code-surface{background-color:#131b16}
+
+/* Confirmed destructive / publish operations use a branded accessible modal.
+   HTMLDialogElement manages modal focus, backdrop, keyboard escape and inert background. */
+.df-action-dialog{position:fixed;inset:0;margin:auto;background:var(--console-card);color:var(--console-text);border:1px solid var(--console-border);box-shadow:0 24px 60px rgba(0,0,0,.30);max-height:min(85vh,640px);overflow:auto}
+.df-action-dialog::backdrop{background:rgba(8,20,13,.62);backdrop-filter:blur(3px)}
+.df-action-dialog-symbol{background:var(--signal-soft);color:var(--console-accent)}
+.df-action-dialog-symbol.is-danger{background:var(--df-danger-soft,rgba(180,35,50,.09));color:var(--signal-status-error)}
+.df-action-dialog-target{background:var(--console-field);border-color:var(--console-border)}
+.df-action-dialog button:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}
+
+/* SQL authoring and SQL Server metadata browser — UI-only precision controls. */
+.df-studio-code-editor{height:340px;min-height:270px;max-height:min(60vh,560px);resize:vertical;overflow:hidden;background:var(--console-card)}
+.df-studio-line-numbers{width:3.3rem;height:100%;min-height:0;overflow:hidden;background:var(--console-field);color:var(--console-muted);border-right:1px solid var(--console-border);font-variant-numeric:tabular-nums;user-select:none;scrollbar-width:none}
+.df-studio-clear-search{color:var(--console-accent);background:var(--console-hover)}
+.df-studio-clear-search:hover{background:var(--signal-soft)}
+.df-studio-clear-search:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}
+.hub-source-chip.is-selected{background:var(--signal-soft);border-color:var(--console-accent);color:var(--console-accent)}
+.hub-source-chip:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}

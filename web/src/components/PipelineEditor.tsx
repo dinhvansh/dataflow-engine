@@ -23,14 +23,14 @@ export function PipelineEditor({token,onTokenChange}:Props){
    setResult(await validatePipeline(raw,token));
   }catch(e){setError(String(e))}finally{setBusy(false)}
  };
- return <div className="grid gap-5 xl:grid-cols-2">
-  <section className="section space-y-4">
+ return <div className="df-studio-workspace df-pipeline-workspace grid gap-5 xl:grid-cols-2">
+  <section className="df-studio-panel section space-y-4">
    <div className="flex items-center gap-2 font-semibold"><GitFork size={19}/>Pipeline Definition (JSON)</div>
    <p className="muted text-sm">Edit node dependencies and validate against the Go DAG engine. Execution/scheduling are not enabled yet.</p>
-   <label className="block text-xs text-slate-400">API Token</label><input className="field" type="password" value={token} onChange={e=>onTokenChange(e.target.value)} autoComplete="off"/>
+   <label className="block text-xs df-text-neutral">API Token</label><input className="field" type="password" value={token} onChange={e=>onTokenChange(e.target.value)} autoComplete="off"/>
    <textarea className="field min-h-[340px] font-mono text-xs leading-5" spellCheck={false} value={definition} onChange={e=>setDefinition(e.target.value)} aria-label="Pipeline definition JSON"/>
    <Button disabled={busy||!token} onClick={validate}><ShieldCheck size={16}/>{busy?"Validating…":"Validate DAG"}</Button>
-   {error&&<p role="alert" className="rounded-md bg-red-950 p-3 text-sm text-red-300">{error}</p>}
+   {error&&<p role="alert" className="rounded-md df-bg-error-soft p-3 text-sm df-text-error">{error}</p>}
   </section>
   <section className="section space-y-4">
    <div className="font-semibold">Dependency Preview</div>
@@ -38,10 +38,10 @@ export function PipelineEditor({token,onTokenChange}:Props){
     try{
      const p=JSON.parse(definition) as PipelinePlan;
      if(!Array.isArray(p.nodes))return <p className="muted text-sm">Expected nodes array</p>;
-     return <div className="space-y-2">{p.nodes.map((n,i)=><div key={n.id+"-"+i} className="rounded-lg border border-slate-700 bg-slate-800/50 p-3"><div className="font-mono text-sm font-semibold text-sky-200">{n.id}</div><div className="muted text-xs">Job: {n.job_id}</div><div className="mt-1 text-xs text-slate-300">{n.requires?.length?"Depends on: "+n.requires.join(", "):"Entry node · no dependencies"}</div></div>)}</div>
+     return <div className="space-y-2">{p.nodes.map((n,i)=><div key={n.id+"-"+i} className="rounded-lg border df-border-neutral df-surface-soft p-3"><div className="font-mono text-sm font-semibold df-text-accent">{n.id}</div><div className="muted text-xs">Job: {n.job_id}</div><div className="mt-1 text-xs df-text-neutral">{n.requires?.length?"Depends on: "+n.requires.join(", "):"Entry node · no dependencies"}</div></div>)}</div>
     }catch{return <p className="muted text-sm">Fix JSON syntax to preview nodes</p>}
    })()}
-   {result&&<div className={result.valid?"rounded-lg border border-emerald-800 bg-emerald-950/20 p-3":"rounded-lg border border-amber-800 bg-amber-950/20 p-3"}>
+   {result&&<div className={result.valid?"rounded-lg border df-border-success df-bg-success-soft p-3":"rounded-lg border df-border-warning df-bg-warning-soft p-3"}>
     <div className="flex items-center gap-2 text-sm font-semibold">{result.valid?<ShieldCheck size={16}/>:<AlertTriangle size={16}/>} {result.valid?"DAG valid":"DAG invalid"}</div>
     <p className="mt-1 text-sm">{result.valid?`Node count: ${result.nodes}. Initially ready: ${result.ready_on_start?.join(", ")||"none"}`:result.error}</p>
     <p className="muted mt-2 text-xs">Validation only — no jobs were started.</p>
