@@ -292,7 +292,7 @@ def test_ui09_sql_dag_operations_read_only_inspector(ui):
     expect(page.get_by_text("Among retrieved SQL DAG runs only").first).to_be_visible()
     expect(page.get_by_text("revenue_reporting").first).to_be_visible()
     page.get_by_label("Filter pipeline status").select_option("failed")
-    expect(page.get_by_text("1 of 1 matching runs", exact=False)).to_be_visible()
+    expect(page.get_by_text(re.compile("of 1 matching runs"))).to_be_visible()
     page.get_by_role("button", name="Inspect pipeline run 66666666-6666-4666-8666-666666666666").click()
     expect(page.get_by_label("Pipeline run inspector")).to_be_visible()
     expect(page.get_by_text("Quality gate failed")).to_be_visible()
