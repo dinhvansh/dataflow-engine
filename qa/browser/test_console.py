@@ -550,13 +550,13 @@ def test_ui19_visual_pipeline_builder_edits_draft_and_validates_without_executio
     page.get_by_label("Pipeline API token").fill(TOKEN)
     page.get_by_role("button", name="Load registered SQL jobs").click()
     expect(page.get_by_role("option", name="revenue_quality_check")).to_have_count(1)
-    page.get_by_label("Registered SQL Job").select_option("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+    page.get_by_role("combobox", name="Registered SQL Job", exact=True).select_option("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
     page.get_by_role("button", name="Add SQL job").click()
     first = json.loads(json_editor.input_value())["nodes"]
     assert len(first) == 1 and first[0]["job_id"] == "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
     assert first[0]["requires"] == []
 
-    page.get_by_label("Registered SQL Job").select_option("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+    page.get_by_role("combobox", name="Registered SQL Job", exact=True).select_option("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
     page.get_by_role("button", name="Add SQL job").click()
     nodes = json.loads(json_editor.input_value())["nodes"]
     assert len(nodes) == 2 and nodes[0]["id"] != nodes[1]["id"]
