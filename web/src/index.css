@@ -72,3 +72,7 @@ body{background:var(--console-bg);color:var(--console-text);transition:backgroun
 .enterprise-text-action{color:var(--console-accent)}
 .enterprise-text-action:hover{text-decoration:underline}
 .enterprise-text-action:focus-visible{outline:2px solid var(--console-accent);outline-offset:3px}
+
+/* Read-only SQL DAG operations statuses. */
+.enterprise-badge-danger{border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.11);color:#fca5a5}
+:root.theme-light .enterprise-badge-danger{color:#b91c1c}

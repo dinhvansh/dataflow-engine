@@ -7,6 +7,7 @@ const badgeVariants=cva("enterprise-badge inline-flex items-center gap-1.5 round
   default:"enterprise-badge-default",
   success:"enterprise-badge-success",
   warning:"enterprise-badge-warning",
+  danger:"enterprise-badge-danger",
   neutral:"enterprise-badge-neutral"
  }},
  defaultVariants:{variant:"default"}
