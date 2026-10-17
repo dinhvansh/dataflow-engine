@@ -283,3 +283,53 @@ body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
 :root.theme-light .enterprise-badge-success{color:var(--signal-status-success)}
 :root.theme-light .enterprise-badge-danger{color:var(--signal-status-error)}
 :root.theme-light .enterprise-badge-warning{color:var(--signal-status-warning)}
+
+
+/* DataFlow Signalroom / Connector Hub UI — white-green + graphite/volt.
+   Catalog remains presentation-only; reusable semantic theme variables. */
+.hub-hero,.hub-filter-panel,.hub-connector-card,.hub-route-panel,.hub-workflow-rail,.hub-explorer-wrap,.hub-empty{background:var(--console-card);border-color:var(--console-border)}
+.hub-hero{border-top:3px solid var(--console-accent);box-shadow:var(--console-shadow)}
+.hub-eyebrow,.hub-mono,.hub-tab-count{font:10px "IBM Plex Mono",Consolas,monospace;letter-spacing:.12em;font-weight:650;color:var(--console-muted)}
+.hub-hero-symbol{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:3px;background:var(--console-accent);color:var(--console-card)}
+.hub-metric{box-shadow:none;background:var(--console-field)}
+.hub-metric::before{width:24px}
+.hub-tabs{width:max-content;max-width:100%;background:var(--console-card);border-color:var(--console-border)}
+.hub-tab{color:var(--console-muted);transition:background-color .12s,color .12s}
+.hub-tab:hover{color:var(--console-text);background:var(--console-hover)}
+.hub-tab.is-active{background:var(--signal-soft);color:var(--console-accent);box-shadow:inset 0 -2px var(--console-accent)}
+.hub-tab-count{border:1px solid var(--console-border);padding:2px 4px;border-radius:2px}
+.hub-filter-panel{background:var(--console-card)}
+.hub-search-icon{color:var(--console-muted)}
+.hub-clear-search{color:var(--console-muted)}.hub-clear-search:hover{background:var(--console-hover)}
+.hub-filter{color:var(--console-muted);background:var(--console-card);border-color:var(--console-border);transition:background .12s}
+.hub-filter:hover{background:var(--console-hover)}.hub-filter.is-active{background:var(--signal-soft);color:var(--console-accent);border-color:var(--console-accent)}
+.hub-connector-card{border-left:3px solid var(--console-border);transition:background .15s,border-color .15s}
+.hub-connector-card:hover{background:var(--console-hover)}
+.hub-connector-card.is-ready{border-left-color:var(--console-accent)}
+.hub-icon-tile{background:var(--signal-soft);color:var(--console-accent)}
+.hub-card-footer{border-color:var(--console-border)}
+.hub-available-caption,.hub-accent{color:var(--console-accent)}
+.hub-route-panel{border-top:3px solid var(--console-accent)}
+.hub-route-endpoint{background:var(--console-field);border-color:var(--console-border)}
+.hub-route-arrow{color:var(--console-accent)}
+.hub-route-message{background:var(--console-field);border-color:var(--console-border)}
+.hub-route-message.supported{border-left:3px solid var(--signal-status-success)}
+.hub-route-message.planned{border-left:3px solid var(--signal-status-warning)}
+.hub-roadmap-step{border-color:var(--console-border);background:var(--console-field)}
+.hub-explorer-wrap{border-left:3px solid var(--console-accent)}
+.hub-tab:focus-visible,.hub-filter:focus-visible,.hub-clear-search:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}
+:root.theme-light .hub-hero-symbol{color:#fff}
+:root.theme-dark .hub-hero-symbol{color:#111816}
+:root.theme-light .hub-connector-card:hover{background:#fbfdfb}
+@media(max-width:640px){.hub-tab{padding:.65rem .75rem;font-size:12px}.hub-tabs{width:100%;justify-content:space-around}.hub-tab-count{display:none}}
+@media(prefers-reduced-motion:reduce){.hub-tab,.hub-filter,.hub-connector-card{transition:none}}
+
+/* SQL Server read-only explorer: semantic Light/Dark instead of hard-coded slate. */
+.hub-source-meta{border-color:var(--console-border);background:var(--signal-soft)}
+.hub-source-error{background:rgba(239,68,68,.08);color:var(--signal-status-error);border-color:rgba(239,68,68,.27)}
+.hub-source-chip{background:var(--console-field);border-color:var(--console-border);color:var(--console-text)}
+.hub-source-chip:hover,.hub-source-chip:focus-visible{border-color:var(--console-accent);background:var(--signal-soft)}
+.hub-source-th,.hub-source-tr{border-color:var(--console-border)}
+.hub-source-th{color:var(--console-muted);background:var(--console-field)}
+.hub-source-column{color:var(--console-accent)}
+.hub-source-cursor{color:var(--signal-status-success)}

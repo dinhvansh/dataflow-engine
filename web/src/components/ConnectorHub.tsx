@@ -1,93 +1,116 @@
 import {useMemo,useState} from "react";
-import {ArrowDown,ArrowRight,Box,CheckCircle2,Clock3,Database,FileSpreadsheet,HardDrive,Info,Layers3,Network,Search,Server,ShieldCheck,Workflow} from "lucide-react";
+import {ArrowDown,ArrowRight,Box,CheckCircle2,Clock3,Database,FileSpreadsheet,HardDrive,Info,Layers3,LockKeyhole,Network,Search,Server,ShieldCheck,Workflow,X} from "lucide-react";
 import {SourceExplorer} from "./SourceExplorer";
+import {Badge} from "./ui/badge";
 import {Button} from "./ui/button";
+import {Card,CardContent,CardDescription,CardHeader,CardTitle} from "./ui/card";
 
-// This is a capability catalog, NOT saved connection credentials or a
-// multi-endpoint connector API. Only the existing SQL Server Explorer is live.
+// Presentation-only catalog. It is NOT a connection registry: no credentials,
+// driver selection or new transport endpoints are persisted or invoked here.
 type Capability="available"|"planned";
-type Connector={id:string;name:string;kind:"source"|"destination";type:string;description:string;capability:Capability;mode:string};
+type ConnectorKind="source"|"destination";
+type Connector={id:string;name:string;kind:ConnectorKind;type:string;description:string;capability:Capability;mode:string};
 const catalog:Connector[]=[
- {id:"sqlserver",name:"Microsoft SQL Server",kind:"source",type:"Database",description:"Read-only schema discovery, full snapshot and rowversion. Uses the single backend DSN configured by the operator.",capability:"available",mode:"Snapshot · Rowversion"},
- {id:"postgres-source",name:"PostgreSQL",kind:"source",type:"Database",description:"Future source connector; separate from the current control-plane PostgreSQL.",capability:"planned",mode:"Full · Incremental (planned)"},
- {id:"mysql",name:"MySQL / MariaDB",kind:"source",type:"Database",description:"Reserved adapter slot for relational sources.",capability:"planned",mode:"Full · CDC (planned)"},
- {id:"oracle",name:"Oracle Database",kind:"source",type:"Database",description:"Future enterprise database source.",capability:"planned",mode:"Full · Incremental (planned)"},
- {id:"files",name:"CSV / Excel Files",kind:"source",type:"File",description:"Future upload or filesystem ingestion; not wired to an API.",capability:"planned",mode:"Batch files (planned)"},
- {id:"rest",name:"REST / HTTP API",kind:"source",type:"API",description:"Future paginated REST polling with credentials managed server-side.",capability:"planned",mode:"API polling (planned)"},
- {id:"s3",name:"S3 / Object Storage",kind:"source",type:"Object storage",description:"Future object-store ingestion with partition discovery.",capability:"planned",mode:"Batch / Object (planned)"},
- {id:"clickhouse",name:"ClickHouse",kind:"destination",type:"Warehouse",description:"Current scratch destination for the tested SQL Server loading workflow.",capability:"available",mode:"Scratch tables"},
- {id:"postgres-dest",name:"PostgreSQL",kind:"destination",type:"Database",description:"Used internally for metadata today. External destination writes are not implemented.",capability:"planned",mode:"Data sink (planned)"},
- {id:"s3-dest",name:"S3 / Object Storage",kind:"destination",type:"Object storage",description:"Reserved slot for future parquet/CSV batch export.",capability:"planned",mode:"Object export (planned)"},
- {id:"mysql-dest",name:"MySQL",kind:"destination",type:"Database",description:"Future database destination adapter.",capability:"planned",mode:"Data sink (planned)"},
+ {id:"sqlserver",name:"Microsoft SQL Server",kind:"source",type:"Database",description:"Read-only schema discovery and current single-DSN ingestion path. Full snapshot and rowversion are supported under the existing test guardrails.",capability:"available",mode:"Snapshot · Rowversion"},
+ {id:"postgres-source",name:"PostgreSQL",kind:"source",type:"Database",description:"Reserved source adapter. The current PostgreSQL instance is metadata storage, not a connected source.",capability:"planned",mode:"Full · Incremental"},
+ {id:"mysql",name:"MySQL / MariaDB",kind:"source",type:"Database",description:"Future relational database adapter; no driver or credentials API available.",capability:"planned",mode:"Full · CDC"},
+ {id:"oracle",name:"Oracle Database",kind:"source",type:"Database",description:"Reserved connector for enterprise database sources. No driver is installed.",capability:"planned",mode:"Full · Incremental"},
+ {id:"files",name:"CSV / Excel Files",kind:"source",type:"Files",description:"Planned local file and import discovery. Upload and filesystem access are not implemented.",capability:"planned",mode:"Batch files"},
+ {id:"rest",name:"REST / HTTP API",kind:"source",type:"API",description:"Future paginated API polling, with credentials to be managed on the server.",capability:"planned",mode:"API polling"},
+ {id:"s3",name:"S3 / Object Storage",kind:"source",type:"Object storage",description:"Reserved object storage source for future partition discovery.",capability:"planned",mode:"Batch / Object"},
+ {id:"clickhouse",name:"ClickHouse",kind:"destination",type:"Warehouse",description:"Existing scratch-only ClickHouse destination. This is not a selectable independent connection instance.",capability:"available",mode:"Scratch tables"},
+ {id:"postgres-dest",name:"PostgreSQL",kind:"destination",type:"Database",description:"Currently the control-plane metadata database, not a general-purpose destination.",capability:"planned",mode:"Data sink"},
+ {id:"s3-dest",name:"S3 / Object Storage",kind:"destination",type:"Object storage",description:"Planned object output, such as parquet/CSV export.",capability:"planned",mode:"Object export"},
+ {id:"mysql-dest",name:"MySQL",kind:"destination",type:"Database",description:"Reserved external database sink; data writes are not implemented.",capability:"planned",mode:"Data sink"},
 ];
-const initialRoutes=[{source:"sqlserver",target:"clickhouse",name:"SQL Server → ClickHouse",detail:"Existing single-source engine path; configure execution under Sync Jobs.",supported:true}];
-function connectorIcon(item:Connector){
- if(item.type==="File")return FileSpreadsheet;
- if(item.type==="API")return Network;
- if(item.type==="Object storage")return HardDrive;
+const supportedRoute={source:"sqlserver",target:"clickhouse"} as const;
+const definitions=[
+ {id:"definitions",label:"Connector definitions",detail:"Catalog and supported capabilities"},
+ {id:"instances",label:"Connection instances",detail:"Independent credentials / endpoints · planned"},
+ {id:"bindings",label:"Route bindings",detail:"Source → destination mapping · planned"},
+ {id:"jobs",label:"Managed operations",detail:"Existing test-only syncs are configured elsewhere"},
+] as const;
+function typeIcon(type:string){
+ if(type==="Files")return FileSpreadsheet;
+ if(type==="API")return Network;
+ if(type==="Object storage")return HardDrive;
+ if(type==="Warehouse")return Layers3;
  return Database;
 }
-function StateTag({supported}:{supported:boolean}){return <span className={supported?"rounded-md border border-emerald-600/40 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300":"rounded-md border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-slate-300"}>{supported?"Available · limited":"Planned · no driver"}</span>}
+function StatusBadge({available}:{available:boolean}){
+ return <Badge variant={available?"success":"neutral"}>{available?<CheckCircle2 size={12}/>:<Clock3 size={12}/>} {available?"Available · limited":"Planned · no driver"}</Badge>;
+}
+function Metric({label,value,detail,icon:Icon}:{label:string;value:number;detail:string;icon:typeof Database}){
+ return <Card className="hub-metric"><CardHeader className="pb-2"><CardDescription className="flex items-center gap-2"><Icon size={15}/>{label}</CardDescription><CardTitle className="text-2xl tabular-nums">{value.toString().padStart(2,"0")}</CardTitle></CardHeader><CardContent className="muted text-xs">{detail}</CardContent></Card>;
+}
 export function ConnectorHub({token,onTokenChange}:{token:string;onTokenChange:(value:string)=>void}){
  const[tab,setTab]=useState<"sources"|"destinations"|"routes">("sources");
  const[query,setQuery]=useState("");
- const[expanded,setExpanded]=useState("sqlserver");
+ const[filter,setFilter]=useState<"all"|Capability>("all");
  const[showExplorer,setShowExplorer]=useState(true);
  const[selectedSource,setSelectedSource]=useState("sqlserver");
  const[selectedTarget,setSelectedTarget]=useState("clickhouse");
- const filtered=useMemo(()=>catalog.filter(c=>(tab==="destinations"?c.kind==="destination":c.kind==="source")&&(c.name+" "+c.type+" "+c.description).toLowerCase().includes(query.toLowerCase())),[tab,query]);
- const src=catalog.find(x=>x.id===selectedSource)!;
- const dst=catalog.find(x=>x.id===selectedTarget)!;
- const executable=src.id==="sqlserver"&&dst.id==="clickhouse";
+ const sources=catalog.filter(c=>c.kind==="source");
+ const targets=catalog.filter(c=>c.kind==="destination");
+ const filtered=useMemo(()=>catalog.filter(c=>(tab==="destinations"?c.kind==="destination":c.kind==="source")&&(filter==="all"||c.capability===filter)&&(c.name+" "+c.type+" "+c.description+" "+c.mode).toLowerCase().includes(query.trim().toLowerCase())),[tab,query,filter]);
+ const source=catalog.find(c=>c.id===selectedSource)!;
+ const target=catalog.find(c=>c.id===selectedTarget)!;
+ const supported=selectedSource===supportedRoute.source&&selectedTarget===supportedRoute.target;
+ const pickTab=(next:typeof tab)=>{setTab(next);setQuery("");setFilter("all")};
  return <div className="space-y-5">
-  <div className="section space-y-4">
-   <div className="flex flex-wrap items-start justify-between gap-3">
-    <div><div className="flex items-center gap-2 text-lg font-semibold"><Layers3 size={20}/>Connector Hub</div><p className="muted mt-1 text-sm">Design for many sources → many destinations. Existing SQL Server → ClickHouse operations are preserved; future connectors are placeholders only.</p></div>
-    <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-700/40 bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-200"><Info size={14}/>Catalog preview · not a credential registry</span>
+  <section className="hub-hero space-y-5 rounded-lg border p-5 sm:p-6" aria-label="Connector Hub overview">
+   <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="max-w-3xl">
+     <p className="hub-eyebrow mb-2">CONNECTIVITY / CATALOG 01</p>
+     <h2 className="flex items-center gap-3 text-2xl font-bold tracking-tight"><span className="hub-hero-symbol"><Network size={21}/></span><span>Connector Hub</span></h2>
+     <p className="muted mt-2 max-w-2xl text-sm leading-relaxed">Design for many sources and destinations. Today, SQL Server → ClickHouse is the only existing engine path; other adapters are future slots, not live connections.</p>
+    </div>
+    <Badge variant="neutral"><Info size={13}/> UI catalog · no credentials saved</Badge>
    </div>
-   <div className="grid gap-3 md:grid-cols-3">
-    <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3"><div className="muted flex items-center gap-2 text-xs"><Server size={15}/>Source adapters</div><div className="mt-1 text-2xl font-semibold">{catalog.filter(x=>x.kind==="source").length}</div><div className="muted text-xs">1 currently supported</div></div>
-    <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3"><div className="muted flex items-center gap-2 text-xs"><Database size={15}/>Destination adapters</div><div className="mt-1 text-2xl font-semibold">{catalog.filter(x=>x.kind==="destination").length}</div><div className="muted text-xs">1 scratch destination</div></div>
-    <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3"><div className="muted flex items-center gap-2 text-xs"><Workflow size={15}/>Executable connector paths</div><div className="mt-1 text-2xl font-semibold">1</div><div className="muted text-xs">Existing SQL Server → ClickHouse</div></div>
+   <div className="grid gap-3 sm:grid-cols-3">
+    <Metric label="Source adapters" value={sources.length} detail="1 limited source currently available" icon={Server}/>
+    <Metric label="Destinations" value={targets.length} detail="1 scratch-only writer available" icon={Database}/>
+    <Metric label="Underlying paths" value={1} detail="SQL Server → ClickHouse · test only" icon={Workflow}/>
    </div>
-   <div className="flex flex-wrap gap-2" role="tablist" aria-label="Connector catalog sections">
-    {([{id:"sources",label:"Sources"},{id:"destinations",label:"Destinations"},{id:"routes",label:"Data routes"}] as const).map(x=><button key={x.id} type="button" role="tab" aria-selected={tab===x.id} onClick={()=>{setTab(x.id);setQuery("");setExpanded(x.id==="sources"?"sqlserver":"clickhouse")}} className={tab===x.id?"rounded-md bg-sky-500/15 px-4 py-2 text-sm font-semibold text-sky-300 ring-1 ring-sky-600/40":"rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"}>{x.label}</button>)}
+  </section>
+  <section className="hub-workspace space-y-4">
+   <div className="hub-tabs flex flex-wrap gap-1 rounded-lg border p-1" role="tablist" aria-label="Connector catalog sections">
+    {([{id:"sources",label:"Sources",count:sources.length},{id:"destinations",label:"Destinations",count:targets.length},{id:"routes",label:"Data routes",count:1}] as const).map(section=><button type="button" key={section.id} role="tab" aria-selected={tab===section.id} className={`hub-tab inline-flex items-center gap-2 rounded px-4 py-2.5 text-sm font-semibold ${tab===section.id?"is-active":""}`} onClick={()=>pickTab(section.id)}>{section.label}<span className="hub-tab-count text-[10px] tabular-nums">{section.count.toString().padStart(2,"0")}</span></button>)}
    </div>
-  </div>
-  {tab!=="routes"&&<>
-   <div className="section space-y-3">
-    <div className="flex items-center justify-between gap-3"><h2 className="font-semibold">{tab==="sources"?"Source connector catalog":"Destination connector catalog"}</h2><span className="muted text-xs">Drivers are added independently</span></div>
-    <label className="relative block"><Search size={16} className="absolute left-3 top-3 text-slate-400"/><input aria-label="Search connectors" className="field pl-10" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search database, files, APIs…"/></label>
-   </div>
-   <div className="grid gap-3 lg:grid-cols-2">
-    {filtered.map(item=>{const Icon=connectorIcon(item);return <div key={item.id} className="section space-y-3">
-     <div className="flex items-start gap-3"><div className="rounded-lg bg-slate-800 p-2.5 text-sky-300"><Icon size={20}/></div><div className="min-w-0 flex-1"><div className="font-semibold">{item.name}</div><p className="muted text-xs">{item.type} · {item.mode}</p></div><StateTag supported={item.capability==="available"}/></div>
-     <p className="muted min-h-[44px] text-sm">{item.description}</p>
-     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-3">
-      <span className="muted text-xs">{item.capability==="planned"?"No connector config, secrets or runtime is created.":"Uses existing single backend connection."}</span>
-      {item.id==="sqlserver"?<Button size="sm" variant="outline" onClick={()=>{setShowExplorer(x=>!x);setExpanded(item.id)}}>{showExplorer?"Hide explorer":"Open live explorer"} <ArrowRight size={14}/></Button>:item.id==="clickhouse"?<span className="text-xs text-emerald-300"><CheckCircle2 className="mr-1 inline" size={14}/>Scratch writer available</span>:<span className="muted inline-flex items-center gap-1 text-xs"><Clock3 size={14}/>Coming later</span>}
+   {tab!=="routes"&&<>
+    <div className="hub-filter-panel flex flex-col gap-3 rounded-lg border p-4 lg:flex-row lg:items-end lg:justify-between">
+     <div className="space-y-2 lg:min-w-[340px] lg:flex-1">
+      <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{tab==="sources"?"Source connector catalog":"Destination connector catalog"}</h3><span className="muted hub-mono text-[11px]">{filtered.length} MATCHING</span></div>
+      <label className="relative block"><Search size={16} className="hub-search-icon absolute left-3 top-3"/><input aria-label="Search connectors" className="field pl-10 pr-9" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search adapters, modes, storage…"/>{query&&<button type="button" className="hub-clear-search absolute right-2 top-2 rounded p-1" aria-label="Clear connector search" onClick={()=>setQuery("")}><X size={14}/></button>}</label>
      </div>
-    </div>})}
-   </div>
-   {filtered.length===0&&<div className="section muted text-sm">No matching connector.</div>}
-   {tab==="sources"&&showExplorer&&expanded==="sqlserver"&&<div className="rounded-lg border border-sky-600/40 p-3"><div className="mb-3 flex items-center gap-2 text-sm font-semibold text-sky-200"><ShieldCheck size={16}/>Existing SQL Server Explorer · backend-configured DSN</div><SourceExplorer token={token} onTokenChange={onTokenChange}/></div>}
-  </>}
-  {tab==="routes"&&<div className="space-y-4">
-   <div className="section space-y-4">
-    <div className="flex items-center gap-2 text-lg font-semibold"><Network size={18}/>Source → Destination routing</div>
-    <p className="muted text-sm">Preview how future connector instances will be paired. Selecting a pair does not save a connection or create a job; operational syncs remain under Sync Jobs.</p>
-    <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
-     <label className="space-y-1.5"><span className="muted text-xs">From source</span><select aria-label="Route source" className="field" value={selectedSource} onChange={e=>setSelectedSource(e.target.value)}>{catalog.filter(x=>x.kind==="source").map(x=><option value={x.id} key={x.id}>{x.name}{x.capability==="planned"?" (planned)":""}</option>)}</select></label>
-     <div className="flex justify-center pb-2"><ArrowRight size={20} className="hidden text-sky-400 sm:block"/><ArrowDown size={20} className="text-sky-400 sm:hidden"/></div>
-     <label className="space-y-1.5"><span className="muted text-xs">To destination</span><select aria-label="Route destination" className="field" value={selectedTarget} onChange={e=>setSelectedTarget(e.target.value)}>{catalog.filter(x=>x.kind==="destination").map(x=><option value={x.id} key={x.id}>{x.name}{x.capability==="planned"?" (planned)":""}</option>)}</select></label>
+     <div className="hub-filter-controls flex flex-wrap gap-2" role="group" aria-label="Connector availability filter">
+      {([{id:"all",label:"All"},{id:"available",label:"Available"},{id:"planned",label:"Planned"}] as const).map(item=><button type="button" key={item.id} aria-pressed={filter===item.id} className={`hub-filter rounded border px-3 py-2 text-xs font-semibold ${filter===item.id?"is-active":""}`} onClick={()=>setFilter(item.id)}>{item.label}</button>)}
+     </div>
     </div>
-    <div className={executable?"rounded-lg border border-emerald-700/40 bg-emerald-950/20 p-3 text-sm":"rounded-lg border border-amber-700/40 bg-amber-950/20 p-3 text-sm"}>
-     <div className="font-semibold">{executable?"Supported underlying path":"Planned route — execution unavailable"}</div>
-     <p className="muted mt-1 text-xs">{executable?"The backend currently uses one configured SQL Server DSN and writes to scratch ClickHouse. Multiple independent connector instances are not supported yet.":"This pair is a UI preview only. No API call, credentials, new stream or connection is created."}</p>
+    {filtered.length>0?<div className="grid gap-3 lg:grid-cols-2">{filtered.map(item=>{const Icon=typeIcon(item.type);const available=item.capability==="available";return <article key={item.id} className={`hub-connector-card space-y-4 rounded-lg border p-4 sm:p-5 ${available?"is-ready":""}`}>
+      <div className="flex flex-wrap items-start gap-3"><div className="hub-icon-tile flex h-11 w-11 shrink-0 items-center justify-center rounded-md"><Icon size={21}/></div><div className="min-w-[150px] flex-1 space-y-1"><h4 className="text-sm font-bold">{item.name}</h4><p className="muted text-xs">{item.type} · {item.mode}</p></div><StatusBadge available={available}/></div>
+      <p className="muted min-h-[42px] text-sm leading-relaxed">{item.description}</p>
+      <div className="hub-card-footer flex flex-wrap items-center justify-between gap-3 border-t pt-3"><span className="muted text-xs">{available?"Uses existing backend configuration":"No connection configuration exists"}</span>
+       {item.id==="sqlserver"?<Button type="button" size="sm" variant="outline" aria-expanded={showExplorer} onClick={()=>setShowExplorer(p=>!p)}>{showExplorer?"Hide explorer":"Open live explorer"}<ArrowRight size={14}/></Button>:item.id==="clickhouse"?<span className="hub-available-caption flex items-center gap-1 text-xs font-medium"><ShieldCheck size={15}/>Scratch writer available</span>:<span className="muted flex items-center gap-1 text-xs"><LockKeyhole size={14}/>Not configurable yet</span>}
+      </div>
+     </article>})}</div>:<div className="hub-empty rounded-lg border p-8 text-center"><Search className="muted mx-auto mb-3" size={25}/><p className="font-semibold">No matching connectors</p><p className="muted mt-1 text-sm">Try another keyword or availability filter.</p><Button type="button" variant="outline" size="sm" className="mt-4" onClick={()=>{setQuery("");setFilter("all")}}>Reset filters</Button></div>}
+    {tab==="sources"&&showExplorer&&<div className="hub-explorer-wrap rounded-lg border p-3 sm:p-4" aria-label="Existing SQL Server Explorer">
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm font-semibold"><ShieldCheck size={17} className="hub-accent"/>Existing SQL Server Explorer <Badge variant="neutral">BACKEND-CONFIGURED DSN</Badge></div>
+      <SourceExplorer token={token} onTokenChange={onTokenChange}/>
+     </div>}
+   </>}
+   {tab==="routes"&&<div className="space-y-4">
+    <div className="hub-route-panel rounded-lg border p-4 sm:p-6">
+     <div className="mb-5 flex flex-wrap items-start justify-between gap-2"><div><p className="hub-eyebrow mb-2">ROUTING / CONCEPT ONLY</p><h3 className="text-lg font-bold">Source → Destination</h3><p className="muted mt-1 text-sm">Select an adapter pair to preview its support status. No route or job is created.</p></div><Badge variant="neutral"><LockKeyhole size={12}/> Read-only preview</Badge></div>
+     <div className="hub-route-grid grid gap-3 sm:grid-cols-[minmax(0,1fr)_72px_minmax(0,1fr)] sm:items-center">
+      <label className="hub-route-endpoint space-y-2 rounded-lg border p-4"><span className="hub-eyebrow">SOURCE / FROM</span><div className="flex items-center gap-2"><Database size={18} className="hub-accent"/><span className="text-sm font-semibold">Data origin</span></div><select aria-label="Route source" className="field" value={selectedSource} onChange={e=>setSelectedSource(e.target.value)}>{sources.map(x=><option key={x.id} value={x.id}>{x.name}{x.capability==="planned"?" (planned)":""}</option>)}</select><StatusBadge available={source.capability==="available"}/></label>
+      <div className="hub-route-arrow flex items-center justify-center"><ArrowRight size={27} className="hidden sm:block"/><ArrowDown size={27} className="sm:hidden"/></div>
+      <label className="hub-route-endpoint space-y-2 rounded-lg border p-4"><span className="hub-eyebrow">DESTINATION / TO</span><div className="flex items-center gap-2"><Layers3 size={18} className="hub-accent"/><span className="text-sm font-semibold">Data warehouse</span></div><select aria-label="Route destination" className="field" value={selectedTarget} onChange={e=>setSelectedTarget(e.target.value)}>{targets.map(x=><option key={x.id} value={x.id}>{x.name}{x.capability==="planned"?" (planned)":""}</option>)}</select><StatusBadge available={target.capability==="available"}/></label>
+     </div>
+     <div className={`hub-route-message mt-5 rounded-md border p-4 ${supported?"supported":"planned"}`} role="status"><div className="flex items-center gap-2 font-semibold">{supported?<CheckCircle2 size={17}/>:<Clock3 size={17}/>} {supported?"Supported underlying path · test only":"Planned route · execution unavailable"}</div><p className="muted mt-1 text-xs leading-relaxed">{supported?"This is the existing single SQL Server backend DSN to scratch ClickHouse. Multiple source/destination instances are not supported. Configure actual allowed syncs in Sync Jobs.":"This pairing is a visual preview only. No secrets, connectors, streams or destination jobs are saved."}</p></div>
     </div>
-   </div>
-   <div className="section space-y-3"><h3 className="font-semibold">Existing route</h3>{initialRoutes.map(r=><div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-800/40 p-3" key={r.name}><div><div className="flex items-center gap-2 text-sm font-semibold"><Database size={16}/>{r.name}</div><p className="muted mt-1 text-xs">{r.detail}</p></div><StateTag supported={r.supported}/></div>)}</div>
-   <div className="section"><div className="flex items-start gap-3"><Box className="mt-0.5 shrink-0 text-sky-300" size={19}/><div><p className="font-semibold">Future connector architecture</p><p className="muted mt-1 text-sm">Connector definitions → secure connection instances → table/stream discovery → source-to-destination bindings → managed sync jobs → observability. These layers need dedicated backend APIs and permissions before they can become functional.</p></div></div></div>
-  </div>}
+    <div className="hub-workflow-rail rounded-lg border p-5"><div className="mb-4 flex items-center gap-2 font-semibold"><Box size={18} className="hub-accent"/>Connector architecture roadmap</div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{definitions.map((x,i)=><div key={x.id} className="hub-roadmap-step rounded-md border p-3"><div className="hub-eyebrow">STAGE {String(i+1).padStart(2,"0")}</div><h4 className="mt-2 text-sm font-semibold">{x.label}</h4><p className="muted mt-1 text-xs">{x.detail}</p></div>)}</div><p className="muted mt-4 text-xs">All future stages require independent backend APIs, permissions and QA. The current UI does not provision them.</p></div>
+   </div>}
+  </section>
  </div>;
 }
