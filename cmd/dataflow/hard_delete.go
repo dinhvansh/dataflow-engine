@@ -49,7 +49,7 @@ func (s *server) hardDeleteAPI(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
-	jsonResponse(w, http.StatusOK, map[string]any{"run_id": input.RunID, "emitted_tombstones": count, "status": "succeeded"})
+	jsonResponse(w, http.StatusOK, map[string]any{"run_id": input.RunID, "emitted_tombstones": count, "status": "evidence_emitted", "applied_to_target": false, "evidence_only": true})
 }
 
 func (s *server) emitHardDeleteTombstones(ctx context.Context, runID string) (int64, error) {
@@ -64,6 +64,22 @@ func (s *server) emitHardDeleteTombstones(ctx context.Context, runID string) (in
 		return 0, errors.New("hard delete requires disposable scratch database")
 	}
 	writer := &clickhouse.Writer{Endpoint: s.chURL, Database: database, Username: s.chUser, Password: s.chPass}
+	// Hold a session advisory lock ACROSS the durable reservation and ClickHouse
+	// write. Reconciliation takes the matching transaction lock at publication.
+	// The dedicated connection ensures neither a new baseline nor another emit
+	// can overtake a partly emitted tombstone.
+	guard, err := s.pg.Acquire(ctx)
+	if err != nil { return 0, err }
+	defer guard.Release()
+	if _, err = guard.Exec(ctx, `SELECT pg_advisory_lock(hashtextextended($1,0))`, streamID); err != nil { return 0, err }
+	defer func() {
+		releaseCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if _, unlockErr := guard.Exec(releaseCtx, `SELECT pg_advisory_unlock(hashtextextended($1,0))`, streamID); unlockErr != nil {
+			// Never return a locked session to the PostgreSQL connection pool.
+			_ = guard.Conn().Close(releaseCtx)
+		}
+	}()
 	chMax, err := writer.HardDeleteMaxVersion(ctx, streamID)
 	if err != nil {
 		return 0, fmt.Errorf("read tombstone version: %w", err)
@@ -71,13 +87,23 @@ func (s *server) emitHardDeleteTombstones(ctx context.Context, runID string) (in
 	if chMax > math.MaxInt64 {
 		return 0, errors.New("tombstone version range exhausted")
 	}
-	tx, err := s.pg.Begin(ctx)
+	tx, err := guard.Begin(ctx)
 	if err != nil {
 		return 0, err
 	}
 	defer tx.Rollback(ctx)
 	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, streamID); err != nil {
 		return 0, err
+	}
+	// Historical run IDs are insufficient evidence: the operator can only
+	// approve the latest completed and published full snapshot.
+	var currentBaseline string
+	if err = tx.QueryRow(ctx, `SELECT snapshot_id::text FROM reconcile_baselines
+		WHERE stream_id=$1::uuid FOR UPDATE`, streamID).Scan(&currentBaseline); err != nil {
+		return 0, errors.New("current completed source snapshot required")
+	}
+	if currentBaseline != runID {
+		return 0, errors.New("stale delete confirmation: a newer source snapshot exists")
 	}
 	var last int64
 	err = tx.QueryRow(ctx, `INSERT INTO reconcile_delete_sequences(stream_id,last_version)
@@ -143,7 +169,7 @@ func (s *server) emitHardDeleteTombstones(ctx context.Context, runID string) (in
 	if err = writer.WriteHardDeleteTombstones(ctx, items); err != nil {
 		return 0, fmt.Errorf("write tombstones: %w", err)
 	}
-	tx, err = s.pg.Begin(ctx)
+	tx, err = guard.Begin(ctx)
 	if err != nil {
 		return 0, err
 	}

@@ -118,7 +118,7 @@ func (s *server) executeReconciliation(runID, streamID string) {
 	var prevID string
 	var verified uint64
 	var diff clickhouse.KeySnapshotDiff
-	var candidateKeys, confirmedKeys []string
+	var candidateKeys, confirmedKeys, reappearedKeys []string
 	var witnessID string
 	hasBaseline := false
 	defer func() {
@@ -227,6 +227,11 @@ func (s *server) executeReconciliation(runID, streamID string) {
 			runErr = fmt.Errorf("delete candidate evidence: %w", err)
 			return
 		}
+		reappearedKeys, err = writer.AddedSnapshotKeys(ctx, streamID, prevID, runID)
+		if err != nil {
+			runErr = fmt.Errorf("reappeared source keys: %w", err)
+			return
+		}
 		var witnessScanned, witnessVerified, previousScanned, previousVerified int64
 		err = s.pg.QueryRow(ctx, `SELECT COALESCE(p.previous_snapshot_id::text,''),
       COALESCE(w.scanned_rows,0),COALESCE(w.verified_rows,0),p.scanned_rows,p.verified_rows
@@ -264,6 +269,12 @@ func (s *server) executeReconciliation(runID, streamID string) {
 		return
 	}
 	defer tx.Rollback(ctx)
+	// Serialize baseline publication with the operator's evidence-emission lock.
+	// A stale snapshot must never be published while an earlier delete is emitted.
+	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, streamID); err != nil {
+		runErr = fmt.Errorf("baseline publication lock: %w", err)
+		return
+	}
 	// Serializing on the checkpoint row guarantees the writer still owns the
 	// same stream fence at publication time.
 	var owned bool
@@ -288,7 +299,7 @@ func (s *server) executeReconciliation(runID, streamID string) {
 	if hasBaseline {
 		_, err = tx.Exec(ctx, `DELETE FROM reconcile_delete_candidates
     WHERE stream_id=$1::uuid AND status='candidate'
-      AND NOT (source_key=ANY($2::uuid[]))`, streamID, candidateKeys)
+      AND source_key=ANY($2::uuid[])`, streamID, reappearedKeys)
 		if err != nil {
 			runErr = fmt.Errorf("invalidate delete candidates: %w", err)
 			return

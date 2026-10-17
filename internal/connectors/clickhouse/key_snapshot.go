@@ -219,6 +219,19 @@ func (w *Writer) MissingSnapshotKeys(ctx context.Context, streamID, oldID, newID
 	return w.snapshotKeys(ctx, "SELECT p._pk FROM ("+oldQuery+") p LEFT ANTI JOIN ("+newQuery+") n USING (_pk) ORDER BY p._pk LIMIT 100001")
 }
 
+// AddedSnapshotKeys detects previously missing candidates which have reappeared.
+// Candidates must NOT be cleared just because they are absent from two
+// consecutive snapshots; those are precisely the keys to confirm as deletes.
+func (w *Writer) AddedSnapshotKeys(ctx context.Context, streamID, oldID, newID string) ([]string,error) {
+ table,oldFilter,err:=w.keySnapshotContext(streamID,oldID)
+ if err!=nil{return nil,err}
+ _,newFilter,err:=w.keySnapshotContext(streamID,newID)
+ if err!=nil{return nil,err}
+ oldQuery:="SELECT _pk FROM "+table+" WHERE "+oldFilter
+ newQuery:="SELECT _pk FROM "+table+" WHERE "+newFilter
+ return w.snapshotKeys(ctx,"SELECT n._pk FROM ("+newQuery+") n LEFT ANTI JOIN ("+oldQuery+") p USING (_pk) ORDER BY n._pk LIMIT 100001")
+}
+
 // ConfirmedMissingSnapshotKeys requires two consecutive complete snapshots to
 // omit a key that existed in the older baseline.
 func (w *Writer) ConfirmedMissingSnapshotKeys(ctx context.Context, streamID, oldID, missingID, confirmID string) ([]string, error) {
@@ -251,7 +264,7 @@ func (w *Writer) EnsureHardDeleteTombstones(ctx context.Context) error {
 		return errors.New("hard-delete tombstones require scratch database")
 	}
 	table := "`" + w.Database + "`.`dataflow_delete_tombstones`"
-	return w.exec(ctx, "CREATE TABLE IF NOT EXISTS "+table+" (_stream_id String,_pk String,_df_version UInt64,_df_deleted UInt8,_witness_snapshot_id String,_confirm_snapshot_id String,_emitted_at DateTime64(3,'UTC') DEFAULT now64(3)) ENGINE=ReplacingMergeTree(_emitted_at) ORDER BY (_stream_id,_pk,_df_version)")
+	return w.exec(ctx, "CREATE TABLE IF NOT EXISTS "+table+" (_stream_id String,_pk String,_evidence_sequence UInt64,_df_deleted UInt8,_witness_snapshot_id String,_confirm_snapshot_id String,_emitted_at DateTime64(3,'UTC') DEFAULT now64(3)) ENGINE=ReplacingMergeTree(_emitted_at) ORDER BY (_stream_id,_pk,_evidence_sequence)")
 }
 func (w *Writer) WriteHardDeleteTombstones(ctx context.Context, items []HardDeleteTombstone) error {
 	if len(items) == 0 {
@@ -266,7 +279,7 @@ func (w *Writer) WriteHardDeleteTombstones(ctx context.Context, items []HardDele
 		if !canonicalRunID.MatchString(item.StreamID) || !canonicalRunID.MatchString(item.Key) || !canonicalRunID.MatchString(item.WitnessSnapshotID) || !canonicalRunID.MatchString(item.ConfirmSnapshotID) || item.Version == 0 {
 			return errors.New("invalid hard-delete tombstone")
 		}
-		rows = append(rows, map[string]any{"_stream_id": item.StreamID, "_pk": strings.ToLower(item.Key), "_df_version": item.Version, "_df_deleted": uint8(1), "_witness_snapshot_id": item.WitnessSnapshotID, "_confirm_snapshot_id": item.ConfirmSnapshotID})
+		rows = append(rows, map[string]any{"_stream_id": item.StreamID, "_pk": strings.ToLower(item.Key), "_evidence_sequence": item.Version, "_df_deleted": uint8(1), "_witness_snapshot_id": item.WitnessSnapshotID, "_confirm_snapshot_id": item.ConfirmSnapshotID})
 	}
 	return dst.Write(ctx, engine.Batch{Rows: rows})
 }
@@ -277,7 +290,7 @@ func (w *Writer) HardDeleteMaxVersion(ctx context.Context, streamID string) (uin
 	if err := w.EnsureHardDeleteTombstones(ctx); err != nil {
 		return 0, err
 	}
-	return w.scalar(ctx, fmt.Sprintf("SELECT ifNull(max(_df_version),0) FROM `scratch`.`dataflow_delete_tombstones` FINAL WHERE _stream_id='%s'", streamID))
+	return w.scalar(ctx, fmt.Sprintf("SELECT ifNull(max(_evidence_sequence),0) FROM `scratch`.`dataflow_delete_tombstones` FINAL WHERE _stream_id='%s'", streamID))
 }
 
 // Satisfy Go compile-time import usage: report structure intentionally does
