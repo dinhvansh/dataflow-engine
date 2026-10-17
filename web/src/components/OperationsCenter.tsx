@@ -6,7 +6,7 @@ import {Button} from "./ui/button";
 import {Card,CardContent,CardDescription,CardHeader,CardTitle} from "./ui/card";
 import {sqlDAGApi,type DAGRun,type ExecutableDAG} from "../lib/api";
 
-type Props={token:string;onTokenChange:(next:string)=>void;onOpenPipelines:()=>void};
+type Props={token:string;theme:"light"|"dark";onTokenChange:(next:string)=>void;onOpenPipelines:()=>void};
 function variant(status:string):"success"|"danger"|"warning"|"neutral"{
  if(status==="succeeded")return "success";
  if(status==="failed"||status==="cancelled")return "danger";
@@ -16,7 +16,7 @@ function variant(status:string):"success"|"danger"|"warning"|"neutral"{
 function nodeLabel(status:string){
  return status.replaceAll("_"," ");
 }
-export function OperationsCenter({token,onTokenChange,onOpenPipelines}:Props){
+export function OperationsCenter({token,theme,onTokenChange,onOpenPipelines}:Props){
  const[runs,setRuns]=useState<DAGRun[]>([]);
  const[dags,setDags]=useState<ExecutableDAG[]>([]);
  const[selectedId,setSelectedId]=useState("");
@@ -145,6 +145,6 @@ export function OperationsCenter({token,onTokenChange,onOpenPipelines}:Props){
   </Card>}
   {!selectedId&&<Card aria-label="Pipeline run inspector"><CardHeader><CardTitle>Run inspector</CardTitle><CardDescription>Choose a run from the history to see its steps and errors.</CardDescription></CardHeader><CardContent><div className="muted rounded-xl border border-border p-6 text-center text-sm"><Eye className="mx-auto mb-2" size={22}/>No run selected</div></CardContent></Card>}
   </div>
-  {detail&&<Card><CardHeader><CardTitle>Saved DAG execution</CardTitle><CardDescription>Read-only plan and recorded step outcomes for the selected run.</CardDescription></CardHeader><CardContent><DagExecutionMap plan={currentDefinition?.nodes} state={detail.result?.state} attempts={detail.result?.attempts} errors={detail.result?.errors}/></CardContent></Card>}
+  {detail&&<Card><CardHeader><CardTitle>Saved DAG execution</CardTitle><CardDescription>Current saved DAG topology combined with selected-run outcomes; historical dependencies may differ.</CardDescription></CardHeader><CardContent><DagExecutionMap theme={theme} plan={currentDefinition?.nodes} state={detail.result?.state} attempts={detail.result?.attempts} errors={detail.result?.errors}/></CardContent></Card>}
  </div>;
 }
