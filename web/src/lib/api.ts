@@ -89,3 +89,20 @@ export type ConfiguredConnection={
 export const connectionApi={
  list:(token:string)=>getSource<{connections:ConfiguredConnection[]}>("/api/v1/connections",token)
 };
+
+export type DraftConnection={
+ id:string;name:string;driver:"sqlserver"|"clickhouse";kind:"source"|"destination";
+ workspace:"lab";status:"draft";revision:number;created_at:string;
+};
+type DraftConnectionInput={name:string;driver:"sqlserver"|"clickhouse";kind:"source"|"destination"};
+const registryHeaders=(token:string,adminToken:string)=>({
+ "Authorization":"Bearer "+token,...(adminToken?{"X-DataFlow-Connection-Admin":adminToken}:{})
+});
+export const connectionDefinitionsApi={
+ list:(token:string,adminToken:string)=>parse<{definitions:DraftConnection[];write_enabled:boolean}>(
+  fetch("/api/v1/connections/definitions",{headers:registryHeaders(token,adminToken)})),
+ create:(draft:DraftConnectionInput,token:string,adminToken:string)=>parse<DraftConnection>(
+  fetch("/api/v1/connections/definitions",{method:"POST",
+   headers:{...registryHeaders(token,adminToken),"Content-Type":"application/json"},
+   body:JSON.stringify(draft)}))
+};
