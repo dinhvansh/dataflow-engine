@@ -46,7 +46,34 @@ def ui(browser, request):
         body = json.loads(req.post_data) if req.post_data else {}
         state["calls"].append({"method": method, "path": path, "body": body})
         result = None
-        if path == "/api/v1/bootstrap/history":
+        if path == "/api/v1/sql/dags":
+            result = {"pipelines": [
+                {"id": "33333333-3333-4333-8333-333333333333", "name": "revenue_reporting",
+                 "enabled": True, "nodes": [
+                     {"id": "extract_invoice", "job_id": "44444444-4444-4444-8444-444444444444", "requires": []},
+                     {"id": "revenue_check", "job_id": "55555555-5555-4555-8555-555555555555", "requires": ["extract_invoice"]}
+                 ]}
+            ]}
+        elif path == "/api/v1/sql/dag-runs":
+            if "id=" in req.url:
+                result = {
+                    "run_id": "66666666-6666-4666-8666-666666666666",
+                    "dag_id": "33333333-3333-4333-8333-333333333333",
+                    "status": "failed", "error": "Quality gate failed",
+                    "result": {"state": {"extract_invoice": "succeeded", "revenue_check": "failed"},
+                               "attempts": {"extract_invoice": 1, "revenue_check": 3},
+                               "errors": {"revenue_check": "Row count mismatch"}}
+                }
+            else:
+                result = {"runs": [
+                    {"run_id": "66666666-6666-4666-8666-666666666666",
+                     "dag_id": "33333333-3333-4333-8333-333333333333",
+                     "status": "failed", "error": "Quality gate failed"},
+                    {"run_id": "77777777-7777-4777-8777-777777777777",
+                     "dag_id": "33333333-3333-4333-8333-333333333333",
+                     "status": "succeeded", "error": ""}
+                ]}
+        elif path == "/api/v1/bootstrap/history":
             result = {"count": 2, "runs": [
                 {"run_id": "11111111-1111-4111-8111-111111111111", "status": "succeeded",
                  "source": "Erp.Part", "target": "scratch.part",
@@ -254,3 +281,22 @@ def test_ui08_recent_runs_filter_uses_loaded_rows_only(ui):
     expect(page.get_by_text("Erp.PartTran", exact=True)).to_be_visible()
     expect(page.get_by_text("Erp.Part", exact=True)).not_to_be_visible()
     assert len([c for c in state["calls"] if c["path"] == "/api/v1/bootstrap/history"]) == 1
+
+
+def test_ui09_sql_dag_operations_read_only_inspector(ui):
+    page, state = ui
+    page.get_by_role("button", name="Operations Center", exact=True).click()
+    expect(page.get_by_role("heading", name="Pipeline Operations Center")).to_be_visible()
+    page.get_by_label("Operations API token").fill(TOKEN)
+    page.get_by_role("button", name="Refresh runs").click()
+    expect(page.get_by_text("Among retrieved SQL DAG runs only").first).to_be_visible()
+    expect(page.get_by_text("revenue_reporting").first).to_be_visible()
+    page.get_by_label("Filter pipeline status").select_option("failed")
+    expect(page.get_by_text("1 of 1 matching runs", exact=False)).to_be_visible()
+    page.get_by_role("button", name="Inspect pipeline run 66666666-6666-4666-8666-666666666666").click()
+    expect(page.get_by_label("Pipeline run inspector")).to_be_visible()
+    expect(page.get_by_text("Quality gate failed")).to_be_visible()
+    expect(page.get_by_text("Row count mismatch")).to_be_visible()
+    expect(page.get_by_text("Recorded attempts: 3")).to_be_visible()
+    operations_calls = [c for c in state["calls"] if c["path"].startswith("/api/v1/sql/")]
+    assert operations_calls and all(c["method"] == "GET" for c in operations_calls)
