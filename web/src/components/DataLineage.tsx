@@ -86,9 +86,9 @@ export function DataLineage({token,onTokenChange}:{token:string;onTokenChange:(t
  const newestRun=current?.kind==="model"?runs.find(r=>r.model_name===current.label):undefined;
  const matches=(n:LineageNode)=>filter.trim()===""||n.label.toLowerCase().includes(filter.toLowerCase());
  const nodeStatus=(node:LineageNode)=>{
-  if(node.status==="missing"||node.status==="missing_dependency"||node.status==="missing_source")return "border-rose-600/60 bg-rose-950/30";
-  if(node.status==="untracked_sql")return "border-amber-700/50 bg-amber-900/10";
-  return node.kind==="source"?"border-slate-600 bg-slate-800/80":"border-sky-700/60 bg-[#10293c]";
+  if(node.status==="missing"||node.status==="missing_dependency"||node.status==="missing_source")return "df-lineage-node-missing";
+  if(node.status==="untracked_sql")return "df-lineage-node-warning";
+  return node.kind==="source"?"df-lineage-node-source":"df-lineage-node-model";
  };
  return <div className="df-studio-workspace df-lineage-workspace space-y-4">
   <div className="df-studio-hero section flex flex-wrap items-center justify-between gap-3">
@@ -114,18 +114,18 @@ export function DataLineage({token,onTokenChange}:{token:string;onTokenChange:(t
       {graph.nodes.length>100&&<p className="p-2 text-xs text-amber-300">Chỉ hiển thị 100 node đầu để giữ giao diện mượt; backend vẫn phân tích đủ toàn bộ danh sách.</p>}
       <div className="relative" style={{width:layout.width,height:layout.height}}>
        <svg aria-hidden="true" className="absolute inset-0 pointer-events-none" width={layout.width} height={layout.height}>
-        <defs><marker id="dataflow-lineage-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#64748b"/></marker></defs>
+        <defs><marker id="dataflow-lineage-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="var(--console-muted)"/></marker></defs>
         {graph.edges.map((edge,i)=>{const start=layout.positions.get(edge.from),end=layout.positions.get(edge.to);if(!start||!end)return null;
          const x1=start.x+NODE_WIDTH,x2=end.x,y1=start.y+NODE_HEIGHT/2,y2=end.y+NODE_HEIGHT/2,mid=(x1+x2)/2;
          const hot=selected===edge.from||selected===edge.to||affected.has(edge.to);
-         return <path key={i} d={`M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2-7} ${y2}`} stroke={hot?"#38bdf8":"#64748b"} strokeWidth={hot?2.2:1.3} strokeOpacity={hot?1:0.55} fill="none" markerEnd="url(#dataflow-lineage-arrow)"/>;
+         return <path key={i} d={`M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2-7} ${y2}`} stroke={hot?"var(--console-accent)":"var(--console-muted)"} strokeWidth={hot?2.2:1.3} strokeOpacity={hot?1:0.55} fill="none" markerEnd="url(#dataflow-lineage-arrow)"/>;
         })}
        </svg>
        {layout.items.map(({node,x,y})=>{
         const active=node.id===selected,hot=affected.has(node.id);
         const faded=!matches(node)&&!active&&!hot;
         return <button key={node.id} type="button" title={node.label} style={{position:"absolute",left:x,top:y,width:NODE_WIDTH,height:NODE_HEIGHT}} onClick={()=>setSelected(node.id)}
-         className={`rounded-lg border px-3 py-2 text-left transition ${nodeStatus(node)} ${active?"ring-2 ring-sky-400":hot?"ring-1 ring-amber-400":""} ${faded?"opacity-35":""} hover:border-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400`}>
+         className={`df-lineage-node rounded-md border px-3 py-2 text-left transition ${nodeStatus(node)} ${active?"is-selected":hot?"is-affected":""} ${faded?"opacity-35":""}`}>
          <div className="mb-1 flex items-center gap-1.5 text-xs text-slate-400">{node.kind==="source"?<Database size={14}/>:<GitBranch size={14}/>}<span>{node.kind==="source"?"Data Source":node.kind==="missing"?"Missing Model":"Transform Model"}</span></div>
          <div className="truncate text-sm font-semibold">{node.label}</div>
          <div className="mt-1 truncate text-[10px] text-slate-400">{node.status==="ready"?"Defined":node.status.replaceAll("_"," ")}</div>
