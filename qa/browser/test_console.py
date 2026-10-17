@@ -499,6 +499,11 @@ def test_ui18_sql_line_gutter_and_source_metadata_filters_are_local(ui):
     column_filter.fill("SysRevID")
     expect(page.get_by_text("SysRevID", exact=True)).to_be_visible()
     expect(page.get_by_text("SysRowID", exact=True)).not_to_be_visible()
+    # Changing source identity must not show columns from the previous table.
+    page.get_by_label("SQL Server table").fill("NewTable")
+    expect(page.get_by_label("Inspected SQL Server columns")).not_to_be_visible()
+    page.get_by_label("SQL Server schema").fill("OtherSchema")
+    expect(page.get_by_label("Inspected SQL Server columns")).not_to_be_visible()
 
     page.get_by_role("button", name="SQL Jobs", exact=True).click()
     query = page.get_by_label("SQL SELECT query")
