@@ -3,9 +3,10 @@ import {AlertTriangle,Code2,GitFork,RefreshCw,Save,ShieldCheck} from "lucide-rea
 import {Button} from "./ui/button";
 import {ConfirmActionDialog} from "./ui/confirm-action-dialog";
 import {VisualPipelineCanvas} from "./VisualPipelineCanvas";
+import {PipelineRunInspector} from "./PipelineRunInspector";
 import {sqlDAGApi,validatePipeline,type ExecutableDAG,type PipelineNode,type PipelinePlan,type PipelineValidation,type SQLJob} from "../lib/api";
 
-type Props={token:string;onTokenChange:(value:string)=>void};
+type Props={token:string;onTokenChange:(value:string)=>void;theme:"light"|"dark";onOpenOperations:()=>void};
 type SavePayload=Omit<ExecutableDAG,"id">;
 type PendingSave={payload:SavePayload;version:number;existing:boolean};
 function readPlan(raw:string):{plan:PipelinePlan|null;issue:string}{
@@ -30,7 +31,7 @@ function readPlan(raw:string):{plan:PipelinePlan|null;issue:string}{
   return {plan:null,issue:"Invalid JSON syntax. Fix the definition before editing the canvas."};
  }
 }
-export function PipelineEditor({token,onTokenChange}:Props){
+export function PipelineEditor({token,onTokenChange,theme,onOpenOperations}:Props){
  const[definition,setDefinition]=useState('{\n  "nodes": []\n}');
  const[jobs,setJobs]=useState<SQLJob[]>([]);
  const[savedDags,setSavedDags]=useState<ExecutableDAG[]>([]);
@@ -97,6 +98,7 @@ export function PipelineEditor({token,onTokenChange}:Props){
    const saved=await sqlDAGApi.saveDAG(payload,token);
    if(version.current===revision){
     setNotice("Saved pipeline "+saved.name+" (ID: "+saved.id+"). No job was started.");
+    setSelectedSaved(saved.id);
     setSavedDags((await sqlDAGApi.dags(token)).pipelines);
    }
   }catch(e){if(version.current===revision)setError(String(e));}
@@ -129,9 +131,9 @@ export function PipelineEditor({token,onTokenChange}:Props){
  return <section className="df-studio-workspace df-pipeline-workspace space-y-5">
   <div className="df-studio-panel section space-y-4">
    <div className="flex flex-wrap items-start justify-between gap-3">
-    <div><h2 className="flex items-center gap-2 text-lg font-semibold"><GitFork size={19}/>Visual Pipeline Builder <span className="signal-inline-code">/ V2.2</span></h2>
-     <p className="muted mt-1 max-w-3xl text-sm">Create SQL Job dependencies visually, validate topology and save the DAG to the existing PostgreSQL-backed registry. Saving does not execute or schedule jobs.</p></div>
-    <span className="df-pipeline-stat">DRAFT / VALIDATE / SAVE</span>
+    <div><h2 className="flex items-center gap-2 text-lg font-semibold"><GitFork size={19}/>Visual Pipeline Builder <span className="signal-inline-code">/ V2.3</span></h2>
+     <p className="muted mt-1 max-w-3xl text-sm">Design and validate the SQL Job DAG, save it to the PostgreSQL-backed registry, then explicitly run an enabled TEST pipeline and inspect real backend outcomes. No automatic execution or scheduling.</p></div>
+    <span className="df-pipeline-stat">DESIGN / SAVE / TEST RUN</span>
    </div>
    <label className="block max-w-lg space-y-1"><span className="muted text-xs">API token (memory only)</span>
     <input aria-label="Pipeline API token" className="field" type="password" autoComplete="off" value={token} onChange={event=>updateToken(event.target.value)}/>
@@ -185,6 +187,7 @@ export function PipelineEditor({token,onTokenChange}:Props){
     </div>
    </div>
   </div>
+   <PipelineRunInspector token={token} dags={savedDags} selectedId={selectedSaved} theme={theme} onOpenOperations={onOpenOperations}/>
   {pendingSave&&<ConfirmActionDialog title={pendingSave.existing?"Overwrite saved pipeline?":"Enable TEST pipeline?"}
    message={pendingSave.existing?"This pipeline name already exists. Saving replaces its saved DAG definition and enabled flag. Ensure no conflicting test run is active.":"Enabling allows authorized users to start this SQL DAG later under backend TEST guards. Saving does not start execution."}
    target={pendingSave.payload.name} targetLabel="Named SQL DAG · verify before saving"
