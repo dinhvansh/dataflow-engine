@@ -34,7 +34,7 @@ The change is limited to the UI-17 assertion in `qa/browser/test_console.py`. No
 | `cd web && npm run build` | 0 | PASS; 1,765 modules transformed. Vite emitted only its advisory 515.08 kB chunk-size warning. |
 | `python -m pip install pytest==8.4.2 playwright==1.56.0` | 0 | PASS; pinned versions installed in `/tmp/dataflow-pr39-retest-venv`. |
 | `python -m playwright install chromium` | 0 | PASS. |
-| `cd web && npm run dev -- --host 127.0.0.1 --port 5173` | 0 after QA shutdown | PASS; `ss` confirmed listener `127.0.0.1:5173`; HTTP smoke returned 0. |
+| `cd web && npm run dev -- --host 127.0.0.1 --port 5173` | N/A (long-running server, stopped with Ctrl-C) | PASS; `ss` confirmed listener `127.0.0.1:5173`; HTTP smoke exited 0. |
 | `DATAFLOW_BROWSER_BASE_URL=http://127.0.0.1:5173 python -m pytest qa/browser/test_console.py -v` | 0 | **17/17 PASS in 14.64 s.** |
 
 UI-17 specifically passed:
