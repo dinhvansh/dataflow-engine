@@ -98,7 +98,7 @@ type SecretRef struct {
 var opaqueHandle = regexp.MustCompile("^[A-Za-z0-9][A-Za-z0-9_/-]{3,127}$")
 
 func NewSecretRef(workspaceID, handle string, version uint64) (SecretRef, error) {
-	if !validIdentity(workspaceID) || !opaqueHandle.MatchString(handle) ||
+	if !validIdentity(workspaceID) || !opaqueHandle.MatchString(handle) || !strings.HasPrefix(handle, "ref/") ||
 		strings.Contains(handle, "//") || version == 0 {
 		return SecretRef{}, ErrInvalid
 	}
@@ -108,6 +108,7 @@ func NewSecretRef(workspaceID, handle string, version uint64) (SecretRef, error)
 func (s SecretRef) WorkspaceID() string { return s.workspaceID }
 func (s SecretRef) Version() uint64      { return s.version }
 func (s SecretRef) String() string       { return "[REDACTED]" }
+func (s SecretRef) GoString() string     { return "[REDACTED]" }
 func (s SecretRef) MarshalJSON() ([]byte, error) {
 	return json.Marshal("[REDACTED]")
 }
