@@ -76,3 +76,10 @@ body{background:var(--console-bg);color:var(--console-text);transition:backgroun
 /* Read-only SQL DAG operations statuses. */
 .enterprise-badge-danger{border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.11);color:#fca5a5}
 :root.theme-light .enterprise-badge-danger{color:#b91c1c}
+
+/* Evidence-driven operations DAG: layout stages, not fabricated timings. */
+.enterprise-dag-canvas{background:radial-gradient(circle at 1px 1px,var(--console-border) 1px,transparent 0);background-size:21px 21px;background-color:var(--console-bg)}
+.enterprise-dag-node{border-color:var(--console-border);background:var(--console-card);box-shadow:var(--console-shadow)}
+.enterprise-dependency{background:var(--console-hover);color:var(--console-accent)}
+.enterprise-node-error{background:rgba(239,68,68,.09);color:#fca5a5}
+:root.theme-light .enterprise-node-error{color:#b91c1c}

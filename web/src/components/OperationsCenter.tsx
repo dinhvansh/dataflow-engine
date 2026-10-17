@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState} from "react";
 import {Activity,AlertCircle,ArrowRight,CheckCircle2,Clock3,Database,Eye,RefreshCw,Search,ShieldAlert,Workflow} from "lucide-react";
 import {Badge} from "./ui/badge";
+import {DagExecutionMap} from "./DagExecutionMap";
 import {Button} from "./ui/button";
 import {Card,CardContent,CardDescription,CardHeader,CardTitle} from "./ui/card";
 import {sqlDAGApi,type DAGRun,type ExecutableDAG} from "../lib/api";
@@ -136,10 +137,7 @@ export function OperationsCenter({token,onTokenChange,onOpenPipelines}:Props){
     {detailError&&<p role="alert" className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm text-red-300">{detailError}</p>}
     {detail?.error&&<div className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm"><div className="mb-1 flex items-center gap-2 font-semibold text-red-300"><ShieldAlert size={16}/>Pipeline error</div><p className="break-words text-red-300">{detail.error}</p></div>}
     {detail&&<label className="muted flex items-center gap-2 text-xs"><input type="checkbox" checked={autoRefresh} onChange={e=>setAutoRefresh(e.target.checked)}/>Auto-refresh selected queued/running run every 5 seconds</label>}
-    {detail&&details.length===0&&<p className="muted rounded-lg border border-border p-4 text-sm">No per-node results are available yet. The DAG may still be queued or running.</p>}
-    {details.length>0&&<div className="space-y-2">{details.map(([node,status],i)=><div key={node} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-border p-3">
-     <div className="flex items-start gap-3"><div className="enterprise-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm font-semibold">{i+1}</div><div><div className="text-sm font-semibold">{node}</div><div className="muted mt-1 text-xs">Recorded attempts: {detail?.result?.attempts?.[node]??"Unknown"}</div>{detail?.result?.errors?.[node]&&<p className="mt-2 max-w-2xl break-words text-xs text-red-300">{detail.result.errors[node]}</p>}</div></div><Badge variant={variant(status)}>{nodeLabel(status)}</Badge>
-    </div>)}</div>}
+    {detail&&details.length===0&&<p className="muted rounded-lg border border-border p-4 text-sm">No per-node outcomes have been reported yet. The saved DAG stages are shown below when available.</p>}\n    {detail&&<DagExecutionMap plan={currentDefinition?.nodes} state={detail.result?.state} attempts={detail.result?.attempts} errors={detail.result?.errors}/>}
     <p className="muted text-xs">Attempts and errors come from the stored DAG result. No elapsed time or per-step timestamps are exposed by this API.</p>
    </CardContent>
   </Card>}
