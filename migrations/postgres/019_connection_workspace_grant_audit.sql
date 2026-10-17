@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS connection_security_grant_audit (
  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  workspace_id text NOT NULL REFERENCES connection_security_workspaces(id),
- actor_id text NOT NULL CHECK (length(actor_id) BETWEEN 0 AND 128),
+ actor_id text NOT NULL CHECK (length(actor_id) BETWEEN 1 AND 128),
  target_actor_id text NOT NULL CHECK (target_actor_id ~ '^[0-9a-f]{64}$'),
  scope text NOT NULL CHECK (scope IN ('VIEW','USE','TEST')),
  action text NOT NULL CHECK (action IN ('granted','revoked')),
