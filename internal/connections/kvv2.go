@@ -36,7 +36,7 @@ func NewKVv2Vault(endpoint,mount,token string,sourceClient *http.Client)(*KVv2Va
  client:=&http.Client{Timeout:5*time.Second}
  if sourceClient!=nil{
   *client=*sourceClient
-  if client.Timeout==0||client.Timeout>10*time.Second{client.Timeout=5*time.Second}
+  if client.Timeout<=0||client.Timeout>10*time.Second{client.Timeout=5*time.Second}
  }
  if transport,ok:=client.Transport.(*http.Transport);ok&&transport.TLSClientConfig!=nil&&transport.TLSClientConfig.InsecureSkipVerify{
   return nil,ErrInvalid
