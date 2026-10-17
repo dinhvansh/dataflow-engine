@@ -79,7 +79,7 @@ jobs:
         run: |
           go test ./cmd/dataflow -run 'Test(ManagedQueueIntegration|SQLDAGIntegration|TransformStudioIntegration|DBTRunAPIIntegration|LineageAPIIntegration|SafeTableAPIIntegration|AutoBuildRealDBTIntegration|SafeIncrementalAPIIntegration|HardDeleteRejectsStaleSnapshotIntegration)$' -count=1 -v
           go test ./cmd/dataflow-dbt-worker -run 'Test(DBTQueueIntegration|DBTFullQueueIntegration|SafeTableFullIntegration|SafeIncrementalFullIntegration)$' -count=1 -v
-          go test ./internal/connections -run 'Test(ConnectionCatalogIntegration|SecureViewHTTPIntegration)$' -count=1 -v
+          go test ./internal/connections -run 'Test(ConnectionCatalogIntegration|SecureViewHTTPIntegration|WorkspaceGrantLifecycleIntegration)$' -count=1 -v
       - name: Build isolated dbt worker Docker image
         run: docker build -f deploy/dbt-worker/Dockerfile -t dataflow-dbt-worker:ci .
       - name: Container logs on failure
