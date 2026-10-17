@@ -359,3 +359,14 @@ def test_ui11_connector_hub_catalog_and_route_preview_only(ui):
     page.get_by_label("Route source").select_option("sqlserver")
     expect(page.get_by_text("Supported underlying path", exact=False)).to_be_visible()
     assert all(c["method"] == "GET" for c in state["calls"])
+
+
+def test_ui12_shared_button_uses_semantic_light_dark_tokens(ui):
+    page, state = ui
+    action = page.get_by_role("button", name="Explore connections")
+    expect(action).to_have_class(re.compile("df-btn-primary"))
+    assert action.evaluate("(el) => getComputedStyle(el).backgroundColor") == "rgb(192, 242, 115)"
+    page.get_by_role("button", name="Switch to light mode").click()
+    assert action.evaluate("(el) => getComputedStyle(el).backgroundColor") == "rgb(35, 128, 71)"
+    expect(page.get_by_role("button", name="Switch to dark mode")).to_be_visible()
+    assert all(c["method"] == "GET" for c in state["calls"])
