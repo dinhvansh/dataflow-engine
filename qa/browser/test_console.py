@@ -519,8 +519,16 @@ def test_ui18_sql_line_gutter_and_source_metadata_filters_are_local(ui):
     # A long SQL query must scroll inside the editor, with a synchronized gutter.
     query.fill("\n".join(f"SELECT {i}" for i in range(60)))
     expect(page.locator(".df-studio-line-numbers > div")).to_have_count(60)
-    scrolled = query.evaluate("(el) => { el.scrollTop = 120; return { top: el.scrollTop, viewport: el.clientHeight, content: el.scrollHeight }; }")
+    scrolled = query.evaluate("""(el) => {
+        el.scrollTop = 120;
+        el.dispatchEvent(new Event("scroll", { bubbles: true }));
+        return { top: el.scrollTop, viewport: el.clientHeight, content: el.scrollHeight };
+    }""")
     assert scrolled["content"] > scrolled["viewport"], "SQL editor must have a vertical scrolling viewport"
     assert scrolled["top"] > 0, "SQL editor must accept vertical scrolling"
-    expect(page.locator(".df-studio-line-numbers")).to_have_js_property("scrollTop", scrolled["top"])
+    gutter = page.locator(".df-studio-line-numbers")
+    gutter_size = gutter.evaluate("(el) => ({ viewport: el.clientHeight, content: el.scrollHeight })")
+    assert gutter_size["content"] > gutter_size["viewport"], "Gutter must have a bounded scrollable viewport"
+    assert gutter_size["viewport"] == scrolled["viewport"], "Gutter and SQL editor viewport heights must match"
+    expect(gutter).to_have_js_property("scrollTop", scrolled["top"])
     assert all(c["method"] == "GET" for c in state["calls"])
