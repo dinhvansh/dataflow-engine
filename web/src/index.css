@@ -27,19 +27,19 @@ body{background:var(--console-bg);color:var(--console-text);transition:backgroun
 .navbtn.active{background:rgba(14,165,233,.12);color:var(--console-accent);box-shadow:inset 3px 0 0 var(--console-accent)}
 :root.theme-light .text-slate-400,:root.theme-light .text-slate-300{color:#64748b}
 :root.theme-light .text-sky-200,:root.theme-light .text-sky-300,:root.theme-light .text-sky-400{color:#0369a1}
-:root.theme-light .bg-slate-800,:root.theme-light .bg-slate-800\\/50,:root.theme-light .bg-slate-800\\/60,:root.theme-light .bg-slate-800\\/40{background-color:#f1f5f9}
+:root.theme-light .bg-slate-800,:root.theme-light .bg-slate-800\/50,:root.theme-light .bg-slate-800\/60,:root.theme-light .bg-slate-800\/40{background-color:#f1f5f9}
 :root.theme-light .bg-slate-900{background-color:#e9eff8}
 :root.theme-light .border-slate-700,:root.theme-light .border-slate-800{border-color:#dce4ee}
 :root.theme-light .text-emerald-400,:root.theme-light .text-emerald-300{color:#047857}
 :root.theme-light .text-amber-200,:root.theme-light .text-amber-300{color:#92400e}
 :root.theme-light .text-red-300,:root.theme-light .text-red-400{color:#b91c1c}
-:root.theme-light .bg-red-950,:root.theme-light .bg-red-950\\/40,:root.theme-light .bg-red-950\\/50{background-color:#fff1f2}
-:root.theme-light .bg-amber-950\\/20,:root.theme-light .bg-amber-500\\/10{background-color:#fffbeb}
-:root.theme-light .bg-sky-950\\/20,:root.theme-light .bg-sky-500\\/10{background-color:#eff6ff}
-:root.theme-light .border-amber-800\\/50,:root.theme-light .border-amber-700\\/40{border-color:#fcd34d}
-:root.theme-light .border-sky-700\\/40,:root.theme-light .border-sky-600\\/40{border-color:#7dd3fc}
+:root.theme-light .bg-red-950,:root.theme-light .bg-red-950\/40,:root.theme-light .bg-red-950\/50{background-color:#fff1f2}
+:root.theme-light .bg-amber-950\/20,:root.theme-light .bg-amber-500\/10{background-color:#fffbeb}
+:root.theme-light .bg-sky-950\/20,:root.theme-light .bg-sky-500\/10{background-color:#eff6ff}
+:root.theme-light .border-amber-800\/50,:root.theme-light .border-amber-700\/40{border-color:#fcd34d}
+:root.theme-light .border-sky-700\/40,:root.theme-light .border-sky-600\/40{border-color:#7dd3fc}
 :root.theme-light .border-red-700{border-color:#fda4af}
-:root.theme-light .bg-emerald-950\\/20{background-color:#ecfdf5}
+:root.theme-light .bg-emerald-950\/20{background-color:#ecfdf5}
 :root.theme-light .bg-slate-950{background-color:#f1f5f9}
 :root.theme-light select,:root.theme-light input{color-scheme:light}
 @media(max-width:767px){.console-sidebar{min-height:auto}.console-sidebar nav{display:flex;gap:.2rem;overflow-x:auto;margin-top:.75rem;padding-bottom:.25rem}.console-sidebar .sidebar-caption,.console-sidebar .sidebar-status{display:none}.console-sidebar .navbtn{white-space:nowrap;width:auto;padding:.65rem .8rem}.console-header{align-items:flex-start}}
