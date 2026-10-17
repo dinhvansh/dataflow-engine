@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState} from "react";
 import {Activity,AlertCircle,ArrowRight,CheckCircle2,Clock3,Database,Eye,RefreshCw,Search,ShieldAlert,Workflow} from "lucide-react";
 import {Badge} from "./ui/badge";
+import {DagExecutionMap} from "./DagExecutionMap";
 import {Button} from "./ui/button";
 import {Card,CardContent,CardDescription,CardHeader,CardTitle} from "./ui/card";
 import {sqlDAGApi,type DAGRun,type ExecutableDAG} from "../lib/api";
@@ -102,6 +103,7 @@ export function OperationsCenter({token,onTokenChange,onOpenPipelines}:Props){
   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
    {([{label:"Loaded runs",value:summary.loaded,icon:Database},{label:"Queued / Running",value:summary.active,icon:Clock3},{label:"Succeeded",value:summary.success,icon:CheckCircle2},{label:"Failed",value:summary.failed,icon:AlertCircle}] as const).map(s=>{const Icon=s.icon;return <Card key={s.label}><CardHeader className="pb-2"><CardDescription className="flex items-center gap-2"><Icon size={15}/>{s.label}</CardDescription><CardTitle className="text-2xl tabular-nums">{loaded?s.value:"—"}</CardTitle></CardHeader><CardContent className="muted text-xs">Among retrieved SQL DAG runs only</CardContent></Card>})}
   </div>
+  <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(350px,1fr)]">
   <section className="section space-y-4" aria-label="SQL DAG run history">
    <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="font-semibold">Execution history</h3><p className="muted mt-1 text-xs">Read-only monitoring · no automatic retries or pipeline mutations.</p></div>
     <Button type="button" onClick={()=>void refresh()} disabled={!token||loading}><RefreshCw className={loading?"animate-spin":""} size={16}/>{loading?"Loading…":"Refresh runs"}</Button></div>
@@ -136,12 +138,13 @@ export function OperationsCenter({token,onTokenChange,onOpenPipelines}:Props){
     {detailError&&<p role="alert" className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm text-red-300">{detailError}</p>}
     {detail?.error&&<div className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm"><div className="mb-1 flex items-center gap-2 font-semibold text-red-300"><ShieldAlert size={16}/>Pipeline error</div><p className="break-words text-red-300">{detail.error}</p></div>}
     {detail&&<label className="muted flex items-center gap-2 text-xs"><input type="checkbox" checked={autoRefresh} onChange={e=>setAutoRefresh(e.target.checked)}/>Auto-refresh selected queued/running run every 5 seconds</label>}
-    {detail&&details.length===0&&<p className="muted rounded-lg border border-border p-4 text-sm">No per-node results are available yet. The DAG may still be queued or running.</p>}
-    {details.length>0&&<div className="space-y-2">{details.map(([node,status],i)=><div key={node} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-border p-3">
-     <div className="flex items-start gap-3"><div className="enterprise-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm font-semibold">{i+1}</div><div><div className="text-sm font-semibold">{node}</div><div className="muted mt-1 text-xs">Recorded attempts: {detail?.result?.attempts?.[node]??"Unknown"}</div>{detail?.result?.errors?.[node]&&<p className="mt-2 max-w-2xl break-words text-xs text-red-300">{detail.result.errors[node]}</p>}</div></div><Badge variant={variant(status)}>{nodeLabel(status)}</Badge>
-    </div>)}</div>}
+    {detail&&<div className="space-y-2 rounded-lg border border-border p-3 text-xs"><div className="flex justify-between gap-2"><span className="muted">Pipeline</span><strong>{currentDefinition?.name??"Unknown or deleted DAG"}</strong></div><div className="flex justify-between gap-2"><span className="muted">Nodes with outcomes</span><strong>{Object.keys(detail.result?.state??{}).length}</strong></div><div className="flex justify-between gap-2"><span className="muted">Recorded total attempts</span><strong>{Object.values(detail.result?.attempts??{}).reduce((total,n)=>total+n,0)}</strong></div></div>}
+    {detail&&details.length===0&&<p className="muted rounded-lg border border-border p-4 text-sm">No per-node outcomes have been reported yet. The saved DAG stages are shown below when available.</p>}
     <p className="muted text-xs">Attempts and errors come from the stored DAG result. No elapsed time or per-step timestamps are exposed by this API.</p>
    </CardContent>
   </Card>}
+  {!selectedId&&<Card aria-label="Pipeline run inspector"><CardHeader><CardTitle>Run inspector</CardTitle><CardDescription>Choose a run from the history to see its steps and errors.</CardDescription></CardHeader><CardContent><div className="muted rounded-xl border border-border p-6 text-center text-sm"><Eye className="mx-auto mb-2" size={22}/>No run selected</div></CardContent></Card>}
+  </div>
+  {detail&&<Card><CardHeader><CardTitle>Saved DAG execution</CardTitle><CardDescription>Read-only plan and recorded step outcomes for the selected run.</CardDescription></CardHeader><CardContent><DagExecutionMap plan={currentDefinition?.nodes} state={detail.result?.state} attempts={detail.result?.attempts} errors={detail.result?.errors}/></CardContent></Card>}
  </div>;
 }

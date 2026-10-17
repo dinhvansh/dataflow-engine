@@ -297,6 +297,10 @@ def test_ui09_sql_dag_operations_read_only_inspector(ui):
     expect(page.get_by_label("Pipeline run inspector")).to_be_visible()
     expect(page.get_by_text("Quality gate failed")).to_be_visible()
     expect(page.get_by_text("Row count mismatch")).to_be_visible()
-    expect(page.get_by_text("Recorded attempts: 3")).to_be_visible()
+    graph = page.get_by_label("DAG execution map")
+    expect(graph.get_by_text("revenue_check", exact=True)).to_be_visible()
+    expect(graph.get_by_text("extract_invoice", exact=True).first).to_be_visible()
+    expect(graph.get_by_text("Attempts: 3")).to_be_visible()
+    expect(graph.get_by_text("Row count mismatch")).to_be_visible()
     operations_calls = [c for c in state["calls"] if c["path"].startswith("/api/v1/sql/")]
     assert operations_calls and all(c["method"] == "GET" for c in operations_calls)
