@@ -13,6 +13,7 @@ type EvidenceNodeData={
 } & Record<string,unknown>;
 type EvidenceNode=Node<EvidenceNodeData,"evidence">;
 type Props={
+ theme:"light"|"dark";
  plan?:PipelineNode[];
  state?:Record<string,string>;
  attempts?:Record<string,number>;
@@ -100,7 +101,7 @@ function buildGraph(plan:PipelineNode[]|undefined,state:Record<string,string>,at
  }
  return {nodes,edges,total:source.length};
 }
-export function DagExecutionMap({plan,state,attempts,errors}:Props){
+export function DagExecutionMap({theme,plan,state,attempts,errors}:Props){
  const safeState=state??{},safeAttempts=attempts??{},safeErrors=errors??{};
  const graph=useMemo(()=>buildGraph(plan,safeState,safeAttempts,safeErrors),[plan,state,attempts,errors]);
  if(graph.nodes.length===0)return <div className="muted rounded border border-border px-4 py-8 text-center text-sm">No DAG definition or node execution evidence is available for this run.</div>;
@@ -119,7 +120,7 @@ export function DagExecutionMap({plan,state,attempts,errors}:Props){
     elementsSelectable={true} edgesReconnectable={false}
     deleteKeyCode={null} multiSelectionKeyCode={null}
     panOnDrag zoomOnScroll zoomOnPinch zoomOnDoubleClick={false}
-    colorMode="dark"
+    colorMode={theme}
     proOptions={{hideAttribution:false}}
    >
     <Background variant={BackgroundVariant.Lines} gap={24} size={0.7} color="var(--signal-grid)"/>
