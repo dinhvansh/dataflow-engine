@@ -85,7 +85,20 @@ def ui(browser, request):
             else:
                 result = {"pipelines": state["pipelines"]}
         elif path == "/api/v1/sql/dag-runs":
-            if "id=" in req.url:
+            if method == "POST":
+                result = {
+                    "run_id": "abababab-abab-4bab-8bab-abababababab",
+                    "dag_id": body.get("dag_id"), "status": "queued"
+                }
+            elif "id=abababab-abab-4bab-8bab-abababababab" in req.url:
+                result = {
+                    "run_id": "abababab-abab-4bab-8bab-abababababab",
+                    "dag_id": "33333333-3333-4333-8333-333333333333",
+                    "status": "succeeded",
+                    "result": {"state": {"extract_invoice": "succeeded", "revenue_check": "succeeded"},
+                               "attempts": {"extract_invoice": 1, "revenue_check": 1}, "errors": {}}
+                }
+            elif "id=" in req.url:
                 result = {
                     "run_id": "66666666-6666-4666-8666-666666666666",
                     "dag_id": "33333333-3333-4333-8333-333333333333",
@@ -686,3 +699,39 @@ def test_ui21_pipeline_save_requires_validation_and_confirms_overwrite(ui):
     page.get_by_label("Pipeline definition JSON").fill('{"nodes": [')
     expect(save).to_be_disabled()
     assert all(c["path"] not in ("/api/v1/sql/dag-runs", "/api/v1/bootstrap/runs") for c in state["calls"])
+
+
+def test_ui22_pipeline_run_confirms_and_inspects_real_mocked_backend_status(ui):
+    """Explicit TEST confirmation before starting DAG; show only server results."""
+    page, state = ui
+    page.get_by_role("button", name="Pipelines", exact=True).click()
+    page.get_by_label("Pipeline API token").fill(TOKEN)
+    expect(page.get_by_label("Pipeline run inspector")).to_be_visible()
+    run_button = page.get_by_role("button", name="Run selected DAG", exact=True)
+    expect(run_button).to_have_count(0)
+
+    page.get_by_role("button", name="Load saved DAGs").click()
+    page.get_by_role("combobox", name="Saved pipeline", exact=True).select_option(
+        "33333333-3333-4333-8333-333333333333")
+    expect(run_button).to_be_enabled()
+    run_button.click()
+    expect(page.get_by_role("dialog", name="Run saved SQL DAG in TEST?")).to_be_visible()
+    page.get_by_role("button", name="Cancel", exact=True).click()
+    assert not any(c["method"] == "POST" and c["path"] == "/api/v1/sql/dag-runs" for c in state["calls"])
+
+    run_button.click()
+    page.get_by_role("button", name="Confirm TEST run").click()
+    expect(page.get_by_text("Status: queued", exact=True)).to_be_visible()
+    started = [c for c in state["calls"] if c["method"] == "POST" and c["path"] == "/api/v1/sql/dag-runs"]
+    assert len(started) == 1 and started[0]["body"] == {
+        "dag_id": "33333333-3333-4333-8333-333333333333"
+    }
+
+    page.get_by_role("button", name="Refresh run").click()
+    expect(page.get_by_text("Status: succeeded", exact=True)).to_be_visible()
+    expect(page.get_by_label("DAG execution map")).to_be_visible()
+    expect(page.locator(".xyflow-signal-node")).to_have_count(2)
+    expect(page.get_by_text("Attempts", exact=True)).to_be_visible()
+    assert any(c["method"] == "GET" and c["path"] == "/api/v1/sql/dag-runs" for c in state["calls"])
+    assert not any(c["method"] == "POST" and c["path"] in (
+        "/api/v1/bootstrap/runs", "/api/v1/managed/runs") for c in state["calls"])
