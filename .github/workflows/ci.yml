@@ -1,7 +1,13 @@
 name: CI
 on:
   push:
+    branches:
+      - main
   pull_request:
+# Always test open PRs, but avoid duplicate branch push runs.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   go:
     runs-on: ubuntu-latest

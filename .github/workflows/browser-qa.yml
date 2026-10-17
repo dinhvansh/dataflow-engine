@@ -1,6 +1,8 @@
 name: Browser UI QA (mock API)
 on:
   push:
+    branches:
+      - main
     paths:
       - "web/**"
       - "qa/browser/**"
@@ -10,6 +12,10 @@ on:
       - "web/**"
       - "qa/browser/**"
       - ".github/workflows/browser-qa.yml"
+# Superseded PR commits do not need another browser execution.
+concurrency:
+  group: browser-ui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   browser-ui:
     runs-on: ubuntu-latest
@@ -34,7 +40,7 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:5173/
-      - name: Run six mocked browser UI contract cases
+      - name: Run mocked browser UI regression suite
         env:
           DATAFLOW_BROWSER_BASE_URL: http://127.0.0.1:5173
         run: python -m pytest qa/browser/test_console.py -q
