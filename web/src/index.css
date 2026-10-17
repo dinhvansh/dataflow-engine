@@ -352,3 +352,63 @@ body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
 :root.theme-light .df-btn-primary{color:#fff}
 :root.theme-dark .df-btn-primary{color:#111816}
 @media(prefers-reduced-motion:reduce){.df-button{transition:none}}
+
+
+/* ─── DATAFLOW / DEVELOPMENT WORKSPACES ─────────────────────────────────────
+   UI-only enterprise design language shared by SQL, Transform, Lineage, DAG,
+   Incremental and Managed screens. Existing input/API behavior is unchanged. */
+.df-studio-workspace{min-width:0;color:var(--console-text)}
+.df-studio-workspace .section{min-width:0}
+.df-studio-kicker{font:10px "IBM Plex Mono",Consolas,monospace;letter-spacing:.12em;color:var(--console-accent);font-weight:700}
+.df-studio-label{color:var(--console-muted);font-size:11px;font-weight:650}
+.df-studio-hero{position:relative;border-top:3px solid var(--console-accent);background:var(--console-card)}
+.df-studio-hero h2{letter-spacing:-.035em}
+.df-studio-panel{background:var(--console-card)}
+.df-studio-notice{color:var(--signal-status-warning);background:color-mix(in srgb,var(--signal-status-warning) 7%,var(--console-card));border-color:color-mix(in srgb,var(--signal-status-warning) 27%,var(--console-border))}
+.df-studio-notice svg{flex-shrink:0}
+.df-studio-check,.df-studio-empty,.df-studio-registry-item{border-color:var(--console-border);background:var(--console-field)}
+.df-studio-empty{border-style:dashed;color:var(--console-text)}
+.df-studio-code-box{border-color:var(--console-border);background:var(--console-field)}
+.df-studio-code-toolbar{background:var(--console-hover);color:var(--console-muted);font:11px "IBM Plex Mono",Consolas,monospace;letter-spacing:.025em}
+.df-studio-sql-area{background:var(--console-card);color:var(--console-text);border:0;caret-color:var(--console-accent);font-family:"IBM Plex Mono",Consolas,monospace;tab-size:2}
+.df-studio-sql-area:focus-visible{outline:2px solid var(--console-accent);outline-offset:-2px}
+.df-studio-sql-area::selection{background:var(--signal-soft)}
+.df-studio-registry-item{transition:border-color .16s,background .16s}
+.df-studio-registry-item:hover,.df-studio-registry-item.is-active{border-color:var(--console-accent);background:var(--signal-soft)}
+.df-studio-registry-item:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}
+.df-studio-link{color:var(--console-accent)}
+.df-studio-muted-note{color:var(--console-muted);border-color:var(--console-border)}
+.df-studio-success{background:color-mix(in srgb,var(--signal-status-success) 8%,var(--console-card));border-color:color-mix(in srgb,var(--signal-status-success) 35%,var(--console-border));color:var(--signal-status-success)}
+.df-studio-error{background:color-mix(in srgb,var(--signal-status-error) 8%,var(--console-card));border-color:color-mix(in srgb,var(--signal-status-error) 35%,var(--console-border));color:var(--signal-status-error)}
+.df-studio-generated-sql{background:var(--console-field);color:var(--console-accent);border:1px solid var(--console-border)}
+.df-studio-workspace [class*="border-slate-"]{border-color:var(--console-border)}
+.df-studio-workspace [class*="bg-slate-"]{background-color:var(--console-field)}
+.df-studio-workspace [class*="text-slate-"]{color:var(--console-muted)}
+.df-studio-workspace [class*="text-sky-"]{color:var(--console-accent)}
+.df-studio-workspace [class*="border-sky-"]{border-color:var(--console-accent)}
+.df-studio-workspace [class*="bg-sky-"]{background-color:var(--signal-soft)}
+.df-studio-workspace [class*="text-emerald-"]{color:var(--signal-status-success)}
+.df-studio-workspace [class*="text-rose-"],.df-studio-workspace [class*="text-red-"]{color:var(--signal-status-error)}
+.df-studio-workspace [class*="text-amber-"]{color:var(--signal-status-warning)}
+.df-studio-workspace [class*="bg-amber-"]{background-color:color-mix(in srgb,var(--signal-status-warning) 8%,var(--console-card))}
+.df-studio-workspace [class*="border-amber-"]{border-color:color-mix(in srgb,var(--signal-status-warning) 34%,var(--console-border))}
+.df-studio-workspace button[draggable="true"],.df-studio-steps [draggable="true"]{cursor:grab}
+.df-studio-workspace button[draggable="true"]:active,.df-studio-steps [draggable="true"]:active{cursor:grabbing}
+.df-studio-workspace button:focus-visible,.df-studio-workspace select:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}
+.df-studio-workspace input[type="checkbox"]{accent-color:var(--console-accent)}
+.df-studio-preview thead{background:var(--console-hover)}
+.df-studio-preview tbody tr:hover{background:var(--signal-soft)}
+.df-studio-preview td,.df-studio-preview th{border-color:var(--console-border)}
+.df-studio-preview table th{font-size:10px;letter-spacing:.035em}
+.df-studio-preview pre{tab-size:2}
+.df-studio-palette>button{border-radius:4px}
+.df-studio-palette>button:hover{border-color:var(--console-accent);background:var(--signal-soft)}
+.df-studio-steps button:hover{color:var(--console-accent)}
+.df-studio-lineage-canvas{background-color:var(--console-bg);border-color:var(--console-border);background-image:linear-gradient(var(--signal-grid) 1px,transparent 1px),linear-gradient(90deg,var(--signal-grid) 1px,transparent 1px);background-size:24px 24px}
+.df-studio-workspace textarea.field{min-width:0;resize:vertical}
+:root.theme-light .df-studio-sql-area{background:#fff;color:#1f3027}
+:root.theme-light .df-studio-code-toolbar{background:#f5f7f5;color:#65736b}
+:root.theme-light .df-studio-workspace [class*="bg-rose-"],:root.theme-light .df-studio-workspace [class*="bg-red-"]{background-color:#fff2f2}
+:root.theme-light .df-studio-workspace input[type="checkbox"]{accent-color:#238047}
+:root.theme-dark .df-studio-workspace input[type="checkbox"]{accent-color:#c0f273}
+@media(prefers-reduced-motion:reduce){.df-studio-registry-item{transition:none}}
