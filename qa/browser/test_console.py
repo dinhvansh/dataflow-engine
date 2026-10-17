@@ -331,3 +331,31 @@ def test_ui10_signalroom_design_tokens_in_both_themes(ui):
     assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-header').trim()") == "#ffffff"
     assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-accent').trim()") != "#245fc3"
     assert all(c["method"] == "GET" for c in state["calls"])
+
+
+def test_ui11_connector_hub_catalog_and_route_preview_only(ui):
+    page, state = ui
+    page.get_by_role("button", name="Connections", exact=True).click()
+    expect(page.get_by_text("Connector Hub", exact=True)).to_be_visible()
+    expect(page.get_by_role("tab", name=re.compile("Sources"))).to_have_attribute("aria-selected", "true")
+
+    page.get_by_label("Search connectors").fill("mysql")
+    expect(page.get_by_text("MySQL / MariaDB", exact=True)).to_be_visible()
+    expect(page.get_by_text("Microsoft SQL Server", exact=True)).not_to_be_visible()
+    page.get_by_role("button", name="Clear connector search").click()
+    expect(page.get_by_text("Microsoft SQL Server", exact=True)).to_be_visible()
+
+    page.get_by_role("button", name="Planned", exact=True).click()
+    expect(page.get_by_text("Microsoft SQL Server", exact=True)).not_to_be_visible()
+    page.get_by_role("button", name="Available", exact=True).click()
+    expect(page.get_by_text("Microsoft SQL Server", exact=True)).to_be_visible()
+
+    page.get_by_role("tab", name=re.compile("Destinations")).click()
+    expect(page.get_by_text("ClickHouse", exact=True)).to_be_visible()
+    page.get_by_role("tab", name=re.compile("Data routes")).click()
+    expect(page.get_by_text("Supported underlying path", exact=False)).to_be_visible()
+    page.get_by_label("Route source").select_option("mysql")
+    expect(page.get_by_text("Planned route", exact=False)).to_be_visible()
+    page.get_by_label("Route source").select_option("sqlserver")
+    expect(page.get_by_text("Supported underlying path", exact=False)).to_be_visible()
+    assert all(c["method"] == "GET" for c in state["calls"])
