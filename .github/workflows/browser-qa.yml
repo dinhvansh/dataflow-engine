@@ -1,6 +1,8 @@
 name: Browser UI QA (mock API)
 on:
   push:
+    branches:
+      - main
     paths:
       - "web/**"
       - "qa/browser/**"
@@ -10,6 +12,10 @@ on:
       - "web/**"
       - "qa/browser/**"
       - ".github/workflows/browser-qa.yml"
+# Only the newest PR commit needs UI screenshots and browser regression tests.
+concurrency:
+  group: browser-ui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   browser-ui:
     runs-on: ubuntu-latest
