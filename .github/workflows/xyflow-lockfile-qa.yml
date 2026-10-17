@@ -1,0 +1,22 @@
+name: XYFlow lockfile verification (temporary)
+on:
+  push:
+    branches:
+      - feat/xyflow-signalroom-pipelines-20261017
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  resolve-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate deterministic package lock
+        working-directory: web
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Export lockfile for review (no credentials)
+        run: |
+          node -e 'const f=require("fs").readFileSync("web/package-lock.json","utf8");const s=JSON.stringify(f);for(let i=0;i<s.length;i+=900){console.log("DF_LOCK_PART:"+String(i/900).padStart(4,"0")+":"+s.slice(i,i+900))}console.log("DF_LOCK_TOTAL:"+s.length)'
