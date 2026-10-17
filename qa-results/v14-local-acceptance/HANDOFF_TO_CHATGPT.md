@@ -7,8 +7,8 @@ Base reviewed: `origin/main` at `61cfd7a712b5c600167a85c7ee8fd36c44f1da8d`. The 
 | PR | Commit | Scope | Local result |
 |---|---|---|---|
 | #21 | `d99775b43933c9e529fa7798cff5e0c9e8a048be` | Fail-closed live-browser preflight, trace secret scan, unique owned resources/cleanup, Docker-label checks, disk-capacity guard | PASS; GitHub CI PASS |
-| #22 | `d7fbf7065e3a3684edd98a3dd5c83b8e872a764e` | Key-snapshot hard-delete candidates, two-snapshot confirmation, explicit approval, monotonic reserved versions, idempotent tombstones | Unit/race/vet/build PASS; live end-to-end BLOCKED by the existing synthetic rowversion-width issue described below |
-| #23 | `fe98ed75e0a712c0e02c9043d5ced074637d4c40` | Recovery-to-succeeded runner and 100k/1M resource/publish benchmark | PASS locally; CI was running when this handoff was written |
+| #22 | `d7fbf7065e3a3684edd98a3dd5c83b8e872a764e` | Key-snapshot hard-delete candidates, two-snapshot confirmation, explicit approval, monotonic reserved versions, idempotent tombstones | Unit/race/vet/build and GitHub CI PASS; live end-to-end BLOCKED by the existing synthetic rowversion-width issue described below |
+| #23 | `fe98ed75e0a712c0e02c9043d5ced074637d4c40` | Recovery-to-succeeded runner and 100k/1M resource/publish benchmark | PASS locally; GitHub CI PASS |
 
 All three are code-only: no raw ZIP, browser trace, screenshot, generated log, result directory, credential, or sensitive source data is included.
 
@@ -50,7 +50,7 @@ Atomic publish was 3.567–5.829 ms in the 100k run; rollback was 3.498–4.520 
 1. **BLOCKED — synthetic reconciliation rowversion width.** A live hard-delete reconciliation run stopped safely before evidence publication with `rowversion requires 16 hexadecimal digits, got 8`. No tombstone or source mutation occurred. The fixture declares `rowversion`; the SQL Server conversion/driver path needs an isolated regression fix before PR #22 can receive an E2E PASS.
 2. Decide whether tombstone evidence stays in the dedicated scratch table or is adapted into each model's typed delta contract. PR #22 intentionally does not guess payload schemas or publish into production-facing tables.
 3. Review the large formatting-only component in PR #22 before merge; behavior and tests are isolated, but the repository's older compact Go formatting makes that diff noisier than desired.
-4. CI must be green and independent review complete for PRs #22 and #23. Do not merge automatically.
+4. GitHub CI is green; independent review is still required for PRs #22 and #23. Do not merge automatically.
 
 ## Recommendation
 
