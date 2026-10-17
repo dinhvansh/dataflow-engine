@@ -1,6 +1,6 @@
 # DataFlow Engine — Latest Chat Handoff
 
-**Snapshot:** 2026-10-17 · verified GitHub `main@e56ddf38624ace8e7caa4e2817d2ceace83dc912` before this docs update. **GitHub live state always wins**; read HEAD, open PRs and Actions at the start of every session.
+**Snapshot:** 2026-10-17 · verified GitHub `main@3e8f625e0aa149d555363e4059bf31b71b96165b` after V3.2B-1 merge PR #55, before this docs update. **GitHub live state always wins**; read HEAD, open PRs and Actions at the start of every session.
 
 **Required companion (FULL prior plans, delivered features, missing gates, acceptance criteria):**
 **[MASTER_ROADMAP_AND_STATUS.md](MASTER_ROADMAP_AND_STATUS.md)**. Do not read only this short handoff and mistakenly assume all development plans are complete. Historical [implementation/roadmap.md](../implementation/roadmap.md) predates delivered milestones and has old checkboxes.
@@ -25,13 +25,14 @@
 | Visual Pipeline V2.4 | Run **validated, saved, enabled** DAG right on canvas with server re-check and confirmation; not a heterogeneous ETL runtime | PR #49; 24 mocked browser tests on that feature |
 | Connection Manager V3.1 | Redacted authorized **inventory** of fixed SQL Server, ClickHouse and PostgreSQL environment slots | PR #51; draft duplicate #50 closed |
 | Connection Manager V3.2A | **Inactive lab-only** named connection Draft registry (UUID, PostgreSQL migration 017, admin token/feature flag, audit, UI). **NO endpoint, credential, Test Connection, runtime binding** | PR #52 merged at `71e97aca...`; PR head Go/Postgres/ClickHouse/dbt/Web CI and UI01–UI26 mocked browser PASS |
-| Status docs after V3.2A | Earlier handoff refreshed; current HEAD became docs-only merge commit | PR #53, `main@e56ddf38624ace8e7caa4e2817d2ceace83dc912`, GitHub CI PASS |
+| Status consolidation after V3.2A | Full master roadmap/handoff and historical delivered-vs-pending inventory | PRs #53, #54; #54 docs-only main `e31c650`, CI PASS |
+| Connection Manager V3.2B-1 (partial) | **Server-only, disconnected security core**: exact workspace/actor VIEW, USE, MANAGE, TEST synthetic policy; opaque redacted versioned secret reference; provider-neutral Vault/Audit interfaces; safe credential callback and rotation *contract*, fake-vault redaction/cross-workspace/deny tests. **No real vault, SSO, endpoint, durable audit, API wiring, bindings or Test Connection** | PR #55 merged (`3e8f625`), PR head `e2dc34a`, GitHub CI run 39048231248 PASS Go race/vet, frontend, PostgreSQL, ClickHouse and dbt synthetic suite |
 
-**Evidence:** main CI run 39040829060 PASS for `e56ddf38624ace8e7caa4e2817d2ceace83dc912`; browser UI 26-case mocked QA PASS on PR #52 tested head / merge commit, not a live ERP test. Re-check current workflows after further commits. At snapshot, **PR #25** sanitized screenshot gallery is still open, separate from active runtime work. Avoid merging it without inspection.
+**Evidence:** #55 exact head CI 39048231248 PASS; main push CI for merge `3e8f625` started as run 39048434696 (re-check its final outcome). Browser UI 26-case mocked QA PASS was on PR #52 tested head / merge commit, not a live ERP test. Re-check current workflows after further commits. At snapshot, **PR #25** sanitized screenshot gallery is still open, separate from active runtime work. Avoid merging it without inspection.
 
 ## Important plans that are NOT finished
 
-1. **Connection Manager V3.2B (NEXT):** server-side vault/secret references, rotation/redaction, permission scopes (VIEW/USE/MANAGE/TEST), workspace/actor audit, separate secure configuration. Existing lab admin header is **not production RBAC**. No hostname/credentials stored in PostgreSQL plaintext/browser/Git.
+1. **Connection Manager V3.2B (IN PROGRESS):** V3.2B-1 server-only security foundation merged #55, **not wired to HTTP/runtime**. NEXT V3.2B-2: approved identity/workspace authority, vault provider and server-only secret setup, durable versioned metadata/audit, enforced scoped API permissions, synthetic cross-workspace tests. Existing lab admin header is **not production RBAC**. No hostname/credentials stored in PostgreSQL plaintext/browser/Git. See [connections-v32b-security-core.md](connections-v32b-security-core.md).
 2. **V3.2C:** guarded Test Connection with SSRF/egress allowlist, DNS/TLS controls, timeout, rate limits and audit; SQL Server read-only, ClickHouse scratch-only.
 3. **V3.3:** immutable versioned connection ID binding into Sync Jobs/SQL Jobs/Pipelines; backward compatibility and safe rollback from environment connections. Multi-instance live routing **not implemented yet**.
 4. **V3.4:** synthetic multi-instance E2E, restart/failure QA, permission and secret rotation tests; separate explicitly authorized read-only Epicor TEST acceptance.
@@ -44,13 +45,13 @@
 
 1. Fetch live GitHub `main`, open PRs, branches, running/completed Actions and compare relevant changes; report divergence before edits.
 2. Read **both this file and [MASTER_ROADMAP_AND_STATUS.md](MASTER_ROADMAP_AND_STATUS.md)**, then relevant source files and historical release evidence. Do not use old snapshot SHA as a hardcoded branch base.
-3. Start V3.2B in **small reviewable security-first PRs**. Clarify vault provider, deployment/egress assumptions and user/workspace identity if necessary; do not silently choose a production storage or external connection endpoint. Prefer an abstraction + synthetic tests until assumptions are approved.
+3. Continue V3.2B in **small reviewable security-first PRs**. V3.2B-1 abstraction already merged #55; next requires explicit vault provider, deployment/egress assumptions and trusted actor/workspace identity. Do not silently choose a production storage or external endpoint. Never enable Test Connection or live credentials in the current lab-only API.
 4. For each PR: code + targeted tests, browser/Go/DB/dbt CI success on exact head, review scope, merge, recheck `main` CI; update docs after real merges.
 5. Keep source ERP absolutely SELECT-only; all writes only isolated verified QA fixture. No secret exfiltration, destructive local cleanup or uncontrolled network probing.
 6. Be honest about **Implemented / Synthetic PASS / Live QA BLOCKED or Pending / Production NO-GO**.
 
 ## Copy into a new chat
 
-> Tiếp tục dự án **DataFlow Engine** từ GitHub https://github.com/dinhvansh/dataflow-engine. **BẮT BUỘC đọc đầy đủ** `docs/PROJECT_HANDOFF_LATEST.md` và `docs/MASTER_ROADMAP_AND_STATUS.md` ở branch `main`; đối chiếu `implementation/roadmap.md`, release notes và code thực tế. Kiểm tra GitHub main HEAD, PR đang mở, CI/Actions, conflict trước khi làm. Đọc phần **đã xong/chưa xong** của toàn bộ roadmap, không chỉ Connection Manager. Tiếp tục **V3.2B bảo mật vault/RBAC** bằng PR nhỏ theo CI, sau đó V3.2C Test Connection, V3.3 binding, V3.4 E2E, rồi pipeline end-to-end/DQ/incremental optimization theo master roadmap. Mày trực tiếp làm code, PR, test, sửa và merge khi PASS; đừng chỉ đưa prompt. Bảo vệ ERP tuyệt đối read-only; mọi test ghi chỉ trên synthetic QA; không tự nhận sản phẩm production-ready. Giữ UI Signalroom Enterprise Light trắng xanh #238047 / Dark graphite volt #C0F273. Sau mỗi merge cập nhật hai file handoff/roadmap.
+> Tiếp tục dự án **DataFlow Engine** từ GitHub https://github.com/dinhvansh/dataflow-engine. **BẮT BUỘC đọc đầy đủ** `docs/PROJECT_HANDOFF_LATEST.md` và `docs/MASTER_ROADMAP_AND_STATUS.md` ở branch `main`; đối chiếu `implementation/roadmap.md`, release notes và code thực tế. Kiểm tra GitHub main HEAD, PR đang mở, CI/Actions, conflict trước khi làm. Đọc phần **đã xong/chưa xong** của toàn bộ roadmap, không chỉ Connection Manager. Tiếp tục **V3.2B-2 bảo mật vault/RBAC** (V3.2B-1 #55 chỉ là security foundation), sau đó V3.2C Test Connection, V3.3 binding, V3.4 E2E, rồi pipeline end-to-end/DQ/incremental optimization theo master roadmap. Mày trực tiếp làm code, PR, test, sửa và merge khi PASS; đừng chỉ đưa prompt. Bảo vệ ERP tuyệt đối read-only; mọi test ghi chỉ trên synthetic QA; không tự nhận sản phẩm production-ready. Giữ UI Signalroom Enterprise Light trắng xanh #238047 / Dark graphite volt #C0F273. Sau mỗi merge cập nhật hai file handoff/roadmap.
 
 **No secrets in this handoff.**
