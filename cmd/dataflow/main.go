@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	connectionsecurity "github.com/dinhvansh/dataflow-engine/internal/connections"
 	"github.com/dinhvansh/dataflow-engine/internal/connectors/clickhouse"
 	"github.com/dinhvansh/dataflow-engine/internal/connectors/sqlserver"
 	"github.com/dinhvansh/dataflow-engine/internal/cursor"
@@ -203,12 +204,17 @@ func main() {
 		log.Fatal(err)
 	}
 	svc := &server{pg: pg, sql: db, chURL: os.Getenv("DATAFLOW_CH_URL"), chUser: os.Getenv("DATAFLOW_CH_USER"), chPass: os.Getenv("DATAFLOW_CH_PASSWORD"), token: os.Getenv("DATAFLOW_API_TOKEN"), managedSlots: make(chan struct{}, 2), sqlDAGSlots: make(chan struct{}, 2)}
+	// Fail startup if the opt-in isolated OIDC view lacks a pinned key or migration 018.
+	// No other API handler, connection or job uses this independent JWT path.
+	secureView, secureErr := connectionsecurity.NewSecureViewHandlerFromEnv(ctx, pg)
+	if secureErr != nil { log.Fatal(secureErr) }
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok")) })
 	mux.HandleFunc("/api/v1/bootstrap/runs", svc.run)
 	mux.HandleFunc("/api/v1/bootstrap/status", svc.status)
 	mux.HandleFunc("/api/v1/connections", svc.connectionsAPI)
 	mux.HandleFunc("/api/v1/connections/definitions", svc.connectionDefinitionsAPI)
+	mux.Handle("/api/v1/secure/connections/definitions", secureView)
 	mux.HandleFunc("/api/v1/source/tables", svc.sourceAPI)
 	mux.HandleFunc("/api/v1/source/columns", svc.sourceAPI)
 	mux.HandleFunc("/api/v1/source/rowversion-upper", svc.sourceAPI)
