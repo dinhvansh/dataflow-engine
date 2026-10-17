@@ -101,6 +101,20 @@ After merge, some GitHub Actions runs returned FAIL with **no assigned runner an
 - Source `SysRevID` rowversion may not reflect physical deletes; beware late arrivals, stale cursors, ambiguous publish after crash and recovery. Require zero-mismatch evidence for scoped tests.
 - Treat production deployment as **NO-GO until release gates (security/RBAC, acceptance, Epicor source read-only validation, operational safeguards) are explicitly signed off**, regardless of synthetic PASS.
 
+## 5A. Backend safety QA gate — independently reviewed 2026-10-17
+
+**Decision:** **CONDITIONAL GO** to continue new feature development on isolated DEV/QA branches and synthetic databases; **NO-GO** for Epicor production deployment, operational DB changes, or live hard-delete application.
+
+Evidence hierarchy:
+
+1. [PR #20](https://github.com/dinhvansh/dataflow-engine/pull/20) contains the earlier synthetic full-stack QA report **52 PASS / 0 FAIL / 1 BLOCKED / 3 N/A** (base commit `61cfd7a7...`), including live disposable-DB Playwright 6/6, SQL Server 10,009-row sync with zero PK/count mismatch, late-event rejection, dbt/Auto Build, publish/rollback and recovery. **PR #20 is closed unmerged**, because raw traces/screenshots are not suitable for public `main`. Treat these archived artifacts as earlier evidence, not post-merge test results.
+2. [PR #43](https://github.com/dinhvansh/dataflow-engine/pull/43) reports a **more recent local full acceptance of 67 PASS / 0 FAIL / 0 BLOCKED / 1 optional NOT RUN** and a disk-capacity guard regression; it is merged. The **underlying 67-case logs and exact tested SHA were not independently available during this review**, so that assertion is a PR-reported result, not an independently verified PASS of the current `main`.
+3. On `main`: [PR #21](https://github.com/dinhvansh/dataflow-engine/pull/21) includes explicit synthetic opt-in, QA label/database/loopback guards and source read-only checks; [#22](https://github.com/dinhvansh/dataflow-engine/pull/22) + [#26](https://github.com/dinhvansh/dataflow-engine/pull/26) add two-complete-snapshot missing-key evidence, typed 8-byte rowversion, stale-approval fencing, and **`applied_to_target=false`**, not a production CDC/tombstone adapter. [#23](https://github.com/dinhvansh/dataflow-engine/pull/23) adds recovery-to-success and resource measurements. Hard-delete still needs a typed target adapter and ordering contract before any live application.
+4. GitHub Actions currently have **runner-unassigned / zero-step failures** on some commits; this is **not a code test failure but not a PASS either**. Ask Codex Local for sanitized `HANDOFF_TO_CHATGPT.md` and CI result ZIP, with exact post-merge `main` SHA, before issuing a definitive release certificate.
+5. [Issue #15](https://github.com/dinhvansh/dataflow-engine/issues/15) still has unchecked v1.4 acceptance gates at review time; may be stale, but do not silently close or claim that production risks are resolved without checking the new evidence.
+
+**Permitted next work:** Design and implement optional v1.5 features on separate branches with own migration/permission/security tests, read-only ERP guarantees, synthetic QA and explicit publish checks. **Do not deploy to production or enable new write-capable services against the user's real ERP.** Existing QA reports cover a different commit and selected scenarios, not all future behavior.
+
 ## 6. Next milestones — proposals, not yet authorized
 
 The most recent product direction discussed after UI completion:
