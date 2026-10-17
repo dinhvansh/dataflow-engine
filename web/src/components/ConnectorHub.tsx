@@ -1,5 +1,5 @@
 import {useMemo,useState} from "react";
-import {ArrowDown,ArrowRight,Box,CheckCircle2,Clock3,Database,FileSpreadsheet,HardDrive,Info,Layers3,Network,Plus,Search,Server,ShieldCheck,Workflow} from "lucide-react";
+import {ArrowDown,ArrowRight,Box,CheckCircle2,Clock3,Database,FileSpreadsheet,HardDrive,Info,Layers3,Network,Search,Server,ShieldCheck,Workflow} from "lucide-react";
 import {SourceExplorer} from "./SourceExplorer";
 import {Button} from "./ui/button";
 
@@ -32,7 +32,7 @@ export function ConnectorHub({token,onTokenChange}:{token:string;onTokenChange:(
  const[tab,setTab]=useState<"sources"|"destinations"|"routes">("sources");
  const[query,setQuery]=useState("");
  const[expanded,setExpanded]=useState("sqlserver");
- const[showExplorer,setShowExplorer]=useState(false);
+ const[showExplorer,setShowExplorer]=useState(true);
  const[selectedSource,setSelectedSource]=useState("sqlserver");
  const[selectedTarget,setSelectedTarget]=useState("clickhouse");
  const filtered=useMemo(()=>catalog.filter(c=>(tab==="destinations"?c.kind==="destination":c.kind==="source")&&(c.name+" "+c.type+" "+c.description).toLowerCase().includes(query.toLowerCase())),[tab,query]);
