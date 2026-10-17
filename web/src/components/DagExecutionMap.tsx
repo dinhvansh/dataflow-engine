@@ -28,10 +28,10 @@ function variant(status?:string):"success"|"danger"|"warning"|"neutral"{
  return "neutral";
 }
 function StateIcon({status}:{status?:string}){
- if(status==="succeeded")return <CheckCircle2 className="text-emerald-400" size={16}/>;
- if(status==="failed"||status==="cancelled")return <XCircle className="text-red-400" size={16}/>;
- if(status==="running")return <PlayCircle className="text-amber-400" size={16}/>;
- if(status==="queued")return <Clock3 className="text-amber-400" size={16}/>;
+ if(status==="succeeded")return <CheckCircle2 className="df-text-success" size={16}/>;
+ if(status==="failed"||status==="cancelled")return <XCircle className="df-text-error" size={16}/>;
+ if(status==="running")return <PlayCircle className="df-text-warning" size={16}/>;
+ if(status==="queued")return <Clock3 className="df-text-warning" size={16}/>;
  return <CircleDashed className="muted" size={16}/>;
 }
 const SignalNode=memo(function SignalNode({data,selected}:NodeProps<EvidenceNode>){

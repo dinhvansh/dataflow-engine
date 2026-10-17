@@ -33,7 +33,7 @@ export function EnterpriseOverview({health,run,onNavigate}:Props){
     </div>
     <div className="enterprise-hero-status rounded-xl border p-4 lg:w-[270px]">
      <div className="muted mb-3 text-xs font-semibold uppercase tracking-widest">Service endpoint</div>
-     <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-2 text-sm font-semibold"><span className={health==="online"?"h-2 w-2 rounded-full bg-emerald-400":health==="offline"?"h-2 w-2 rounded-full bg-red-400":"h-2 w-2 rounded-full bg-amber-400"}/>DataFlow API</span><Badge variant={statusBadge}>{status}</Badge></div>
+     <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-2 text-sm font-semibold"><span className={health==="online"?"h-2 w-2 rounded-full df-status-fill-success":health==="offline"?"h-2 w-2 rounded-full df-status-fill-error":"h-2 w-2 rounded-full df-status-fill-warning"}/>DataFlow API</span><Badge variant={statusBadge}>{status}</Badge></div>
      <div className="muted mt-3 text-xs">Live result from GET /healthz. It does not verify the underlying databases.</div>
     </div>
    </div>
@@ -64,7 +64,7 @@ export function EnterpriseOverview({health,run,onNavigate}:Props){
       {i<engineStages.length-1&&<ArrowRight className="enterprise-stage-arrow absolute -right-3 top-5 z-10 hidden bg-card text-primary sm:block" size={16}/>}
      </div>})}
     </div>
-    <div className="mt-4 flex items-start gap-2 rounded-lg border border-border p-3"><ShieldAlert size={16} className="mt-0.5 shrink-0 text-amber-400"/><p className="muted text-xs leading-relaxed">Production cutover is not approved. Hard-delete propagation and independent multi-source connection instances are not supported end-to-end. Only run against explicitly allowed scratch destinations.</p></div>
+    <div className="mt-4 flex items-start gap-2 rounded-lg border border-border p-3"><ShieldAlert size={16} className="mt-0.5 shrink-0 df-text-warning"/><p className="muted text-xs leading-relaxed">Production cutover is not approved. Hard-delete propagation and independent multi-source connection instances are not supported end-to-end. Only run against explicitly allowed scratch destinations.</p></div>
    </CardContent></Card>
    <Card><CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle2 size={18}/>Capabilities</CardTitle><CardDescription>Supported now versus future delivery.</CardDescription></CardHeader><CardContent className="space-y-3">
     <div className="flex items-center justify-between gap-2 text-sm"><span>SQL Server discovery</span><Badge variant="success">Available</Badge></div>

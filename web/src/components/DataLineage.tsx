@@ -97,10 +97,10 @@ export function DataLineage({token,onTokenChange}:{token:string;onTokenChange:(t
   </div>
   <div className="section grid items-end gap-3 md:grid-cols-[1fr_1fr]">
    <label className="space-y-1"><span className="muted text-xs">API bearer token</span><input type="password" autoComplete="off" value={token} className="field" onChange={e=>onTokenChange(e.target.value)}/></label>
-   <label className="space-y-1"><span className="muted text-xs">Tìm model hoặc bảng nguồn</span><div className="relative"><Search className="absolute left-3 top-3 text-slate-500" size={15}/><input className="field pl-9" value={filter} onChange={e=>setFilter(e.target.value)} placeholder="vd: revenue, part, inventory"/></div></label>
+   <label className="space-y-1"><span className="muted text-xs">Tìm model hoặc bảng nguồn</span><div className="relative"><Search className="absolute left-3 top-3 df-text-neutral" size={15}/><input className="field pl-9" value={filter} onChange={e=>setFilter(e.target.value)} placeholder="vd: revenue, part, inventory"/></div></label>
   </div>
-  <div className="flex items-start gap-2 rounded-lg border border-sky-800/50 bg-sky-950/20 p-3 text-xs text-sky-100"><ShieldCheck size={17} className="shrink-0"/>Graph được suy ra từ model Visual đã lưu: nguồn <code>scratch.dfv_model</code> tạo dependency đến model tương ứng. Lineage này chỉ phân tích metadata, <b>không tự build lại hoặc tự chạy dbt</b>. SQL Code là vùng chưa thể truy vết đầy đủ.</div>
-  {error&&<div role="alert" className="rounded-lg border border-rose-700 p-3 text-sm text-rose-300">{error}</div>}
+  <div className="flex items-start gap-2 rounded-lg border df-border-accent df-bg-accent-soft p-3 text-xs df-text-accent"><ShieldCheck size={17} className="shrink-0"/>Graph được suy ra từ model Visual đã lưu: nguồn <code>scratch.dfv_model</code> tạo dependency đến model tương ứng. Lineage này chỉ phân tích metadata, <b>không tự build lại hoặc tự chạy dbt</b>. SQL Code là vùng chưa thể truy vết đầy đủ.</div>
+  {error&&<div role="alert" className="rounded-lg border df-border-error p-3 text-sm df-text-error">{error}</div>}
   {graph&&layout&&<>
    <div className="grid gap-3 sm:grid-cols-3">
     <div className="section"><div className="muted text-xs">Models</div><div className="mt-1 text-2xl font-semibold">{graph.nodes.filter(n=>n.kind==="model").length}</div></div>
@@ -111,7 +111,7 @@ export function DataLineage({token,onTokenChange}:{token:string;onTokenChange:(t
     <div className="section min-w-0">
      <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-semibold"><Workflow size={18}/>Dependency Map</h3><span className="muted text-xs">Bấm một node để xem impact · cuộn ngang khi đồ thị lớn</span></div>
      <div className="df-studio-lineage-canvas max-h-[680px] overflow-auto rounded-md border">
-      {graph.nodes.length>100&&<p className="p-2 text-xs text-amber-300">Chỉ hiển thị 100 node đầu để giữ giao diện mượt; backend vẫn phân tích đủ toàn bộ danh sách.</p>}
+      {graph.nodes.length>100&&<p className="p-2 text-xs df-text-warning">Chỉ hiển thị 100 node đầu để giữ giao diện mượt; backend vẫn phân tích đủ toàn bộ danh sách.</p>}
       <div className="relative" style={{width:layout.width,height:layout.height}}>
        <svg aria-hidden="true" className="absolute inset-0 pointer-events-none" width={layout.width} height={layout.height}>
         <defs><marker id="dataflow-lineage-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="var(--console-muted)"/></marker></defs>
@@ -126,38 +126,38 @@ export function DataLineage({token,onTokenChange}:{token:string;onTokenChange:(t
         const faded=!matches(node)&&!active&&!hot;
         return <button key={node.id} type="button" title={node.label} style={{position:"absolute",left:x,top:y,width:NODE_WIDTH,height:NODE_HEIGHT}} onClick={()=>setSelected(node.id)}
          className={`df-lineage-node rounded-md border px-3 py-2 text-left transition ${nodeStatus(node)} ${active?"is-selected":hot?"is-affected":""} ${faded?"opacity-35":""}`}>
-         <div className="mb-1 flex items-center gap-1.5 text-xs text-slate-400">{node.kind==="source"?<Database size={14}/>:<GitBranch size={14}/>}<span>{node.kind==="source"?"Data Source":node.kind==="missing"?"Missing Model":"Transform Model"}</span></div>
+         <div className="mb-1 flex items-center gap-1.5 text-xs df-text-neutral">{node.kind==="source"?<Database size={14}/>:<GitBranch size={14}/>}<span>{node.kind==="source"?"Data Source":node.kind==="missing"?"Missing Model":"Transform Model"}</span></div>
          <div className="truncate text-sm font-semibold">{node.label}</div>
-         <div className="mt-1 truncate text-[10px] text-slate-400">{node.status==="ready"?"Defined":node.status.replaceAll("_"," ")}</div>
+         <div className="mt-1 truncate text-[10px] df-text-neutral">{node.status==="ready"?"Defined":node.status.replaceAll("_"," ")}</div>
         </button>;
        })}
       </div>
      </div>
-     {graph.problems.length>0&&<div className="mt-3 space-y-1 rounded-md border border-amber-800/50 bg-amber-950/20 p-3 text-xs">{graph.problems.slice(0,12).map((p,i)=><div key={i} className="flex items-start gap-2 text-amber-200"><AlertTriangle size={14} className="shrink-0"/><span><b>{p.model}</b>: {p.detail}</span></div>)}</div>}
+     {graph.problems.length>0&&<div className="mt-3 space-y-1 rounded-md border df-border-warning df-bg-warning-soft p-3 text-xs">{graph.problems.slice(0,12).map((p,i)=><div key={i} className="flex items-start gap-2 df-text-warning"><AlertTriangle size={14} className="shrink-0"/><span><b>{p.model}</b>: {p.detail}</span></div>)}</div>}
     </div>
     <div className="section min-w-0 space-y-3">
      <h3 className="font-semibold">Model Inspector</h3>
      {!current?<p className="muted text-sm">Chọn một model trên sơ đồ.</p>:<>
-      <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3"><div className="muted text-xs">{current.kind}</div><p className="mt-1 break-all font-semibold">{current.label}</p><p className="muted mt-1 text-xs">{current.target||"External / input source"}</p></div>
-      <div><p className="mb-2 text-xs font-semibold text-slate-300">Đọc dữ liệu từ</p>{parents.length?parents.map(x=><div key={x} className="my-1 rounded bg-slate-800 p-2 text-xs">{x}</div>):<p className="muted text-xs">Không có upstream model được khai báo.</p>}</div>
-      <div><p className="mb-2 text-xs font-semibold text-slate-300">Model trực tiếp phía sau</p>{children.length?children.map(x=><div key={x} className="my-1 flex items-center gap-2 rounded bg-slate-800 p-2 text-xs"><ArrowRight size={13}/>{x}</div>):<p className="muted text-xs">Không có downstream trực tiếp.</p>}</div>
-      {current.kind==="model"&&<div className="space-y-2 rounded-lg border border-sky-700/50 bg-sky-950/20 p-3">
-       <div className="text-xs font-semibold text-sky-200">Auto Build Dependencies · v1.2 TEST</div>
+      <div className="rounded-lg border df-border-neutral df-surface-soft p-3"><div className="muted text-xs">{current.kind}</div><p className="mt-1 break-all font-semibold">{current.label}</p><p className="muted mt-1 text-xs">{current.target||"External / input source"}</p></div>
+      <div><p className="mb-2 text-xs font-semibold df-text-neutral">Đọc dữ liệu từ</p>{parents.length?parents.map(x=><div key={x} className="my-1 rounded df-surface-soft p-2 text-xs">{x}</div>):<p className="muted text-xs">Không có upstream model được khai báo.</p>}</div>
+      <div><p className="mb-2 text-xs font-semibold df-text-neutral">Model trực tiếp phía sau</p>{children.length?children.map(x=><div key={x} className="my-1 flex items-center gap-2 rounded df-surface-soft p-2 text-xs"><ArrowRight size={13}/>{x}</div>):<p className="muted text-xs">Không có downstream trực tiếp.</p>}</div>
+      {current.kind==="model"&&<div className="space-y-2 rounded-lg border df-border-accent df-bg-accent-soft p-3">
+       <div className="text-xs font-semibold df-text-accent">Auto Build Dependencies · v1.2 TEST</div>
        <p className="muted text-xs">Chọn {current.label} → tự Build các View upstream theo thứ tự; nếu một model lỗi hoặc không đạt DQ, Flow dừng.</p>
        <Button disabled={!token||flowBusy} onClick={()=>void runChain()}>{flowBusy?"Đang xếp hàng...":"▶ Run Model + Dependencies"}</Button>
-       {flowError&&<p role="alert" className="text-xs text-rose-300">{flowError}</p>}
-       {flow&&<div className="space-y-1 rounded-md bg-slate-950/60 p-2">
+       {flowError&&<p role="alert" className="text-xs df-text-error">{flowError}</p>}
+       {flow&&<div className="space-y-1 rounded-md df-code-surface p-2">
         <div className="text-xs font-semibold">Flow: {flow.status} · {flow.target_model}</div>
-        <div className="break-all font-mono text-[10px] text-slate-400">{flow.run_id}</div>
-        {flow.error&&<p role="alert" className="text-xs text-rose-300">{flow.error}</p>}
-        {(flow.steps||[]).map((step,i)=><div key={step.index} className="flex items-center justify-between gap-2 rounded border border-slate-700/70 p-2 text-xs">
+        <div className="break-all font-mono text-[10px] df-text-neutral">{flow.run_id}</div>
+        {flow.error&&<p role="alert" className="text-xs df-text-error">{flow.error}</p>}
+        {(flow.steps||[]).map((step,i)=><div key={step.index} className="flex items-center justify-between gap-2 rounded border df-border-neutral p-2 text-xs">
           <span>{i+1}. {step.model_name}</span>
-          <span className={step.status==="succeeded"?"text-emerald-300":step.status==="failed"?"text-rose-300":"text-sky-300"}>{step.status}{step.status==="succeeded"?(" · "+step.rows_verified+" rows"):""}</span>
+          <span className={step.status==="succeeded"?"df-text-success":step.status==="failed"?"df-text-error":"df-text-accent"}>{step.status}{step.status==="succeeded"?(" · "+step.rows_verified+" rows"):""}</span>
         </div>)}
        </div>}
       </div>}
-      {current.kind==="model"&&<div className="rounded-lg border border-amber-800/50 bg-amber-950/20 p-3"><p className="text-xs font-semibold text-amber-200">Impact nếu sửa model này</p><p className="mt-1 text-2xl font-semibold">{[...affected].filter(id=>id.startsWith("model:")).length}</p><p className="muted text-xs">model downstream có thể cần kiểm tra hoặc build lại</p><div className="mt-2 flex flex-wrap gap-1">{[...affected].filter(id=>id.startsWith("model:")).sort().map(id=><span key={id} className="rounded border border-amber-800 px-2 py-1 text-[11px] text-amber-200">{id.replace("model:","")}</span>)}</div></div>}
-      {newestRun&&<div className="border-t border-slate-700 pt-3 text-xs"><b>dbt run gần nhất</b><p className="muted mt-1">{newestRun.status} · {newestRun.target||"scratch"}</p><p className="muted mt-1">Trạng thái run gần nhất không có nghĩa model hiện tại đã build đúng phiên bản SQL mới nhất.</p></div>}
+      {current.kind==="model"&&<div className="rounded-lg border df-border-warning df-bg-warning-soft p-3"><p className="text-xs font-semibold df-text-warning">Impact nếu sửa model này</p><p className="mt-1 text-2xl font-semibold">{[...affected].filter(id=>id.startsWith("model:")).length}</p><p className="muted text-xs">model downstream có thể cần kiểm tra hoặc build lại</p><div className="mt-2 flex flex-wrap gap-1">{[...affected].filter(id=>id.startsWith("model:")).sort().map(id=><span key={id} className="rounded border df-border-warning px-2 py-1 text-[11px] df-text-warning">{id.replace("model:","")}</span>)}</div></div>}
+      {newestRun&&<div className="border-t df-border-neutral pt-3 text-xs"><b>dbt run gần nhất</b><p className="muted mt-1">{newestRun.status} · {newestRun.target||"scratch"}</p><p className="muted mt-1">Trạng thái run gần nhất không có nghĩa model hiện tại đã build đúng phiên bản SQL mới nhất.</p></div>}
      </>}
     </div>
    </div>
