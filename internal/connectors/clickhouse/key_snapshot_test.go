@@ -98,11 +98,32 @@ func TestHardDeleteTombstoneValidationAndIdempotentKey(t *testing.T) {
 	if err := w.WriteHardDeleteTombstones(context.Background(), []HardDeleteTombstone{item, item}); err != nil {
 		t.Fatal(err)
 	}
-	if len(bodies) != 2 || !strings.Contains(queries[0], "ReplacingMergeTree") || strings.Count(bodies[1], `"_df_version":7`) != 2 {
+	if len(bodies) != 2 || !strings.Contains(queries[0], "ReplacingMergeTree") || strings.Count(bodies[1], `"_evidence_sequence":7`) != 2 {
 		t.Fatalf("unexpected idempotent tombstone request: %#v", bodies)
 	}
 	item.Version = 0
 	if err := w.WriteHardDeleteTombstones(context.Background(), []HardDeleteTombstone{item}); err == nil {
 		t.Fatal("zero version accepted")
 	}
+}
+
+// A newly reappeared key is the only key that may invalidate a pending
+// delete candidate. A key that stays absent must remain for confirmation.
+func TestAddedSnapshotKeysOnlyClearsReappearances(t *testing.T) {
+ var query string
+ const returnedKey = "12345678-1234-1234-1234-123456789099"
+ svr:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+  query=r.URL.Query().Get("query")
+  fmt.Fprintln(w,returnedKey)
+ }))
+ defer svr.Close()
+ writer:=&Writer{Endpoint:svr.URL,Database:"scratch",Table:"dataflow_key_snapshots"}
+ stream:="12345678-1234-1234-1234-123456789012"
+ old:="12345678-1234-1234-1234-123456789013"
+ current:="12345678-1234-1234-1234-123456789014"
+ keys,err:=writer.AddedSnapshotKeys(context.Background(),stream,old,current)
+ if err!=nil||len(keys)!=1||keys[0]!=returnedKey{t.Fatalf("added keys=%v err=%v",keys,err)}
+ if !strings.Contains(query,"SELECT n._pk FROM")||!strings.Contains(query,"LEFT ANTI JOIN")||!strings.Contains(query,"LIMIT 100001"){
+  t.Fatalf("reappearance must test new minus old, got %q",query)
+ }
 }
