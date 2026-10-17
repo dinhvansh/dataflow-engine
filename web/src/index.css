@@ -44,3 +44,31 @@ body{background:var(--console-bg);color:var(--console-text);transition:backgroun
 :root.theme-light select,:root.theme-light input{color-scheme:light}
 @media(max-width:767px){.console-sidebar{min-height:auto}.console-sidebar nav{display:flex;gap:.2rem;overflow-x:auto;margin-top:.75rem;padding-bottom:.25rem}.console-sidebar .sidebar-caption,.console-sidebar .sidebar-status{display:none}.console-sidebar .navbtn{white-space:nowrap;width:auto;padding:.65rem .8rem}.console-header{align-items:flex-start}}
 @media(prefers-reduced-motion:reduce){.console-sidebar,.navbtn,.field,body{transition:none}}
+
+
+/* Enterprise UI primitives layered over the existing shadcn-style console. */
+.enterprise-card{background:var(--console-card);color:var(--console-text);border-color:var(--console-border);box-shadow:var(--console-shadow)}
+.enterprise-badge{white-space:nowrap}
+.enterprise-badge-default{border-color:rgba(14,165,233,.3);background:rgba(14,165,233,.1);color:var(--console-accent)}
+.enterprise-badge-success{border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.11);color:#34d399}
+.enterprise-badge-warning{border-color:rgba(245,158,11,.32);background:rgba(245,158,11,.10);color:#fbbf24}
+.enterprise-badge-neutral{border-color:var(--console-border);background:var(--console-hover);color:var(--console-muted)}
+.enterprise-hero{background:linear-gradient(125deg,rgba(14,165,233,.10),rgba(20,184,166,.055) 65%,transparent);border:1px solid var(--console-border)}
+.enterprise-hero-status{background:var(--console-card);border-color:var(--console-border)}
+.enterprise-link-card{background:var(--console-card);color:var(--console-text);border-color:var(--console-border);box-shadow:var(--console-shadow);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.enterprise-link-card:hover{border-color:var(--console-accent);transform:translateY(-2px);box-shadow:0 14px 32px rgba(9,44,80,.13)}
+.enterprise-icon{background:rgba(14,165,233,.10);color:var(--console-accent)}
+.enterprise-card-rule{color:var(--console-accent);border-top:1px solid var(--console-border)}
+.navbtn:focus-visible,.theme-toggle:focus-visible,.sidebar-collapse:focus-visible,.enterprise-link-card:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}
+:root.theme-light .enterprise-badge-success{color:#047857}
+:root.theme-light .enterprise-badge-warning{color:#92400e}
+:root.theme-light .enterprise-hero{background:linear-gradient(130deg,#ecf8ff,#f3f7ff 60%,#fff)}
+@media(max-width:767px){.console-sidebar nav{margin-top:.75rem}.console-sidebar nav>div{flex-shrink:0}.console-sidebar nav .sidebar-caption{display:none}.console-sidebar nav>div>div{display:flex;gap:.2rem}.console-sidebar nav{align-items:center}}
+@media(prefers-reduced-motion:reduce){.enterprise-link-card{transition:none}.enterprise-link-card:hover{transform:none}}
+
+/* Accessible lightweight data-grid shell; all filtering is client-side over loaded rows. */
+.enterprise-table-head{background:var(--console-hover);color:var(--console-muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.enterprise-table-row:hover{background:var(--console-hover)}
+.enterprise-text-action{color:var(--console-accent)}
+.enterprise-text-action:hover{text-decoration:underline}
+.enterprise-text-action:focus-visible{outline:2px solid var(--console-accent);outline-offset:3px}
