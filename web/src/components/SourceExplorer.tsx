@@ -24,9 +24,9 @@ export function SourceExplorer({token,onTokenChange}:Props){
    <div className="flex items-center gap-2 text-lg font-semibold"><Database size={18}/>SQL Server Source Explorer</div>
    <p className="muted text-sm">Read-only metadata discovery. It never modifies Epicor tables, enables CDC, or saves credentials.</p>
    <div className="grid gap-3 sm:grid-cols-3">
-    <div className="sm:col-span-3"><label className="muted mb-1 block text-xs">DataFlow API bearer token (memory only)</label><input className="field" type="password" autoComplete="off" value={token} onChange={e=>onTokenChange(e.target.value)}/></div>
-    <div><label className="muted mb-1 block text-xs">SQL Schema</label><input className="field" value={schema} onChange={e=>setSchema(e.target.value)} /></div>
-    <div><label className="muted mb-1 block text-xs">Table</label><input className="field" value={table} onChange={e=>setTable(e.target.value)}/></div>
+    <div className="sm:col-span-3"><label className="muted mb-1 block text-xs">DataFlow API bearer token (memory only)</label><input aria-label="Source API token" className="field" type="password" autoComplete="off" value={token} onChange={e=>onTokenChange(e.target.value)}/></div>
+    <div><label className="muted mb-1 block text-xs">SQL Schema</label><input aria-label="SQL Server schema" className="field" value={schema} onChange={e=>setSchema(e.target.value)} /></div>
+    <div><label className="muted mb-1 block text-xs">Table</label><input aria-label="SQL Server table" className="field" value={table} onChange={e=>setTable(e.target.value)}/></div>
     <div className="flex items-end gap-2"><Button disabled={loading||!token} variant="outline" onClick={list}><RefreshCw size={15}/>List</Button><Button disabled={loading||!token} onClick={inspect}><TableProperties size={15}/>Inspect</Button></div>
    </div>
    <Button disabled={loading||!token} variant="outline" onClick={watermark}><ShieldCheck size={16}/>Read safe rowversion boundary</Button>
