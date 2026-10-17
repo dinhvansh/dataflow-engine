@@ -1,6 +1,7 @@
 package connectionsecurity
 
 import (
+ "context"
  "crypto"
  "crypto/rsa"
  "crypto/sha256"
@@ -8,7 +9,6 @@ import (
  "encoding/base64"
  "encoding/hex"
  "encoding/json"
- "errors"
  "math/big"
  "net/url"
  "regexp"
@@ -143,4 +143,3 @@ func (a AuthenticatedCatalog) CreateDraft(ctx context.Context,bearerJWT,workspac
  return a.Catalog.CreateDraft(ctx,p.ActorID(),workspace,name,driver,kind)
 }
 
-var _=errors.Is
