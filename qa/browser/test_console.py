@@ -324,7 +324,10 @@ def test_ui10_signalroom_design_tokens_in_both_themes(ui):
     )
     page.get_by_role("button", name="Switch to light mode").click()
     expect(page.locator("html")).to_have_class(re.compile("theme-light"))
-    assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-accent').trim()") == "#245fc3"
-    assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-bg').trim()") == "#f7faff"
+    assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-accent').trim()") == "#238047"
+    assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-bg').trim()") == "#fafbfa"
     assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-card').trim()") == "#ffffff"
+    assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-sidebar').trim()") == "#ffffff"
+    assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-header').trim()") == "#ffffff"
+    assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-accent').trim()") != "#245fc3"
     assert all(c["method"] == "GET" for c in state["calls"])
