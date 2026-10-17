@@ -1,6 +1,6 @@
 # DataFlow Engine — Master Roadmap, Status & Acceptance Gates
 
-**Snapshot: 2026-10-17.** Checked against public `main@e56ddf38624ace8e7caa4e2817d2ceace83dc912` before this docs update. This is a **planning/status document**, not proof of deployment. Before acting, verify live GitHub branch SHA, PRs, CI and current code. The exact SHA becomes historical once this document merges.
+**Snapshot: 2026-10-17.** Checked against public `main@3e8f625e0aa149d555363e4059bf31b71b96165b` after PR #55 merged, before this docs update. This is a **planning/status document**, not proof of deployment. Before acting, verify live GitHub branch SHA, PRs, CI and current code. The exact SHA becomes historical once this document merges.
 
 Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Original phased plan: [implementation/roadmap.md](../implementation/roadmap.md). Historical release evidence: [release-status-v13.md](../implementation/release-status-v13.md) and other `implementation/release-status-v*.md` files.
 
@@ -34,6 +34,7 @@ Stack: Go API/workers; SQL Server source **SELECT-only**; ClickHouse for disposa
 | Visual Pipeline Builder V2.1–V2.4 | **Implemented in React**: React Flow edit/drag/edges + JSON sync; validate; save/reopen; TEST run after confirmation; read-only run inspector; PRs #46–#49 | One full heterogeneous ETL pipeline canvas; production permissions; live cross-service QA |
 | Connection Manager V3.1 | **Implemented**: authenticated redacted inventory of 3 environment slots; PR #51 | Inventory not reachability, not real multi-instance configuration |
 | Connection Manager V3.2A | **Merged PR #52**: PostgreSQL named UUID **inactive lab-only DRAFTS**, separate admin token + opt-in, audit | NO endpoint/credentials, NO Test Connection, NO binding, NO execution |
+| Connection Manager V3.2B-1 | **Merged PR #55**: offline server-only synthetic workspace scope policy, redacted opaque secret refs and version, provider-neutral vault/audit interfaces, unit/race guards | NOT an actual vault or RBAC; no trusted actor identity, durable audit, persisted secret reference, endpoint configuration or handler/runtime wiring. V3.2B still IN PROGRESS |
 | Operations / UI | **Developer Preview**: run lists/status/errors and Signalroom Enterprise Light/Dark workspace | RBAC, alerts/SLOs, retention, long-run operations, role-tailored workflows |
 | Airbyte replacement / performance | **Not accepted**: controlled comparison was proposed | Verified benchmark, migration playbook, parity checks, rollback and go/no-go |
 | Epicor real acceptance | **Pending formal acceptance** despite synthetic QA evidence | Source SELECT-only proof, snapshot correctness, 7m-row/large-table test, reconcile, recovery |
@@ -45,9 +46,10 @@ Stack: Go API/workers; SQL Server source **SELECT-only**; ClickHouse for disposa
 
 ### P0 — Connection Manager to real multi-instance lab operation
 
-**V3.2B · Secure configuration, secrets and access control — NEXT**
-- Define connection registry versioning and isolation, owner/workspace/roles (VIEW / USE / MANAGE / TEST), immutable actor/audit records.
-- Add a **server-side vault interface** and secret references: rotation/redaction, no secrets in Git, frontend response, PostgreSQL plaintext or log. Choose managed provider or self-hosted option explicitly after threat model; no storage decision is yet locked.
+**V3.2B · Secure configuration, secrets and access control — IN PROGRESS (only slice V3.2B-1 merged PR #55)**
+- **Implemented V3.2B-1:** pure server-side workspace/actor scope checks (VIEW/USE/MANAGE/TEST) on a copied synthetic policy, redacted immutable secret-reference type, synthetic vault/audit contracts and fake-provider tests. PR #55 exact head CI run 39048231248 PASS. See [connections-v32b-security-core.md](connections-v32b-security-core.md). This does **not** secure the current V3.2A HTTP endpoints yet.
+- **Remaining:** trusted actor/workspace identity, dynamic revocation, registry versioning and isolation, persisted owner/workspace/roles and immutable actor/audit records, authorization on actual API reads/writes.
+- **Remaining:** select an approved provider for the existing server-side Vault abstraction, provision and rotate credentials with failure/recovery audit, store only opaque versioned references in secured metadata, never secret material in Git, frontend, PostgreSQL plaintext or logs. No managed or self-hosted provider has been selected.
 - Define endpoint allowlist/network egress policy before accepting host names. Keep feature gated and QA-only, do not activate arbitrary sources.
 - Unit/integration QA: unauthorized cross-workspace read/write denied, secret values never returned, rotation & audit, disabled feature fail-closed.
 - **Exit:** metadata + vault + permission layer proven on synthetic credentials; **no network connection yet**.
@@ -118,9 +120,9 @@ Stack: Go API/workers; SQL Server source **SELECT-only**; ClickHouse for disposa
 
 ## 6. Immediate next session
 
-1. Confirm current `main` and PR #52 merged, PR #53 docs status, PR #25 open; check all ongoing/new Actions.
-2. Assess V3.2B threat model and design decisions: deployment mode (internal/private vs internet-exposed), vault provider, authentication/SSO, workspace boundaries and network policy. If not resolved, do a secure interface/architecture PR before enabling credential writes.
-3. Implement V3.2B in small PRs, tested synthetic only. No automatic secret ingestion or arbitrary host/Test Connection.
+1. Confirm current `main` and PR #55 merged, PR #54 docs merged, PR #25 screenshot PR still open; check all ongoing/new Actions.
+2. V3.2B-1 offline interface/architecture PR #55 is merged. Resolve deployment mode (internal/private vs internet-exposed), vault provider, authentication/SSO, workspace boundaries, durable audit and network policy **before** enabling credential writes.
+3. Implement V3.2B-2 onward in small PRs, tested synthetic only. No automatic secret ingestion or arbitrary host/Test Connection before provider, identity and egress approvals.
 4. Update this file and handoff once milestones actually merge.
 
 **Canonical restart instruction:** “Đọc `docs/PROJECT_HANDOFF_LATEST.md` và `docs/MASTER_ROADMAP_AND_STATUS.md` trong https://github.com/dinhvansh/dataflow-engine; kiểm tra GitHub main/PR/Actions mới nhất; tiếp tục V3.2B, không chạm ERP ghi dữ liệu.”
