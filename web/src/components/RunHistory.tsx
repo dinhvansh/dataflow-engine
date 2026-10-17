@@ -29,7 +29,7 @@ export function RunHistory({token,onSelect}:{token:string;onSelect:(runID:string
   catch(e){setError(String(e))}
   finally{setLoading(false)}
  };
- return <section className="section mb-5 space-y-4" aria-label="Recent runs">
+ return <section className="df-studio-workspace df-studio-panel section mb-5 space-y-4" aria-label="Recent runs">
   <div className="flex flex-wrap items-center justify-between gap-3">
    <div><div className="flex items-center gap-2 font-semibold"><History size={19}/>Recent Runs</div><p className="muted mt-1 text-xs">Filter the latest 50 retrieved runs (not a global history search).</p></div>
    <Button variant="outline" size="sm" onClick={refresh} disabled={!token||loading}><RefreshCw size={15} className={loading?"animate-spin":""}/>{loading?"Loading":"Refresh"}</Button>

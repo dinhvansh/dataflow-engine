@@ -17,7 +17,7 @@ export function ReconciliationPanel({token,streams}:{token:string;streams:Manage
   const tick=setInterval(()=>{void reconciliationApi.status(run.run_id,token).then(v=>{if(active)setRun(v)}).catch(()=>{})},4000);
   return()=>{active=false;clearInterval(tick)};
  },[token,run?.run_id,run?.status]);
- return <section className="section mt-5 space-y-4">
+ return <section className="df-studio-workspace df-studio-panel section mt-5 space-y-4">
   <div className="flex items-center gap-2 font-semibold"><GitCompareArrows size={20}/>Snapshot Reconciliation</div>
   <div className="flex items-start gap-2 rounded-lg border border-amber-700/40 bg-amber-500/10 p-3 text-sm text-amber-200">
    <ShieldAlert size={18} className="shrink-0"/>

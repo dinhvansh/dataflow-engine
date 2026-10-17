@@ -20,7 +20,7 @@ export function SchedulePanel({token,streams}:{token:string;streams:ManagedStrea
    setSchedules((await scheduleApi.list(token)).schedules);
   }catch(e){setError(String(e))}finally{setBusy(false)}
  };
- return <div className="mt-5 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
+ return <div className="df-studio-workspace df-studio-panel mt-5 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
   <div className="mb-2 flex items-center gap-2 font-semibold"><CalendarClock size={18}/>Interval Scheduler (Opt-in)</div>
   <p className="muted mb-4 text-xs">Requires DATAFLOW_ENABLE_MANAGED_SCHEDULER=true on Go backend. No cron/DAG scheduling yet. Default: disabled.</p>
   <div className="grid gap-3 sm:grid-cols-3">
