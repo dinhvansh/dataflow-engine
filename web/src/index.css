@@ -323,3 +323,13 @@ body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
 :root.theme-light .hub-connector-card:hover{background:#fbfdfb}
 @media(max-width:640px){.hub-tab{padding:.65rem .75rem;font-size:12px}.hub-tabs{width:100%;justify-content:space-around}.hub-tab-count{display:none}}
 @media(prefers-reduced-motion:reduce){.hub-tab,.hub-filter,.hub-connector-card{transition:none}}
+
+/* SQL Server read-only explorer: semantic Light/Dark instead of hard-coded slate. */
+.hub-source-meta{border-color:var(--console-border);background:var(--signal-soft)}
+.hub-source-error{background:rgba(239,68,68,.08);color:var(--signal-status-error);border-color:rgba(239,68,68,.27)}
+.hub-source-chip{background:var(--console-field);border-color:var(--console-border);color:var(--console-text)}
+.hub-source-chip:hover,.hub-source-chip:focus-visible{border-color:var(--console-accent);background:var(--signal-soft)}
+.hub-source-th,.hub-source-tr{border-color:var(--console-border)}
+.hub-source-th{color:var(--console-muted);background:var(--console-field)}
+.hub-source-column{color:var(--console-accent)}
+.hub-source-cursor{color:var(--signal-status-success)}
