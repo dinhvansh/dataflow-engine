@@ -270,6 +270,10 @@ def test_ui07_enterprise_overview_light_dark_persist_and_shortcuts(ui):
 
     page.get_by_role("button", name="Switch to light mode").click()
     expect(page.locator("html")).to_have_class(re.compile("theme-light"))
+    page.get_by_role("button", name="Sync Jobs", exact=True).click()
+    fractional_surface = page.locator("[class~='bg-sky-950/20']").first
+    expect(fractional_surface).to_be_visible()
+    assert fractional_surface.evaluate("(el) => getComputedStyle(el).backgroundColor") == "rgb(239, 246, 255)"
     assert page.evaluate("localStorage.getItem('dataflow-theme')") == "light"
     page.reload(wait_until="domcontentloaded")
     expect(page.locator("html")).to_have_class(re.compile("theme-light"))
