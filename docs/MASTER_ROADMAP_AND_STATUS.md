@@ -1,6 +1,6 @@
 # DataFlow Engine — Master Roadmap, Status & Acceptance Gates
 
-**Snapshot: 2026-10-17.** Checked against public `main@3e8f625e0aa149d555363e4059bf31b71b96165b` after PR #55 merged, before this docs update. This is a **planning/status document**, not proof of deployment. Before acting, verify live GitHub branch SHA, PRs, CI and current code. The exact SHA becomes historical once this document merges.
+**Snapshot: 2026-10-17.** Checked against public `main@aa7b5452f64cdcf60a020449f57cae0b459926aa` after PR #59 merged, before this docs update. This is a **planning/status document**, not proof of deployment. Before acting, verify live GitHub branch SHA, PRs, CI and current code. The exact SHA becomes historical once this document merges.
 
 Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Original phased plan: [implementation/roadmap.md](../implementation/roadmap.md). Historical release evidence: [release-status-v13.md](../implementation/release-status-v13.md) and other `implementation/release-status-v*.md` files.
 
@@ -34,7 +34,10 @@ Stack: Go API/workers; SQL Server source **SELECT-only**; ClickHouse for disposa
 | Visual Pipeline Builder V2.1–V2.4 | **Implemented in React**: React Flow edit/drag/edges + JSON sync; validate; save/reopen; TEST run after confirmation; read-only run inspector; PRs #46–#49 | One full heterogeneous ETL pipeline canvas; production permissions; live cross-service QA |
 | Connection Manager V3.1 | **Implemented**: authenticated redacted inventory of 3 environment slots; PR #51 | Inventory not reachability, not real multi-instance configuration |
 | Connection Manager V3.2A | **Merged PR #52**: PostgreSQL named UUID **inactive lab-only DRAFTS**, separate admin token + opt-in, audit | NO endpoint/credentials, NO Test Connection, NO binding, NO execution |
-| Connection Manager V3.2B-1 | **Merged PR #55**: offline server-only synthetic workspace scope policy, redacted opaque secret refs and version, provider-neutral vault/audit interfaces, unit/race guards | NOT an actual vault or RBAC; no trusted actor identity, durable audit, persisted secret reference, endpoint configuration or handler/runtime wiring. V3.2B still IN PROGRESS |
+| Connection Manager V3.2B-1 | **Merged #55**: offline scoped-policy/Vault/Audit contracts, redacted references and synthetic tests | Pure server-only foundation, not an endpoint |
+| Connection Manager V3.2B-2 | **Merged #57**: migration 018 workspace/actor permissions, disconnected scoped profile Draft metadata, CAS reference staging, append-only audit with isolated PG QA | No live API or IdP; no vault/PG atomic completion |
+| Connection Manager V3.2B-3 | **Merged #58**: optional server-only HashiCorp Vault KV-v2 HTTPS adapter, versioned read, CAS create/rotate, TLS synthetic tests | No actual Vault deployment, policies/secret provisioning, API or execution |
+| Connection Manager V3.2B-4 | **Merged #59**: offline RS256/OIDC pinned issuer, audience/expiry/key check, verified pseudonymous actor and authenticated catalog facade | No real SSO/JWKS provisioning, workspace grant administration or API wiring; V3.2B remains IN PROGRESS |
 | Operations / UI | **Developer Preview**: run lists/status/errors and Signalroom Enterprise Light/Dark workspace | RBAC, alerts/SLOs, retention, long-run operations, role-tailored workflows |
 | Airbyte replacement / performance | **Not accepted**: controlled comparison was proposed | Verified benchmark, migration playbook, parity checks, rollback and go/no-go |
 | Epicor real acceptance | **Pending formal acceptance** despite synthetic QA evidence | Source SELECT-only proof, snapshot correctness, 7m-row/large-table test, reconcile, recovery |
@@ -46,10 +49,10 @@ Stack: Go API/workers; SQL Server source **SELECT-only**; ClickHouse for disposa
 
 ### P0 — Connection Manager to real multi-instance lab operation
 
-**V3.2B · Secure configuration, secrets and access control — IN PROGRESS (only slice V3.2B-1 merged PR #55)**
+**V3.2B · Secure configuration, secrets and access control — IN PROGRESS (code slices V3.2B-1..4 merged #55/#57/#58/#59)**
 - **Implemented V3.2B-1:** pure server-side workspace/actor scope checks (VIEW/USE/MANAGE/TEST) on a copied synthetic policy, redacted immutable secret-reference type, synthetic vault/audit contracts and fake-provider tests. PR #55 exact head CI run 39048231248 PASS. See [connections-v32b-security-core.md](connections-v32b-security-core.md). This does **not** secure the current V3.2A HTTP endpoints yet.
-- **Remaining:** trusted actor/workspace identity, dynamic revocation, registry versioning and isolation, persisted owner/workspace/roles and immutable actor/audit records, authorization on actual API reads/writes.
-- **Remaining:** select an approved provider for the existing server-side Vault abstraction, provision and rotate credentials with failure/recovery audit, store only opaque versioned references in secured metadata, never secret material in Git, frontend, PostgreSQL plaintext or logs. No managed or self-hosted provider has been selected.
+- **Implemented (synthetic only):** V3.2B-2 migration 018 workspace grants + revocation, separate inactive profile drafts, versioned reference CAS, application-transaction audit and append-only database audit trigger, integration on isolated PostgreSQL. PR #57 exact-head CI 39049689214 PASS. **Remaining:** real IdP/actor and workspace grant provisioning, fail-closed API route, dynamic permissions, production identity operations and secure migration rollout.
+- **Implemented (synthetic only):** optional self-hosted HashiCorp KV-v2 HTTPS adapter with versioned read/CAS writes and fake TLS tests (#58 exact-head CI 39050285981 PASS); pinned offline RS256 OIDC verifier and verified actor facade (#59 exact-head CI 39050767874 PASS). **Remaining:** actual provider/IdP selection and credentials/keys/policies, certified TLS/egress, Vault↔PG dual-write transaction reconciliation, dynamic trusted API integration. Never put secrets in Git/browser/PG plaintext or logs.
 - Define endpoint allowlist/network egress policy before accepting host names. Keep feature gated and QA-only, do not activate arbitrary sources.
 - Unit/integration QA: unauthorized cross-workspace read/write denied, secret values never returned, rotation & audit, disabled feature fail-closed.
 - **Exit:** metadata + vault + permission layer proven on synthetic credentials; **no network connection yet**.
@@ -120,9 +123,9 @@ Stack: Go API/workers; SQL Server source **SELECT-only**; ClickHouse for disposa
 
 ## 6. Immediate next session
 
-1. Confirm current `main` and PR #55 merged, PR #54 docs merged, PR #25 screenshot PR still open; check all ongoing/new Actions.
-2. V3.2B-1 offline interface/architecture PR #55 is merged. Resolve deployment mode (internal/private vs internet-exposed), vault provider, authentication/SSO, workspace boundaries, durable audit and network policy **before** enabling credential writes.
-3. Implement V3.2B-2 onward in small PRs, tested synthetic only. No automatic secret ingestion or arbitrary host/Test Connection before provider, identity and egress approvals.
+1. Confirm current `main` and PR #59 merged, PRs #57–#58 green and #25 screenshot PR still open; check any newer commits and Actions.
+2. V3.2B-1..4 code merged, **not deployed to users**. Resolve the actual target IdP/JWKS, HashiCorp Vault deployment/policies/token handling (or alternate provider), workspace bootstrap/access administration, durable rotation outbox/recovery and egress policy **before** credential writes.
+3. Implement V3.2B-5 **opt-in OIDC-verified API** + audited vault/PG reference workflow in small PRs. No automatic secret ingestion or arbitrary host/Test Connection before issuer/provider identity and egress controls are verified.
 4. Update this file and handoff once milestones actually merge.
 
-**Canonical restart instruction:** “Đọc `docs/PROJECT_HANDOFF_LATEST.md` và `docs/MASTER_ROADMAP_AND_STATUS.md` trong https://github.com/dinhvansh/dataflow-engine; kiểm tra GitHub main/PR/Actions mới nhất; tiếp tục V3.2B, không chạm ERP ghi dữ liệu.”
+**Canonical restart instruction:** “Đọc `docs/PROJECT_HANDOFF_LATEST.md` và `docs/MASTER_ROADMAP_AND_STATUS.md` trong https://github.com/dinhvansh/dataflow-engine; kiểm tra GitHub main/PR/Actions mới nhất; tiếp tục V3.2B-5 opt-in OIDC API và Vault/PG reconciliation, không chạm ERP ghi dữ liệu.”
