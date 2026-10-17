@@ -3,7 +3,7 @@ import {AlertTriangle,Code2,GitFork,RefreshCw,Save,ShieldCheck} from "lucide-rea
 import {Button} from "./ui/button";
 import {ConfirmActionDialog} from "./ui/confirm-action-dialog";
 import {VisualPipelineCanvas} from "./VisualPipelineCanvas";
-import {PipelineRunInspector} from "./PipelineRunInspector";
+import {PipelineRunInspector,type CanvasRunRequest} from "./PipelineRunInspector";
 import {sqlDAGApi,validatePipeline,type ExecutableDAG,type PipelineNode,type PipelinePlan,type PipelineValidation,type SQLJob} from "../lib/api";
 
 type Props={token:string;onTokenChange:(value:string)=>void;theme:"light"|"dark";onOpenOperations:()=>void};
@@ -42,6 +42,8 @@ export function PipelineEditor({token,onTokenChange,theme,onOpenOperations}:Prop
  const[busyDags,setBusyDags]=useState(false);
  const[busyValidation,setBusyValidation]=useState(false);
  const[busySave,setBusySave]=useState(false);
+ const[busyRunCanvas,setBusyRunCanvas]=useState(false);
+ const[canvasRunRequest,setCanvasRunRequest]=useState<CanvasRunRequest|null>(null);
  const[jobError,setJobError]=useState("");
  const[error,setError]=useState("");
  const[notice,setNotice]=useState("");
@@ -49,6 +51,9 @@ export function PipelineEditor({token,onTokenChange,theme,onOpenOperations}:Prop
  const[pendingSave,setPendingSave]=useState<PendingSave|null>(null);
  const version=useRef(0);
  const parsed=useMemo(()=>readPlan(definition),[definition]);
+ const matchingSaved=savedDags.find(d=>d.id===selectedSaved&&d.name===name.trim()&&d.enabled&&enabled&&parsed.plan&&JSON.stringify(d.nodes)===JSON.stringify(parsed.plan.nodes));
+ const canRunCanvas=!!token&&!!result?.valid&&!!matchingSaved&&!busySave&&!busyValidation&&!busyRunCanvas;
+ const runHint=!token?"Enter an API token to run.":!result?.valid?"Validate this canvas before running.":!matchingSaved?"Save this exact DAG with TEST execution enabled before running.":"Run the validated and saved DAG in TEST after confirmation.";
  const touched=()=>{
   version.current++;
   setResult(null);setError("");setNotice("");setPendingSave(null);
@@ -58,7 +63,7 @@ export function PipelineEditor({token,onTokenChange,theme,onOpenOperations}:Prop
  };
  const updateJSON=(value:string)=>{touched();setDefinition(value);};
  const updateToken=(value:string)=>{
-  touched();onTokenChange(value);setJobs([]);setSavedDags([]);setSelectedSaved("");setJobError("");
+  touched();setCanvasRunRequest(null);onTokenChange(value);setJobs([]);setSavedDags([]);setSelectedSaved("");setJobError("");
  };
  const loadJobs=async()=>{
   if(!token)return;
@@ -66,6 +71,23 @@ export function PipelineEditor({token,onTokenChange,theme,onOpenOperations}:Prop
   try{setJobs((await sqlDAGApi.jobs(token)).jobs);}
   catch(e){setJobs([]);setJobError(String(e));}
   finally{setBusyJobs(false);}
+ };
+ const requestRunCanvas=async()=>{
+  if(!canRunCanvas||!matchingSaved)return;
+  const revision=version.current;
+  setBusyRunCanvas(true);setError("");
+  try{
+   // Re-read server state: an old selected local DAG ID must not authorize a different graph.
+   const response=await sqlDAGApi.dags(token);
+   if(version.current!==revision)return;
+   setSavedDags(response.pipelines);
+   const latest=response.pipelines.find(d=>d.id===matchingSaved.id);
+   if(!latest||!latest.enabled||latest.name!==matchingSaved.name||JSON.stringify(latest.nodes)!==JSON.stringify(matchingSaved.nodes)){
+    setError("The saved DAG changed or is disabled on the server. Reload, validate and save before running.");return;
+   }
+   setCanvasRunRequest({dag:latest,revision});
+  }catch(e){if(version.current===revision)setError("Could not verify saved DAG: "+String(e));}
+  finally{setBusyRunCanvas(false);}
  };
  const loadSaved=async()=>{
   if(!token)return;
@@ -131,7 +153,7 @@ export function PipelineEditor({token,onTokenChange,theme,onOpenOperations}:Prop
  return <section className="df-studio-workspace df-pipeline-workspace space-y-5">
   <div className="df-studio-panel section space-y-4">
    <div className="flex flex-wrap items-start justify-between gap-3">
-    <div><h2 className="flex items-center gap-2 text-lg font-semibold"><GitFork size={19}/>Visual Pipeline Builder <span className="signal-inline-code">/ V2.3</span></h2>
+    <div><h2 className="flex items-center gap-2 text-lg font-semibold"><GitFork size={19}/>Visual Pipeline Builder <span className="signal-inline-code">/ V2.4</span></h2>
      <p className="muted mt-1 max-w-3xl text-sm">Design and validate the SQL Job DAG, save it to the PostgreSQL-backed registry, then explicitly run an enabled TEST pipeline and inspect real backend outcomes. No automatic execution or scheduling.</p></div>
     <span className="df-pipeline-stat">DESIGN / SAVE / TEST RUN</span>
    </div>
@@ -139,7 +161,7 @@ export function PipelineEditor({token,onTokenChange,theme,onOpenOperations}:Prop
     <input aria-label="Pipeline API token" className="field" type="password" autoComplete="off" value={token} onChange={event=>updateToken(event.target.value)}/>
    </label>
    {jobError&&<p role="alert" className="df-text-error text-xs">Could not load SQL Jobs: {jobError}</p>}
-   {parsed.plan?<VisualPipelineCanvas plan={parsed.plan} jobs={jobs} onChange={updatePlan} onReloadJobs={()=>{void loadJobs();}} loadingJobs={busyJobs} canLoadJobs={Boolean(token)}/>:
+   {parsed.plan?<VisualPipelineCanvas plan={parsed.plan} jobs={jobs} onChange={updatePlan} onReloadJobs={()=>{void loadJobs();}} loadingJobs={busyJobs} canLoadJobs={Boolean(token)} onRunCanvas={()=>{void requestRunCanvas();}} canRunCanvas={canRunCanvas} runBusy={busyRunCanvas} runHint={runHint}/>:
     <div className="rounded border df-border-warning df-bg-warning-soft p-4 text-sm df-text-warning" role="alert"><AlertTriangle size={16} className="mr-2 inline"/>Canvas paused: {parsed.issue}</div>}
   </div>
   <div className="df-studio-panel section space-y-4">
@@ -187,7 +209,7 @@ export function PipelineEditor({token,onTokenChange,theme,onOpenOperations}:Prop
     </div>
    </div>
   </div>
-   <PipelineRunInspector token={token} dags={savedDags} selectedId={selectedSaved} theme={theme} onOpenOperations={onOpenOperations}/>
+   <PipelineRunInspector token={token} dags={savedDags} selectedId={selectedSaved} theme={theme} onOpenOperations={onOpenOperations} canvasRunRequest={canvasRunRequest} currentRevision={version.current}/>
   {pendingSave&&<ConfirmActionDialog title={pendingSave.existing?"Overwrite saved pipeline?":"Enable TEST pipeline?"}
    message={pendingSave.existing?"This pipeline name already exists. Saving replaces its saved DAG definition and enabled flag. Ensure no conflicting test run is active.":"Enabling allows authorized users to start this SQL DAG later under backend TEST guards. Saving does not start execution."}
    target={pendingSave.payload.name} targetLabel="Named SQL DAG · verify before saving"

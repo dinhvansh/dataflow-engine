@@ -1,13 +1,13 @@
 import {memo,useMemo,useRef,useState} from "react";
 import {Background,BackgroundVariant,Controls,Handle,MarkerType,MiniMap,Position,ReactFlow,type Connection,type Edge,type Node,type NodeChange,type NodeProps,type ReactFlowInstance} from "@xyflow/react";
-import {GitBranch,Plus,RefreshCw,Trash2,Unplug} from "lucide-react";
+import {GitBranch,Play,Plus,RefreshCw,Trash2,Unplug} from "lucide-react";
 import {Button} from "./ui/button";
 import type {PipelinePlan,SQLJob} from "../lib/api";
 
 type JobNodeData={label:string;jobId:string;enabled:boolean|undefined;requires:number} & Record<string,unknown>;
 type JobGraphNode=Node<JobNodeData,"pipelineJob">;
 type PositionXY={x:number;y:number};
-type Props={plan:PipelinePlan;jobs:SQLJob[];onChange:(next:PipelinePlan)=>void;onReloadJobs:()=>void;loadingJobs:boolean;canLoadJobs:boolean};
+type Props={plan:PipelinePlan;jobs:SQLJob[];onChange:(next:PipelinePlan)=>void;onReloadJobs:()=>void;loadingJobs:boolean;canLoadJobs:boolean;onRunCanvas:()=>void;canRunCanvas:boolean;runBusy:boolean;runHint:string};
 
 const PipelineJobNode=memo(function PipelineJobNode({data,selected}:NodeProps<JobGraphNode>){
  return <div className={"df-pipeline-graph-node "+(selected?"is-selected":"")}>
@@ -49,7 +49,7 @@ function nextNodeId(plan:PipelinePlan,job:SQLJob){
  while(taken.has(stem+"_"+suffix))suffix++;
  return stem+"_"+suffix;
 }
-export function VisualPipelineCanvas({plan,jobs,onChange,onReloadJobs,loadingJobs,canLoadJobs}:Props){
+export function VisualPipelineCanvas({plan,jobs,onChange,onReloadJobs,loadingJobs,canLoadJobs,onRunCanvas,canRunCanvas,runBusy,runHint}:Props){
  const[selectedId,setSelectedId]=useState<string|null>(null);
  const[selectedJob,setSelectedJob]=useState("");
  const[dependencySource,setDependencySource]=useState("");
@@ -109,12 +109,14 @@ export function VisualPipelineCanvas({plan,jobs,onChange,onReloadJobs,loadingJob
  return <div className="df-studio-workspace df-pipeline-builder space-y-4" aria-label="Visual pipeline builder">
   <div className="flex flex-wrap items-start justify-between gap-3">
    <div><h3 className="flex items-center gap-2 text-lg font-semibold"><GitBranch size={19}/>Pipeline canvas <span className="signal-inline-code">/ XYFLOW</span></h3>
-    <p className="muted mt-1 text-xs">Draft only. Add or drag registered SQL Jobs, then connect prerequisites from right to left handles. No jobs run here.</p></div>
+    <p className="muted mt-1 text-xs">Add or drag registered SQL Jobs; connect prerequisite edges. Run this exact canvas after Validate, Save with TEST enabled, and explicit confirmation.</p></div>
    <div className="flex flex-wrap items-center gap-2 text-xs">
     <span className="df-pipeline-stat">{plan.nodes.length} nodes</span>
     <span className="df-pipeline-stat">{edges.length} links</span>
+    <Button type="button" size="sm" disabled={!canRunCanvas||runBusy} title={runHint} aria-label="Run canvas TEST" onClick={onRunCanvas}><Play size={15}/>{runBusy?"Checking…":"Run canvas"}</Button>
    </div>
   </div>
+  {!canRunCanvas&&<p className="muted text-xs" role="status">{runHint}</p>}
   <div className="grid gap-4 xl:grid-cols-[235px_minmax(0,1fr)]">
    <aside className="df-pipeline-palette rounded border df-border-neutral p-3" aria-label="SQL Job palette">
     <div className="flex items-center justify-between gap-2"><h4 className="text-sm font-semibold">Registered SQL Jobs</h4>
