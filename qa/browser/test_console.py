@@ -447,7 +447,7 @@ def test_ui16_all_frontend_screens_use_semantic_palette():
     root = Path(__file__).resolve().parents[2]
     source_files = [root / "web/src/App.tsx", *sorted((root / "web/src/components").rglob("*.tsx"))]
     forbidden = re.compile(
-        r"(?<![\\w-])(?:hover:|focus-visible:)?"
+        r"(?<![\w-])(?:hover:|focus-visible:)?"
         r"(?:bg|text|border|ring|outline)-"
         r"(?:slate|sky|cyan|emerald|rose|red|amber|indigo|gray|blue|green)-[0-9]+"
     )
