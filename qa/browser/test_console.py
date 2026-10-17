@@ -316,10 +316,13 @@ def test_ui10_signalroom_design_tokens_in_both_themes(ui):
     page.get_by_role("button", name="Refresh runs").click()
     page.get_by_role("button", name="Inspect pipeline run 66666666-6666-4666-8666-666666666666").click()
     expect(page.get_by_label("DAG execution map")).to_be_visible()
-    assert page.locator(".enterprise-dag-canvas").evaluate(
-        "(el) => getComputedStyle(el).backgroundImage.includes('linear-gradient')"
+    expect(page.locator(".xyflow-signal-canvas .react-flow__node")).to_have_count(2)
+    expect(page.locator(".xyflow-signal-canvas .react-flow__edge")).to_have_count(1)
+    expect(page.locator(".xyflow-signal-canvas .react-flow__controls")).to_be_visible()
+    assert page.locator(".xyflow-signal-canvas").evaluate(
+        "(el) => getComputedStyle(el).backgroundColor !== 'rgba(0, 0, 0, 0)'"
     )
     page.get_by_role("button", name="Switch to light mode").click()
     expect(page.locator("html")).to_have_class(re.compile("theme-light"))
-    assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-accent').trim()") == "#436b28"
+    assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-accent').trim()") == "#006c61"
     assert all(c["method"] == "GET" for c in state["calls"])
