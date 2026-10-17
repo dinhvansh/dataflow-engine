@@ -5,13 +5,15 @@ import {ConfirmActionDialog} from "./ui/confirm-action-dialog";
 import {DagExecutionMap} from "./DagExecutionMap";
 import {sqlDAGApi,type DAGRun,type ExecutableDAG,type PipelineNode} from "../lib/api";
 
-type Props={token:string;dags:ExecutableDAG[];selectedId:string;theme:"light"|"dark";onOpenOperations:()=>void};
+export type CanvasRunRequest={dag:ExecutableDAG;revision:number};
+type PendingRun={dag:ExecutableDAG;revision:number|null};
+type Props={token:string;dags:ExecutableDAG[];selectedId:string;theme:"light"|"dark";onOpenOperations:()=>void;canvasRunRequest:CanvasRunRequest|null;currentRevision:number};
 type RunSnapshot={dagName:string;plan:PipelineNode[];run:DAGRun};
 const activeStatuses=new Set(["queued","running"]);
 
-export function PipelineRunInspector({token,dags,selectedId,theme,onOpenOperations}:Props){
+export function PipelineRunInspector({token,dags,selectedId,theme,onOpenOperations,canvasRunRequest,currentRevision}:Props){
  const selected=dags.find(d=>d.id===selectedId)??null;
- const[pending,setPending]=useState<ExecutableDAG|null>(null);
+ const[pending,setPending]=useState<PendingRun|null>(null);
  const[busy,setBusy]=useState(false);
  const[refreshing,setRefreshing]=useState(false);
  const[error,setError]=useState("");
@@ -19,9 +21,21 @@ export function PipelineRunInspector({token,dags,selectedId,theme,onOpenOperatio
  const[snapshot,setSnapshot]=useState<RunSnapshot|null>(null);
  const run=snapshot?.run;
  const active=!!run&&activeStatuses.has(run.status);
+ useEffect(()=>{
+  if(!canvasRunRequest)return;
+  if(active||busy){setError("A run is already active. Wait for it to finish before starting another.");return;}
+  setPending({dag:canvasRunRequest.dag,revision:canvasRunRequest.revision});
+ },[canvasRunRequest]);
  const startRun=async(dag:ExecutableDAG)=>{
   setBusy(true);setError("");setPollError("");
   try{
+   // A saved DAG can be overwritten elsewhere between canvas verification and confirmation.
+   // Re-read and fail closed if the ID, enablement or topology changed.
+   const registry=await sqlDAGApi.dags(token);
+   const latest=registry.pipelines.find(d=>d.id===dag.id);
+   if(!latest||!latest.enabled||latest.name!==dag.name||JSON.stringify(latest.nodes)!==JSON.stringify(dag.nodes)){
+    throw new Error("Saved DAG changed or was disabled before Run. Refresh and validate again.");
+   }
    const result=await sqlDAGApi.start(dag.id,token);
    // Freeze only the locally viewed topology; authoritative execution status
    // always comes from the backend run API, never the editor or mock data.
@@ -66,7 +80,7 @@ export function PipelineRunInspector({token,dags,selectedId,theme,onOpenOperatio
   {selected&&<div className="flex flex-wrap items-center justify-between gap-3 rounded border df-border-neutral df-surface-soft p-3">
    <div><p className="text-sm font-semibold">{selected.name}</p>
     <p className="muted mt-1 text-xs">{selected.nodes.length} nodes · {selected.enabled?"Enabled for TEST execution":"Disabled — save with explicit TEST enablement first"}</p></div>
-   <Button type="button" disabled={!token||!selected.enabled||busy||active} onClick={()=>setPending(selected)}><Play size={15}/>{busy?"Starting…":"Run selected DAG"}</Button>
+   <Button type="button" disabled={!token||!selected.enabled||busy||active} onClick={()=>setPending({dag:selected,revision:null})}><Play size={15}/>{busy?"Starting…":"Run selected DAG"}</Button>
   </div>}
   {selected&&!selected.enabled&&<p className="df-text-warning flex items-start gap-2 text-xs"><ShieldAlert className="shrink-0" size={15}/>This saved DAG is disabled. Loading it into the editor does not enable it. Authorize TEST execution in Save, then select it here.</p>}
   {error&&<p role="alert" className="rounded border df-border-error df-bg-error-soft p-3 text-sm df-text-error">{error}</p>}
@@ -90,10 +104,14 @@ export function PipelineRunInspector({token,dags,selectedId,theme,onOpenOperatio
    <DagExecutionMap theme={theme} plan={snapshot.plan} state={run?.result?.state} attempts={run?.result?.attempts} errors={run?.result?.errors}/>
    <p className="muted text-xs">Node labels/edges are the saved DAG definition observed at click time; status, attempts and errors are returned by the backend. Do not treat this as an immutable server-side topology snapshot.</p>
   </div>}
-  {pending&&<ConfirmActionDialog title="Run saved SQL DAG in TEST?" target={pending.name}
+  {pending&&<ConfirmActionDialog title="Run saved SQL DAG in TEST?" target={pending.dag.name}
    targetLabel="Executable SQL DAG · confirm selected TEST target"
    message="This starts enabled read-only SQL Jobs against the configured TEST ClickHouse account. Execution is controlled by server-side authorization and scratch restrictions. Confirm only in an approved isolated QA environment."
    confirmLabel="Confirm TEST run" onCancel={()=>setPending(null)}
-   onConfirm={()=>{const dag=pending;setPending(null);void startRun(dag);}}/>}
+   onConfirm={()=>{
+    const request=pending;setPending(null);
+    if(request.revision!==null&&request.revision!==currentRevision){setError("Canvas changed after Run was requested. Validate and save again.");return;}
+    void startRun(request.dag);
+   }}/>}
  </section>;
 }

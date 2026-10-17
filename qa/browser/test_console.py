@@ -735,3 +735,72 @@ def test_ui22_pipeline_run_confirms_and_inspects_real_mocked_backend_status(ui):
     assert any(c["method"] == "GET" and c["path"] == "/api/v1/sql/dag-runs" for c in state["calls"])
     assert not any(c["method"] == "POST" and c["path"] in (
         "/api/v1/bootstrap/runs", "/api/v1/managed/runs") for c in state["calls"])
+
+
+def test_ui23_run_directly_from_validated_saved_canvas(ui):
+    """Run canvas is a direct entrypoint, but never executes an unsaved draft."""
+    page, state = ui
+    page.get_by_role("button", name="Pipelines", exact=True).click()
+    button = page.get_by_role("button", name="Run canvas TEST")
+    expect(button).to_be_disabled()
+    page.get_by_label("Pipeline API token").fill(TOKEN)
+    page.get_by_role("button", name="Load saved DAGs").click()
+    page.get_by_role("combobox", name="Saved pipeline", exact=True).select_option(
+        "33333333-3333-4333-8333-333333333333")
+    page.get_by_role("button", name="Load into editor").click()
+    expect(button).to_be_disabled()
+    expect(page.get_by_text("Validate this canvas before running.")).to_be_visible()
+
+    page.get_by_role("button", name="Validate DAG").click()
+    expect(page.get_by_text("DAG valid", exact=True)).to_be_visible()
+    expect(button).to_be_enabled()
+    button.click()
+    expect(page.get_by_role("dialog", name="Run saved SQL DAG in TEST?")).to_be_visible()
+    page.get_by_role("button", name="Cancel", exact=True).click()
+    assert not any(c["method"] == "POST" and c["path"] == "/api/v1/sql/dag-runs" for c in state["calls"])
+
+    button.click()
+    page.get_by_role("button", name="Confirm TEST run").click()
+    expect(page.get_by_text("Status: queued", exact=True)).to_be_visible()
+    run_posts = [c for c in state["calls"] if c["method"] == "POST" and c["path"] == "/api/v1/sql/dag-runs"]
+    assert len(run_posts) == 1
+    assert run_posts[0]["body"] == {"dag_id": "33333333-3333-4333-8333-333333333333"}
+    page.get_by_role("button", name="Refresh run").click()
+    expect(page.get_by_text("Status: succeeded", exact=True)).to_be_visible()
+    expect(page.get_by_label("DAG execution map")).to_be_visible()
+    page.get_by_label("Pipeline definition JSON").fill('{"nodes": []}')
+    expect(button).to_be_disabled()
+    assert len([c for c in state["calls"] if c["method"] == "POST" and c["path"] == "/api/v1/sql/dag-runs"]) == 1
+
+
+def test_ui24_canvas_run_rechecks_server_before_execution(ui):
+    """New enabled DAG can be run on canvas, but altered server definition fails closed."""
+    page, state = ui
+    page.get_by_role("button", name="Pipelines", exact=True).click()
+    page.get_by_label("Pipeline API token").fill(TOKEN)
+    page.get_by_role("button", name="Load registered SQL jobs").click()
+    page.get_by_role("combobox", name="Registered SQL Job", exact=True).select_option(
+        "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+    page.get_by_role("button", name="Add SQL job").click()
+    name = page.get_by_label("Pipeline save workspace").get_by_role("textbox", name="Pipeline name", exact=True)
+    name.fill("qa_canvas_direct")
+    page.get_by_label("Enable TEST execution", exact=True).check()
+    page.get_by_role("button", name="Validate DAG").click()
+    expect(page.get_by_text("DAG valid", exact=True)).to_be_visible()
+    page.get_by_role("button", name="Save pipeline", exact=True).click()
+    expect(page.get_by_role("dialog", name="Enable TEST pipeline?")).to_be_visible()
+    page.get_by_role("button", name="Enable & save", exact=True).click()
+    expect(page.get_by_text("Saved pipeline qa_canvas_direct", exact=False)).to_be_visible()
+    canvas_run = page.get_by_role("button", name="Run canvas TEST")
+    expect(canvas_run).to_be_enabled()
+    canvas_run.click()
+    expect(page.get_by_role("dialog", name="Run saved SQL DAG in TEST?")).to_be_visible()
+
+    # Simulate a concurrent server-side disable between confirmation display and submit.
+    for dag in state["pipelines"]:
+        if dag["name"] == "qa_canvas_direct":
+            dag["enabled"] = False
+    page.get_by_role("button", name="Confirm TEST run").click()
+    expect(page.get_by_text("Saved DAG changed or was disabled before Run.", exact=False)).to_be_visible()
+    assert not any(c["method"] == "POST" and c["path"] == "/api/v1/sql/dag-runs" for c in state["calls"])
+    assert any(c["method"] == "GET" and c["path"] == "/api/v1/sql/dags" for c in state["calls"])
