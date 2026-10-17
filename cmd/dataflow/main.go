@@ -245,7 +245,9 @@ func main() {
 			port = v
 		}
 	}
-	srv := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	tlsCert,tlsKey,tlsConfig,tlsErr := directTLSFromEnv()
+	if tlsErr != nil { log.Fatal(tlsErr) }
+	srv := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux, ReadHeaderTimeout: 5 * time.Second, TLSConfig: tlsConfig}
 	checkCtx, checkCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	schemaErr := svc.checkSQLDAGSchema(checkCtx)
 	checkCancel()
@@ -282,8 +284,15 @@ func main() {
 			log.Printf("HTTP server shutdown: %v", err)
 		}
 	}()
-	log.Printf("DataFlow bootstrap listening on :%d", port)
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatal(err)
+	var serveErr error
+	if tlsConfig != nil {
+		log.Printf("DataFlow isolated TLS 1.3 listener on :%d", port)
+		serveErr = srv.ListenAndServeTLS(tlsCert, tlsKey)
+	} else {
+		log.Printf("DataFlow bootstrap listening on :%d", port)
+		serveErr = srv.ListenAndServe()
+	}
+	if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+		log.Fatal(serveErr)
 	}
 }
