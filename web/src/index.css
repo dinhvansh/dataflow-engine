@@ -412,3 +412,14 @@ body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
 :root.theme-light .df-studio-workspace input[type="checkbox"]{accent-color:#238047}
 :root.theme-dark .df-studio-workspace input[type="checkbox"]{accent-color:#c0f273}
 @media(prefers-reduced-motion:reduce){.df-studio-registry-item{transition:none}}
+
+/* Lineage node material semantics: no hardcoded dark navy cards in Light. */
+.df-lineage-node{background:var(--console-card);color:var(--console-text);border-color:var(--console-border);border-left:3px solid var(--console-border);transition:border-color .12s,background-color .12s}
+.df-lineage-node-source{background:var(--console-field);border-left-color:var(--console-muted)}
+.df-lineage-node-model{background:var(--console-card);border-left-color:var(--console-accent)}
+.df-lineage-node-missing{background:color-mix(in srgb,var(--signal-status-error) 8%,var(--console-card));border-left-color:var(--signal-status-error)}
+.df-lineage-node-warning{background:color-mix(in srgb,var(--signal-status-warning) 9%,var(--console-card));border-left-color:var(--signal-status-warning)}
+.df-lineage-node.is-selected{outline:2px solid var(--console-accent);outline-offset:2px}
+.df-lineage-node.is-affected{border-color:var(--signal-status-warning)}
+.df-lineage-node:hover{border-color:var(--console-accent);background:var(--console-hover)}
+.df-lineage-node:focus-visible{outline:2px solid var(--console-accent);outline-offset:3px}
