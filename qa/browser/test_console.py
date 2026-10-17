@@ -251,12 +251,18 @@ def test_ui05_auto_build_action_and_order(ui):
 def test_ui06_incremental_publish_and_rollback_buttons(ui):
     page, state = ui
     open_tab(page, "Incremental CDC")
-    page.on("dialog", lambda dialog: dialog.accept())
     page.get_by_role("button", name=re.compile("Build Delta Staging")).click()
     expect(page.get_by_text("ready", exact=True)).to_be_visible()
     page.get_by_role("button", name=re.compile("Approve & Publish \\+ Cursor")).click()
+    expect(page.get_by_role("dialog", name="Confirm incremental publish")).to_be_visible()
+    page.get_by_role("button", name="Cancel").click()
+    assert not any(c["path"] == "/api/v1/transform/incremental/action" for c in state["calls"])
+    page.get_by_role("button", name=re.compile("Approve & Publish \\+ Cursor")).click()
+    page.get_by_role("button", name="Confirm publish").click()
     expect(page.get_by_text("published", exact=True)).to_be_visible()
     page.get_by_role("button", name=re.compile("Rollback Data \\+ Cursor")).click()
+    expect(page.get_by_role("dialog", name="Confirm incremental rollback")).to_be_visible()
+    page.get_by_role("button", name="Confirm rollback").click()
     expect(page.get_by_text("rolled_back", exact=True)).to_be_visible()
     actions = [c["body"].get("confirm") for c in state["calls"]
                if c["path"] == "/api/v1/transform/incremental/action"]
@@ -270,10 +276,6 @@ def test_ui07_enterprise_overview_light_dark_persist_and_shortcuts(ui):
 
     page.get_by_role("button", name="Switch to light mode").click()
     expect(page.locator("html")).to_have_class(re.compile("theme-light"))
-    page.get_by_role("button", name="Sync Jobs", exact=True).click()
-    fractional_surface = page.locator("[class~='bg-sky-950/20']").first
-    expect(fractional_surface).to_be_visible()
-    assert fractional_surface.evaluate("(el) => getComputedStyle(el).backgroundColor") == "rgb(239, 246, 255)"
     assert page.evaluate("localStorage.getItem('dataflow-theme')") == "light"
     page.reload(wait_until="domcontentloaded")
     expect(page.locator("html")).to_have_class(re.compile("theme-light"))
@@ -438,3 +440,43 @@ def test_ui15_lineage_and_incremental_workspace_mounts(ui):
     expect(page.locator(".df-incremental-workspace")).to_be_visible()
     expect(page.get_by_text("OPERATIONS / INCREMENTAL / 01")).to_be_visible()
     assert all(c["method"] == "GET" for c in state["calls"])
+
+
+def test_ui16_all_frontend_screens_use_semantic_palette():
+    """Keep freshly added screens from reverting to fixed Tailwind blue/slate styles."""
+    root = Path(__file__).resolve().parents[2]
+    source_files = [root / "web/src/App.tsx", *sorted((root / "web/src/components").rglob("*.tsx"))]
+    forbidden = re.compile(
+        r"(?<![\w-])(?:hover:|focus-visible:)?"
+        r"(?:bg|text|border|ring|outline)-"
+        r"(?:slate|sky|cyan|emerald|rose|red|amber|indigo|gray|blue|green)-[0-9]+"
+    )
+    offenses = {str(path.relative_to(root)): forbidden.findall(path.read_text(encoding="utf-8"))
+                for path in source_files}
+    offenses = {path: matches for path, matches in offenses.items() if matches}
+    assert not offenses, f"Legacy palette utilities detected: {offenses}"
+    assert not any("window.confirm(" in p.read_text(encoding="utf-8") for p in source_files)
+
+
+def test_ui17_all_ten_navigation_screens_mount_in_light_mode(ui):
+    page, state = ui
+    page.get_by_role("button", name="Switch to light mode").click()
+    screens = [
+        ("Overview", "One workspace for your data pipelines."),
+        ("Connections", "Connector Hub"),
+        ("Sync Jobs", "Experimental full-load / rowversion-window trial"),
+        ("Transform Studio", "Data Preview"),
+        ("Data Lineage", "Data Lineage & Impact Analysis"),
+        ("SQL Jobs", "Query editor"),
+        ("Operations Center", "Pipeline Operations Center"),
+        ("Pipelines", "Pipeline Definition (JSON)"),
+        ("Incremental CDC", "Safe Incremental CDC"),
+        ("Run Inspector", "Recent Runs"),
+    ]
+    for label, visible_text in screens:
+        page.get_by_role("button", name=label, exact=True).click()
+        expect(page.get_by_text(visible_text, exact=False).first).to_be_visible()
+        assert page.evaluate(
+            "getComputedStyle(document.documentElement).getPropertyValue('--console-card').trim()"
+        ) == "#ffffff"
+    assert not any(c["method"] in ("DELETE", "PUT", "PATCH") for c in state["calls"])
