@@ -653,7 +653,7 @@ def test_ui21_pipeline_save_requires_validation_and_confirms_overwrite(ui):
     page.get_by_role("combobox", name="Registered SQL Job", exact=True).select_option(
         "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
     page.get_by_role("button", name="Add SQL job").click()
-    page.get_by_label("Pipeline name", exact=True).fill("qa_visual_dag")
+    page.get_by_label("Pipeline save workspace").get_by_role("textbox", name="Pipeline name", exact=True).fill("qa_visual_dag")
     expect(save).to_be_disabled()
     page.get_by_role("button", name="Validate DAG").click()
     expect(page.get_by_text("DAG valid", exact=True)).to_be_visible()
@@ -681,7 +681,7 @@ def test_ui21_pipeline_save_requires_validation_and_confirms_overwrite(ui):
         "99999999-9999-4999-8999-999999999999")
     page.get_by_role("button", name="Load into editor").click()
     expect(save).to_be_disabled()
-    assert page.get_by_label("Pipeline name", exact=True).input_value() == "qa_visual_dag"
+    assert page.get_by_label("Pipeline save workspace").get_by_role("textbox", name="Pipeline name", exact=True).input_value() == "qa_visual_dag"
 
     page.get_by_label("Pipeline definition JSON").fill('{"nodes": [')
     expect(save).to_be_disabled()
