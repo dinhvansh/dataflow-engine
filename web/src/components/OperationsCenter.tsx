@@ -137,7 +137,8 @@ export function OperationsCenter({token,onTokenChange,onOpenPipelines}:Props){
     {detailError&&<p role="alert" className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm text-red-300">{detailError}</p>}
     {detail?.error&&<div className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm"><div className="mb-1 flex items-center gap-2 font-semibold text-red-300"><ShieldAlert size={16}/>Pipeline error</div><p className="break-words text-red-300">{detail.error}</p></div>}
     {detail&&<label className="muted flex items-center gap-2 text-xs"><input type="checkbox" checked={autoRefresh} onChange={e=>setAutoRefresh(e.target.checked)}/>Auto-refresh selected queued/running run every 5 seconds</label>}
-    {detail&&details.length===0&&<p className="muted rounded-lg border border-border p-4 text-sm">No per-node outcomes have been reported yet. The saved DAG stages are shown below when available.</p>}\n    {detail&&<DagExecutionMap plan={currentDefinition?.nodes} state={detail.result?.state} attempts={detail.result?.attempts} errors={detail.result?.errors}/>}
+    {detail&&details.length===0&&<p className="muted rounded-lg border border-border p-4 text-sm">No per-node outcomes have been reported yet. The saved DAG stages are shown below when available.</p>}
+    {detail&&<DagExecutionMap plan={currentDefinition?.nodes} state={detail.result?.state} attempts={detail.result?.attempts} errors={detail.result?.errors}/>}
     <p className="muted text-xs">Attempts and errors come from the stored DAG result. No elapsed time or per-step timestamps are exposed by this API.</p>
    </CardContent>
   </Card>}
