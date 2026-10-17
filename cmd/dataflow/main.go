@@ -208,6 +208,7 @@ func main() {
 	mux.HandleFunc("/api/v1/bootstrap/runs", svc.run)
 	mux.HandleFunc("/api/v1/bootstrap/status", svc.status)
 	mux.HandleFunc("/api/v1/connections", svc.connectionsAPI)
+	mux.HandleFunc("/api/v1/connections/definitions", svc.connectionDefinitionsAPI)
 	mux.HandleFunc("/api/v1/source/tables", svc.sourceAPI)
 	mux.HandleFunc("/api/v1/source/columns", svc.sourceAPI)
 	mux.HandleFunc("/api/v1/source/rowversion-upper", svc.sourceAPI)
@@ -257,6 +258,10 @@ func main() {
 	if flowErr != nil {
 		log.Fatal(flowErr)
 	}
+	registryCtx, registryCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	registryErr := svc.checkConnectionRegistrySchema(registryCtx)
+	registryCancel()
+	if registryErr != nil {log.Fatal(registryErr)}
 	root, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	svc.startManagedDispatcher(root)

@@ -43,6 +43,7 @@ def ui(browser, request):
             {"id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", "name": "inventory_snapshot_check",
              "database": "scratch", "query": "SELECT 1", "enabled": False},
         ],
+        "draft_connections": [],
         "pipelines": [
             {"id": "33333333-3333-4333-8333-333333333333", "name": "revenue_reporting",
              "enabled": True, "nodes": [
@@ -59,7 +60,24 @@ def ui(browser, request):
         body = json.loads(req.post_data) if req.post_data else {}
         state["calls"].append({"method": method, "path": path, "body": body})
         result = None
-        if path == "/api/v1/connections":
+        if path == "/api/v1/connections/definitions":
+            can_write = req.headers.get("x-dataflow-connection-admin", "") == "synthetic-admin-token"
+            if method == "POST":
+                if not can_write:
+                    route.fulfill(status=403, body="admin permission required")
+                    return
+                if any(item["name"] == body.get("name") for item in state["draft_connections"]):
+                    route.fulfill(status=409, body="duplicate name")
+                    return
+                new_id = f"aaaaaaaa-aaaa-4aaa-8aaa-{len(state['draft_connections'])+1:012d}"
+                new_item = {"id": new_id, "name": body["name"], "driver": body["driver"],
+                            "kind": body["kind"], "workspace": "lab", "status": "draft",
+                            "revision": 1, "created_at": "2026-10-17T12:00:00Z"}
+                state["draft_connections"].append(new_item)
+                result = new_item
+            else:
+                result = {"definitions": state["draft_connections"], "write_enabled": can_write}
+        elif path == "/api/v1/connections":
             result = {"connections": [
                 {"id": "env-sqlserver-source", "name": "SQL Server source", "kind": "source",
                  "driver": "sqlserver", "usage": "Read-only source discovery and test ingestion",
@@ -852,3 +870,39 @@ def test_ui25_connection_inventory_requires_token_and_never_exposes_secrets(ui):
     expect(page.get_by_label("Connection env-sqlserver-source")).to_have_count(0)
     assert not any(c["path"] == "/api/v1/connections" and c["method"] != "GET"
                    for c in state["calls"])
+
+
+def test_ui26_connection_draft_registry_admin_only_metadata(ui):
+    """Draft registry persists names only; it cannot dial, bind or execute."""
+    page, state = ui
+    page.get_by_role("button", name="Connections", exact=True).click()
+    panel = page.get_by_label("Connection draft registry", exact=True)
+    expect(panel).to_be_visible()
+    admin = page.get_by_label("Connection registry admin token")
+    load = page.get_by_role("button", name="Load drafts", exact=True)
+    expect(load).to_be_disabled()
+    page.get_by_label("Connection API token").fill(TOKEN)
+    load.click()
+    expect(panel.get_by_text("Registry create is disabled.", exact=False)).to_be_visible()
+    expect(page.get_by_role("button", name="Create draft")).to_be_disabled()
+    assert not any(c["path"] == "/api/v1/connections/definitions" and c["method"] == "POST"
+                   for c in state["calls"])
+    admin.fill("synthetic-admin-token")
+    load.click()
+    expect(panel.get_by_text("No draft connection definitions in the registry.")).to_be_visible()
+    page.get_by_label("Draft connection name").fill("QA Finance Source")
+    page.get_by_label("Draft connection type").select_option("sqlserver")
+    page.get_by_role("button", name="Create draft").click()
+    expect(page.get_by_label("Draft definition QA Finance Source")).to_be_visible()
+    expect(panel.get_by_text("Created inactive draft:", exact=False)).to_be_visible()
+    created_calls = [c for c in state["calls"]
+                     if c["path"] == "/api/v1/connections/definitions" and c["method"] == "POST"]
+    assert created_calls == [{"path": "/api/v1/connections/definitions", "method": "POST",
+                              "body": {"name": "QA Finance Source",
+                                       "driver": "sqlserver", "kind": "source"}}]
+    admin.fill("changed-admin-token")
+    expect(page.get_by_label("Draft definition QA Finance Source")).to_have_count(0)
+    assert all(c["path"] != "/api/v1/bootstrap/runs" for c in state["calls"])
+    assert all(c["path"] != "/api/v1/sql/dag-runs" for c in state["calls"])
+    assert not any(k in str(c["body"]).lower() for c in created_calls
+                   for k in ["password", "dsn", "host", "endpoint", "token", "secret"])
