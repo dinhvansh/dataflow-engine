@@ -96,14 +96,11 @@ func (c SecureCatalog) CreateDraft(ctx context.Context,actor,workspace,name,driv
 }
 
 func (c SecureCatalog) ListDrafts(ctx context.Context,actor,workspace string)([]DraftProfile,error){
- if err:=c.RequireScope(ctx,actor,workspace,View);err!=nil{return nil,err}
- // The read runs in a new transaction after authorization, so revocation can
- // race this read; integration to the HTTP layer must use a single snapshot or
- // request-level authorization transaction with policy revision validation.
- tx,err:=c.PG.BeginTx(ctx,pgx.TxOptions{AccessMode:pgx.ReadOnly})
- if err!=nil{return nil,ErrUnavailable}
+ // Keep VIEW grant row-locked in the same transaction as the list query:
+ // concurrent revocation cannot race past the authorization gate.
+ tx,err:=c.beginAuthorized(ctx,actor,workspace,View)
+ if err!=nil{return nil,err}
  defer tx.Rollback(ctx)
- if err=requireScopeTx(ctx,tx,actor,workspace,View);err!=nil{return nil,err}
  rows,err:=tx.Query(ctx,`SELECT id::text,name,workspace_id,driver,kind,status,revision,
  (secret_handle IS NOT NULL) FROM connection_security_profiles
  WHERE workspace_id=$1 ORDER BY created_at DESC,id DESC LIMIT 100`,workspace)
