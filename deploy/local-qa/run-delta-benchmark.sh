@@ -2,6 +2,8 @@
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd); root=$(cd "$here/../.." && pwd)
 "$here/verify-isolation.sh"
+# One-million-row copy-on-write benchmarks require an explicit free-space gate.
+"$here/check-disk-capacity.sh" "$root"
 cd "$root"
 if [[ ! -f .env.qa.local ]]; then echo "QA-local secrets missing" >&2; exit 1; fi
 set -a; source .env.qa.local; set +a

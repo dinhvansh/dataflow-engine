@@ -12,6 +12,8 @@ jobs:
           go-version-file: go.mod
           cache: false
       - run: go mod tidy
+      - name: QA disk guard regression (no Docker teardown)
+        run: bash deploy/local-qa/check-disk-capacity_test.sh
       - name: Go unit and race tests
         run: go test -race ./...
       - run: go vet ./...
