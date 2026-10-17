@@ -1,5 +1,7 @@
 # DataFlow Engine — Current handoff (2026-10-17)
 
+**Current verified milestone: V3.2A merged via PR #52.** GitHub main commit `71e97aca768b097a033f4353640f9e74692aab19`; PR-head Go/PostgreSQL/ClickHouse/dbt/Docker/Web CI + mocked browser UI01–UI26 PASS. Verify post-merge CI live before claiming it green. Next: V3.2B vault-backed credentials and scoped RBAC.
+
 > **Live GitHub state always wins.** This document is a snapshot. Before editing, read main HEAD, open PRs, branch divergence, Actions jobs and ongoing QA. Do not assume a pending PR has merged.
 
 ## Project and user expectations
@@ -21,13 +23,13 @@
 - At start of V3.2A, main: 334e02887c33431883e8aefc233a52e7cbf48487. Go + Web + browser CI PASSED on this SHA.
 - Other non-feature work: PR #25 screenshot gallery remained open at snapshot; inspect current state before changing.
 
-## Current milestone: V3.2A (feature branch; check PR status live)
-- Branch: feat/connections-v32a-draft-registry-20261017
+## Last completed milestone: V3.2A (merged PR #52)
+- PR https://github.com/dinhvansh/dataflow-engine/pull/52 — exact tested feature head `9f7173abdfe9d4be4404079704dfb1e489410a82`; merge commit `71e97aca768b097a033f4353640f9e74692aab19`.
 - Deliberate first slice of multi-instance Connection Manager: PostgreSQL registry of multiple **inactive lab-only named draft definitions**, limited to SQL Server sources or ClickHouse destinations.
 - No host, IP, URL, port, DSN, credential, secret_ref, active connection, Test Connection, job binding or execution is accepted or stored.
 - New migration 017 introduces connection_definitions and append-only created audit event.
 - New authenticated GET/POST /api/v1/connections/definitions; POST requires separately configured DATAFLOW_CONNECTION_ADMIN_TOKEN plus DATAFLOW_ENABLE_CONNECTION_REGISTRY=true. Feature is OFF by default.
-- UI draft form only; no creation of a real SQLServer/ClickHouse network connection. Synthetic Go/PG/browser tests must PASS on head before merge.
+- UI draft form only; no creation of a real SQLServer/ClickHouse network connection. Synthetic Go/PG/browser tests passed on exact head before merge (26/26 mocked browser cases). Not real ERP acceptance.
 - **Do not call V3.2A the complete multi-instance connector feature.** It lays down safe metadata and authorization gates for later runtime binding.
 
 ## Proposed follow-up milestones
@@ -38,6 +40,6 @@
 
 ## How to resume in a new chat
 
-Send: **“Tiếp tục DataFlow Engine từ docs/PROJECT_HANDOFF_LATEST.md trên https://github.com/dinhvansh/dataflow-engine. Tự kiểm tra GitHub main, PR, Actions và triển tiếp theo roadmap; giữ ERP read-only.”**
+Send: **“Tiếp tục DataFlow Engine từ docs/PROJECT_HANDOFF_LATEST.md trên https://github.com/dinhvansh/dataflow-engine. V3.2A đã merge #52; tự kiểm tra main, PR, Actions và triển V3.2B theo roadmap; giữ ERP read-only.”**
 
 This file contains no secrets. Refresh it following major merges to prevent stale snapshots.
