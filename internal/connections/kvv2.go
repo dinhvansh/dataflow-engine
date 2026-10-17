@@ -3,11 +3,8 @@ package connectionsecurity
 import (
  "bytes"
  "context"
- "crypto/tls"
  "encoding/base64"
  "encoding/json"
- "errors"
- "fmt"
  "io"
  "net/http"
  "net/url"
@@ -142,6 +139,3 @@ func(v *KVv2Vault) write(ctx context.Context,ref SecretRef,secret []byte,cas,exp
 }
 
 var _ Vault = (*KVv2Vault)(nil)
-var _ = tls.VersionTLS12
-var _ = errors.Is
-var _ = fmt.Sprintf
