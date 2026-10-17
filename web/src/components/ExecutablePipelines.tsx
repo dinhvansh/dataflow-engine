@@ -24,8 +24,8 @@ export function ExecutablePipelines({token}:{token:string}){
   const handle=setInterval(()=>{void sqlDAGApi.run(run.run_id,token).then(r=>{if(mounted)setRun(r)}).catch(()=>{})},3000);
   return()=>{mounted=false;clearInterval(handle)};
  },[token,run?.run_id,run?.status]);
- return <div className="space-y-5">
-  <section className="section space-y-4">
+ return <div className="df-studio-workspace df-executable-workspace space-y-5">
+  <section className="df-studio-panel section space-y-4">
    <div className="flex items-center gap-2 font-semibold"><Workflow size={19}/>Executable SQL DAG (test mode)</div>
    <p className="flex items-start gap-2 rounded-md border border-amber-800/50 bg-amber-950/20 p-3 text-sm text-amber-200"><ShieldAlert size={18} className="shrink-0"/>This executor runs enabled SELECT-only ClickHouse jobs. It is asynchronous but in-process; it is not a durable distributed scheduler. Existing DAG Validator is separate.</p>
    <div className="grid gap-3 sm:grid-cols-2"><label className="space-y-1"><span className="muted text-xs">Pipeline name</span><input className="field" value={name} onChange={e=>setName(e.target.value)}/></label><label className="flex items-center gap-2 pt-5 text-sm"><input type="checkbox" checked={enabled} onChange={e=>setEnabled(e.target.checked)}/>Enabled for test execution</label></div>

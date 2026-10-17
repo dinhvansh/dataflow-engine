@@ -59,9 +59,9 @@ export function IncrementalStudio({token,onTokenChange}:{token:string;onTokenCha
   }catch(e){setError(String(e))}
   finally{setBusy(false)}
  };
- return <div className="space-y-4">
-  <div className="section space-y-2">
-   <h2 className="flex items-center gap-2 text-lg font-semibold"><Database size={20}/>Safe Incremental CDC · v1.3</h2>
+ return <div className="df-studio-workspace df-incremental-workspace space-y-4">
+  <div className="df-studio-hero section space-y-2">
+   <p className="df-studio-kicker mb-2">OPERATIONS / INCREMENTAL / 01</p><h2 className="flex items-center gap-2 text-xl font-bold"><Database size={20}/>Safe Incremental CDC · v1.3</h2>
    <p className="muted text-sm">Cập nhật bản ghi thêm/sửa/xóa từ ClickHouse delta, dựng bản staging rồi kiểm tra trước khi Publish. Phiên bản TEST copy-on-write; chưa phải tối ưu 7 triệu dòng Epicor.</p>
    <div className="flex gap-2 rounded-lg border border-amber-700/50 bg-amber-950/20 p-3 text-xs text-amber-200">
     <AlertTriangle size={17} className="shrink-0"/>Chỉ dùng database scratch Atomic và bảng đích dft_* đã tồn tại. Delta phải có đúng các cột của bảng đích, sau đó là _df_version (UInt64) và _df_deleted (UInt8). Version phải tăng đơn điệu và delta phải append-only.

@@ -27,7 +27,7 @@ export function ManagedStreams({token}:{token:string}){
   const interval=setInterval(()=>{void poll()},4000);
   return()=>{cancelled=true;clearInterval(interval)};
  },[run?.run_id,run?.status,token]);
- return <section className="section mt-5 space-y-4">
+ return <section className="df-studio-workspace df-managed-workspace section mt-5 space-y-4">
   <header className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="flex items-center gap-2 text-lg font-semibold"><Database size={18}/>Managed Incremental (Preview)</h2><p className="muted mt-1 text-sm">Persistent PostgreSQL cursor · rowversion + SysRowID · ClickHouse logical dedup.</p></div><span className="rounded-md bg-amber-500/10 px-3 py-1 text-xs text-amber-300">Scratch only</span></header>
   <p className="rounded-md border border-amber-800/50 bg-amber-950/20 p-3 text-xs text-amber-200">The backend must explicitly enable DATAFLOW_ALLOW_TEST_LOAD and DATAFLOW_ENABLE_MANAGED_TEST. This reads Epicor SELECT-only and appends to scratch.dataflow_raw_events. It does not detect physical deletes. No production cutover.</p>
   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

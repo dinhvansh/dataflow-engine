@@ -37,6 +37,12 @@ def ui(browser, request):
             {"id": "qa_model_c", "name": "m_c", "model": {"name": "m_c", "mode": "visual", "source": {"database": "scratch", "table": "dfv_m_b"}, "steps": []}},
         ],
         "incremental": None,
+        "sql_jobs": [
+            {"id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "name": "revenue_quality_check",
+             "database": "scratch", "query": "SELECT count() AS total_rows FROM scratch.events", "enabled": True},
+            {"id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", "name": "inventory_snapshot_check",
+             "database": "scratch", "query": "SELECT 1", "enabled": False},
+        ],
     }
 
     def respond(route):
@@ -46,7 +52,18 @@ def ui(browser, request):
         body = json.loads(req.post_data) if req.post_data else {}
         state["calls"].append({"method": method, "path": path, "body": body})
         result = None
-        if path == "/api/v1/sql/dags":
+        if path == "/api/v1/sql/jobs":
+            if method == "POST":
+                saved = {"id": "88888888-8888-4888-8888-888888888888",
+                         "name": body.get("name", "qa_sql_job"),
+                         "database": body.get("database", "scratch"),
+                         "query": body.get("query", "SELECT 1"),
+                         "enabled": body.get("enabled", False)}
+                state["sql_jobs"] = [x for x in state["sql_jobs"] if x["name"] != saved["name"]] + [saved]
+                result = saved
+            else:
+                result = {"jobs": state["sql_jobs"]}
+        elif path == "/api/v1/sql/dags":
             result = {"pipelines": [
                 {"id": "33333333-3333-4333-8333-333333333333", "name": "revenue_reporting",
                  "enabled": True, "nodes": [
@@ -253,6 +270,10 @@ def test_ui07_enterprise_overview_light_dark_persist_and_shortcuts(ui):
 
     page.get_by_role("button", name="Switch to light mode").click()
     expect(page.locator("html")).to_have_class(re.compile("theme-light"))
+    page.get_by_role("button", name="Sync Jobs", exact=True).click()
+    fractional_surface = page.locator("[class~='bg-sky-950/20']").first
+    expect(fractional_surface).to_be_visible()
+    assert fractional_surface.evaluate("(el) => getComputedStyle(el).backgroundColor") == "rgb(239, 246, 255)"
     assert page.evaluate("localStorage.getItem('dataflow-theme')") == "light"
     page.reload(wait_until="domcontentloaded")
     expect(page.locator("html")).to_have_class(re.compile("theme-light"))
@@ -365,8 +386,55 @@ def test_ui12_shared_button_uses_semantic_light_dark_tokens(ui):
     page, state = ui
     action = page.get_by_role("button", name="Explore connections")
     expect(action).to_have_class(re.compile("df-btn-primary"))
-    assert action.evaluate("(el) => getComputedStyle(el).backgroundColor") == "rgb(192, 242, 115)"
+    expect(action).to_have_css("background-color", "rgb(192, 242, 115)")
     page.get_by_role("button", name="Switch to light mode").click()
-    assert action.evaluate("(el) => getComputedStyle(el).backgroundColor") == "rgb(35, 128, 71)"
+    expect(action).to_have_css("background-color", "rgb(35, 128, 71)")
     expect(page.get_by_role("button", name="Switch to dark mode")).to_be_visible()
+    assert all(c["method"] == "GET" for c in state["calls"])
+
+
+def test_ui13_sql_job_studio_editor_registry_search_and_light_theme(ui):
+    page, state = ui
+    page.get_by_role("button", name="SQL Jobs", exact=True).click()
+    expect(page.get_by_role("heading", name="SQL Job Studio")).to_be_visible()
+    page.get_by_label("SQL Jobs API token").fill(TOKEN)
+    page.get_by_role("button", name="Refresh Jobs").click()
+    expect(page.get_by_text("2 loaded jobs")).to_be_visible()
+    page.get_by_label("Search SQL jobs").fill("inventory")
+    expect(page.get_by_text("inventory_snapshot_check", exact=True)).to_be_visible()
+    expect(page.get_by_text("revenue_quality_check", exact=True)).not_to_be_visible()
+    page.get_by_label("Search SQL jobs").fill("")
+    page.get_by_role("checkbox", name="Enabled only").check()
+    expect(page.get_by_text("inventory_snapshot_check", exact=True)).not_to_be_visible()
+    page.get_by_role("checkbox", name="Enabled only").uncheck()
+    page.get_by_role("button", name=re.compile("inventory_snapshot_check")).click()
+    expect(page.get_by_label("SQL job name")).to_have_value("inventory_snapshot_check")
+    expect(page.get_by_label("SQL SELECT query")).to_have_value("SELECT 1")
+    page.get_by_role("button", name="Switch to light mode").click()
+    expect(page.locator(".df-studio-code-box")).to_be_visible()
+    assert not any(c["method"] != "GET" for c in state["calls"])
+
+
+def test_ui14_transform_development_workspace_retains_actions(ui):
+    page, state = ui
+    page.get_by_role("button", name="Transform Studio", exact=True).click()
+    expect(page.locator(".df-transform-workspace")).to_be_visible()
+    expect(page.locator(".df-studio-preview")).to_be_visible()
+    expect(page.get_by_text("DEVELOPMENT / MODELS / 02")).to_be_visible()
+    page.locator("input[type=password]").first.fill(TOKEN)
+    page.get_by_role("button", name=re.compile("Lọc hàng")).click()
+    expect(page.get_by_label("Bật tắt Lọc hàng")).to_be_visible()
+    page.get_by_role("button", name="Preview bước").click()
+    expect(page.get_by_text("Preview trả về 1 dòng", exact=False)).to_be_visible()
+    assert any(c["path"] == "/api/v1/transform/preview" and c["method"] == "POST" for c in state["calls"])
+
+
+def test_ui15_lineage_and_incremental_workspace_mounts(ui):
+    page, state = ui
+    page.get_by_role("button", name="Data Lineage", exact=True).click()
+    expect(page.locator(".df-lineage-workspace")).to_be_visible()
+    expect(page.get_by_text("DEVELOPMENT / LINEAGE / 03")).to_be_visible()
+    page.get_by_role("button", name="Incremental CDC", exact=True).click()
+    expect(page.locator(".df-incremental-workspace")).to_be_visible()
+    expect(page.get_by_text("OPERATIONS / INCREMENTAL / 01")).to_be_visible()
     assert all(c["method"] == "GET" for c in state["calls"])
