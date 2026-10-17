@@ -1,6 +1,7 @@
 import {useMemo,useState} from "react";
 import {ArrowDown,ArrowRight,Box,CheckCircle2,Clock3,Database,FileSpreadsheet,HardDrive,Info,Layers3,LockKeyhole,Network,Search,Server,ShieldCheck,Workflow,X} from "lucide-react";
 import {SourceExplorer} from "./SourceExplorer";
+import {ConfiguredConnections} from "./ConfiguredConnections";
 import {Badge} from "./ui/badge";
 import {Button} from "./ui/button";
 import {Card,CardContent,CardDescription,CardHeader,CardTitle} from "./ui/card";
@@ -73,6 +74,7 @@ export function ConnectorHub({token,onTokenChange}:{token:string;onTokenChange:(
     <Metric label="Underlying paths" value={1} detail="SQL Server → ClickHouse · test only" icon={Workflow}/>
    </div>
   </section>
+  <ConfiguredConnections token={token} onTokenChange={onTokenChange}/>
   <section className="hub-workspace space-y-4">
    <div className="hub-tabs flex flex-wrap gap-1 rounded-lg border p-1" role="tablist" aria-label="Connector catalog sections">
     {([{id:"sources",label:"Sources",count:sources.length},{id:"destinations",label:"Destinations",count:targets.length},{id:"routes",label:"Data routes",count:1}] as const).map(section=><button type="button" key={section.id} role="tab" aria-selected={tab===section.id} className={`hub-tab inline-flex items-center gap-2 rounded px-4 py-2.5 text-sm font-semibold ${tab===section.id?"is-active":""}`} onClick={()=>pickTab(section.id)}>{section.label}<span className="hub-tab-count text-[10px] tabular-nums">{section.count.toString().padStart(2,"0")}</span></button>)}

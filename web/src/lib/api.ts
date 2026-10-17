@@ -78,3 +78,14 @@ export const sqlDAGApi={
  run:(runID:string,token:string)=>getSource<DAGRun>(`/api/v1/sql/dag-runs?id=${encodeURIComponent(runID)}`,token),
  history:(token:string)=>getSource<{runs:DAGRun[]}>("/api/v1/sql/dag-runs",token)
 };
+
+export type ConfiguredConnection={
+ id:string;name:string;kind:"source"|"destination"|"internal";
+ driver:"sqlserver"|"clickhouse"|"postgresql";
+ usage:string;configuration_state:"configured"|"not_configured";
+ management_mode:"server_environment";supports_multiple_instances:boolean;
+ supports_test_connection:boolean;
+};
+export const connectionApi={
+ list:(token:string)=>getSource<{connections:ConfiguredConnection[]}>("/api/v1/connections",token)
+};

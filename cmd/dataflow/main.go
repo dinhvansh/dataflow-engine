@@ -207,6 +207,7 @@ func main() {
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok")) })
 	mux.HandleFunc("/api/v1/bootstrap/runs", svc.run)
 	mux.HandleFunc("/api/v1/bootstrap/status", svc.status)
+	mux.HandleFunc("/api/v1/connections", svc.connectionsAPI)
 	mux.HandleFunc("/api/v1/source/tables", svc.sourceAPI)
 	mux.HandleFunc("/api/v1/source/columns", svc.sourceAPI)
 	mux.HandleFunc("/api/v1/source/rowversion-upper", svc.sourceAPI)

@@ -1,0 +1,64 @@
+import {useRef,useState} from "react";
+import {Database,HardDrive,RefreshCw,Server,ShieldCheck} from "lucide-react";
+import {connectionApi,type ConfiguredConnection} from "../lib/api";
+import {Button} from "./ui/button";
+
+// Observational only: values come from a fixed, redacted, authenticated
+// backend inventory. This view never asks for or renders connection secrets.
+export function ConfiguredConnections({token,onTokenChange}:{token:string;onTokenChange:(next:string)=>void}){
+ const[items,setItems]=useState<ConfiguredConnection[]|null>(null);
+ const[loading,setLoading]=useState(false);
+ const[error,setError]=useState("");
+ const requestId=useRef(0);
+ const changeToken=(value:string)=>{
+  requestId.current++;
+  setItems(null);setError("");setLoading(false);onTokenChange(value);
+ };
+ const refresh=async()=>{
+  if(!token||loading)return;
+  const current=++requestId.current;
+  setLoading(true);setError("");
+  try{
+   const result=await connectionApi.list(token);
+   if(current===requestId.current)setItems(result.connections);
+  }catch{
+   if(current===requestId.current){setItems(null);setError("Cannot load connection inventory. Check API token and backend availability.");}
+  }finally{if(current===requestId.current)setLoading(false);}
+ };
+ const statusLabel=(state:ConfiguredConnection["configuration_state"])=>state==="configured"?"Configured · not tested":"Not configured";
+ return <section className="hub-workspace space-y-4 rounded-lg border p-4 sm:p-5" aria-label="Configured connection inventory">
+  <div className="flex flex-wrap items-start justify-between gap-3">
+   <div><p className="hub-eyebrow mb-2">CONNECTION MANAGER / V3.1</p>
+    <h3 className="flex items-center gap-2 text-lg font-semibold"><ShieldCheck size={18}/>Server configuration inventory</h3>
+    <p className="muted mt-1 max-w-3xl text-xs leading-5">Authenticated read-only view of backend-configured SQL Server, ClickHouse and internal PostgreSQL slots. A configured slot is not a live connection test. No credentials, DSN or hostnames are returned.</p>
+   </div>
+   <span className="df-pipeline-stat">INVENTORY ONLY</span>
+  </div>
+  <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end">
+   <label className="w-full max-w-md space-y-1"><span className="muted text-xs">API bearer token · memory only</span>
+    <input aria-label="Connection API token" type="password" autoComplete="off" className="field" value={token} onChange={event=>changeToken(event.target.value)}/>
+   </label>
+   <Button type="button" variant="outline" disabled={!token||loading} onClick={()=>{void refresh();}} aria-label="Refresh configured connections">
+    <RefreshCw size={15}/>{loading?"Loading…":"Load inventory"}
+   </Button>
+  </div>
+  {!token&&<p className="muted text-xs" role="status">Enter an API token to read server-managed connections.</p>}
+  {error&&<p role="alert" className="rounded border df-border-error df-bg-error-soft p-3 text-xs df-text-error">{error}</p>}
+  {items&&<div className="grid gap-3 md:grid-cols-3">
+   {items.map(item=>{
+    const Icon=item.driver==="sqlserver"?Server:item.driver==="clickhouse"?HardDrive:Database;
+    return <article key={item.id} className="hub-connector-card rounded border p-4 space-y-2" aria-label={"Connection "+item.id}>
+     <div className="flex flex-wrap items-center justify-between gap-2">
+      <Icon size={17} className="hub-accent"/>
+      <span className={item.configuration_state==="configured"?"df-text-success text-xs font-semibold":"df-text-warning text-xs font-semibold"}>{statusLabel(item.configuration_state)}</span>
+     </div>
+     <h4 className="font-semibold text-sm">{item.name}</h4>
+     <p className="muted text-xs">{item.driver} · {item.kind}</p>
+     <p className="muted text-xs leading-5">{item.usage}</p>
+     <div className="border-t df-border-neutral pt-2 text-xs muted">Server environment · Single instance · No test endpoint</div>
+    </article>;
+   })}
+  </div>}
+  {items&&<p className="muted text-xs" role="status">{items.length} server slots listed. Multiple independent connections, credential editing and Test Connection are not available in this version.</p>}
+ </section>;
+}
