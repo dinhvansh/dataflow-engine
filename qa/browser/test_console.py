@@ -43,6 +43,13 @@ def ui(browser, request):
             {"id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", "name": "inventory_snapshot_check",
              "database": "scratch", "query": "SELECT 1", "enabled": False},
         ],
+        "pipelines": [
+            {"id": "33333333-3333-4333-8333-333333333333", "name": "revenue_reporting",
+             "enabled": True, "nodes": [
+                 {"id": "extract_invoice", "job_id": "44444444-4444-4444-8444-444444444444", "requires": []},
+                 {"id": "revenue_check", "job_id": "55555555-5555-4555-8555-555555555555", "requires": ["extract_invoice"]}
+             ]},
+        ],
     }
 
     def respond(route):
@@ -68,13 +75,15 @@ def ui(browser, request):
             result = {"valid": True, "nodes": len(nodes),
                       "ready_on_start": [n.get("id") for n in nodes if not n.get("requires")]}
         elif path == "/api/v1/sql/dags":
-            result = {"pipelines": [
-                {"id": "33333333-3333-4333-8333-333333333333", "name": "revenue_reporting",
-                 "enabled": True, "nodes": [
-                     {"id": "extract_invoice", "job_id": "44444444-4444-4444-8444-444444444444", "requires": []},
-                     {"id": "revenue_check", "job_id": "55555555-5555-4555-8555-555555555555", "requires": ["extract_invoice"]}
-                 ]}
-            ]}
+            if method == "POST":
+                previous = next((d for d in state["pipelines"] if d["name"] == body.get("name")), None)
+                saved = {"id": previous["id"] if previous else "99999999-9999-4999-8999-999999999999",
+                         "name": body.get("name"), "enabled": body.get("enabled", False),
+                         "nodes": body.get("nodes", [])}
+                state["pipelines"] = [d for d in state["pipelines"] if d["name"] != saved["name"]] + [saved]
+                result = saved
+            else:
+                result = {"pipelines": state["pipelines"]}
         elif path == "/api/v1/sql/dag-runs":
             if "id=" in req.url:
                 result = {
@@ -631,3 +640,49 @@ def test_ui20_pipeline_drag_drop_responsive_light_dark(ui):
     expect(canvas).to_be_visible()
     assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--console-card').trim()") != "#ffffff"
     assert all(c["method"] == "GET" for c in state["calls"] if c["path"].startswith("/api/v1/sql/"))
+
+
+def test_ui21_pipeline_save_requires_validation_and_confirms_overwrite(ui):
+    """Saved DAG uses existing API only; no execution; overwrite requires confirmation."""
+    page, state = ui
+    page.get_by_role("button", name="Pipelines", exact=True).click()
+    save = page.get_by_role("button", name="Save pipeline", exact=True)
+    expect(save).to_be_disabled()
+    page.get_by_label("Pipeline API token").fill(TOKEN)
+    page.get_by_role("button", name="Load registered SQL jobs").click()
+    page.get_by_role("combobox", name="Registered SQL Job", exact=True).select_option(
+        "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+    page.get_by_role("button", name="Add SQL job").click()
+    page.get_by_label("Pipeline name", exact=True).fill("qa_visual_dag")
+    expect(save).to_be_disabled()
+    page.get_by_role("button", name="Validate DAG").click()
+    expect(page.get_by_text("DAG valid", exact=True)).to_be_visible()
+    expect(save).to_be_enabled()
+    save.click()
+    expect(page.get_by_text("Saved pipeline qa_visual_dag", exact=False)).to_be_visible()
+    writes = [c for c in state["calls"] if c["path"] == "/api/v1/sql/dags" and c["method"] == "POST"]
+    assert len(writes) == 1
+    payload = writes[0]["body"]
+    assert payload["name"] == "qa_visual_dag" and payload["enabled"] is False
+    assert len(payload["nodes"]) == 1
+    assert payload["nodes"][0]["job_id"] == "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+
+    save.click()
+    expect(page.get_by_role("dialog", name="Overwrite saved pipeline?")).to_be_visible()
+    page.get_by_role("button", name="Cancel", exact=True).click()
+    assert len([c for c in state["calls"] if c["path"] == "/api/v1/sql/dags" and c["method"] == "POST"]) == 1
+    save.click()
+    page.get_by_role("button", name="Overwrite & save").click()
+    expect(page.get_by_text("Saved pipeline qa_visual_dag", exact=False)).to_be_visible()
+    assert len([c for c in state["calls"] if c["path"] == "/api/v1/sql/dags" and c["method"] == "POST"]) == 2
+
+    page.get_by_role("button", name="Load saved DAGs").click()
+    page.get_by_role("combobox", name="Saved pipeline", exact=True).select_option(
+        "99999999-9999-4999-8999-999999999999")
+    page.get_by_role("button", name="Load into editor").click()
+    expect(save).to_be_disabled()
+    assert page.get_by_label("Pipeline name", exact=True).input_value() == "qa_visual_dag"
+
+    page.get_by_label("Pipeline definition JSON").fill('{"nodes": [')
+    expect(save).to_be_disabled()
+    assert all(c["path"] not in ("/api/v1/sql/dag-runs", "/api/v1/bootstrap/runs") for c in state["calls"])
