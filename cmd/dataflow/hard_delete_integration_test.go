@@ -45,13 +45,13 @@ func TestHardDeleteRejectsStaleSnapshotIntegration(t *testing.T){
  }
  if _,err=pg.Exec(ctx,`INSERT INTO reconcile_baselines(stream_id,snapshot_id,generation) VALUES($1::uuid,$2::uuid,2)`,stream,newRun);err!=nil{t.Fatal(err)}
  var inserts int
- server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+ chServer:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
   q:=r.URL.Query().Get("query")
   if strings.Contains(q,"INSERT INTO"){inserts++}
   if strings.Contains(q,"max("){fmt.Fprint(w,"0\n")}
  }))
- defer server.Close()
- svc:=&server{pg:pg,chURL:server.URL}
+ defer chServer.Close()
+ svc:=&server{pg:pg,chURL:chServer.URL}
  if _,err=svc.emitHardDeleteTombstones(ctx,oldRun);err==nil||!strings.Contains(err.Error(),"stale delete confirmation"){
   t.Fatalf("stale baseline was not rejected: %v",err)
  }
