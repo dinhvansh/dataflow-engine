@@ -61,7 +61,8 @@ func NewPolicy(approved []HostPort, allowedCIDRs []netip.Prefix, resolver Resolv
 		p.rules[host][entry.Port]=true
 	}
 	for _,prefix:=range allowedCIDRs {
-		if !prefix.IsValid()||prefix.Addr().Is4In6()||prefix!=prefix.Masked() {return nil,ErrDenied}
+		if !prefix.IsValid()||prefix.Addr().Is4In6()||prefix!=prefix.Masked() ||
+\t\t\t(prefix.Addr().Is4() && prefix.Bits()<8) || (prefix.Addr().Is6() && prefix.Bits()<32) {return nil,ErrDenied}
 		p.networks=append(p.networks,prefix)
 	}
 	return p,nil
