@@ -108,7 +108,7 @@ export function OperationsCenter({token,theme,onTokenChange,onOpenPipelines}:Pro
    <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="font-semibold">Execution history</h3><p className="muted mt-1 text-xs">NO WRITE ACTIONS · SNAPSHOT VIEW · FILTER CLIENT-SIDE</p></div>
     <Button type="button" onClick={()=>void refresh()} disabled={!token||loading}><RefreshCw className={loading?"animate-spin":""} size={16}/>{loading?"Loading…":"Refresh runs"}</Button></div>
    <label className="block space-y-1.5"><span className="muted text-xs">DataFlow API token (memory only)</span><input aria-label="Operations API token" className="field max-w-md" type="password" autoComplete="off" value={token} onChange={e=>onTokenChange(e.target.value)} placeholder="Enter token to fetch SQL DAG runs"/></label>
-   {error&&<div role="alert" className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm text-red-300">{error}</div>}
+   {error&&<div role="alert" className="rounded-lg border df-border-error df-bg-error-soft p-3 text-sm df-text-error">{error}</div>}
    {observedAt&&<p className="muted text-xs">Last list fetch (browser local time): {observedAt}. No background list polling.</p>}
    {loaded&&<div className="grid gap-3 sm:grid-cols-[1fr_190px]">
     <label className="relative block"><Search className="muted absolute left-3 top-[11px]" size={16}/><input aria-label="Search pipeline runs" className="field pl-9" value={search} onChange={e=>{setSearch(e.target.value);setPage(0)}} placeholder="Run ID, pipeline name, error…"/></label>
@@ -135,8 +135,8 @@ export function OperationsCenter({token,theme,onTokenChange,onOpenPipelines}:Pro
    </div></div></CardHeader>
    <CardContent className="space-y-3">
     {detailLoading&&!detail&&<p className="muted text-sm">Loading run details…</p>}
-    {detailError&&<p role="alert" className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm text-red-300">{detailError}</p>}
-    {detail?.error&&<div className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm"><div className="mb-1 flex items-center gap-2 font-semibold text-red-300"><ShieldAlert size={16}/>Pipeline error</div><p className="break-words text-red-300">{detail.error}</p></div>}
+    {detailError&&<p role="alert" className="rounded-lg border df-border-error df-bg-error-soft p-3 text-sm df-text-error">{detailError}</p>}
+    {detail?.error&&<div className="rounded-lg border df-border-error df-bg-error-soft p-3 text-sm"><div className="mb-1 flex items-center gap-2 font-semibold df-text-error"><ShieldAlert size={16}/>Pipeline error</div><p className="break-words df-text-error">{detail.error}</p></div>}
     {detail&&<label className="muted flex items-center gap-2 text-xs"><input type="checkbox" checked={autoRefresh} onChange={e=>setAutoRefresh(e.target.checked)}/>Auto-refresh selected queued/running run every 5 seconds</label>}
     {detail&&<div className="space-y-2 rounded-lg border border-border p-3 text-xs"><div className="flex justify-between gap-2"><span className="muted">Pipeline</span><strong>{currentDefinition?.name??"Unknown or deleted DAG"}</strong></div><div className="flex justify-between gap-2"><span className="muted">Nodes with outcomes</span><strong>{Object.keys(detail.result?.state??{}).length}</strong></div><div className="flex justify-between gap-2"><span className="muted">Recorded total attempts</span><strong>{Object.values(detail.result?.attempts??{}).reduce((total,n)=>total+n,0)}</strong></div></div>}
     {detail&&details.length===0&&<p className="muted rounded-lg border border-border p-4 text-sm">No per-node outcomes have been reported yet. The saved DAG stages are shown below when available.</p>}

@@ -35,7 +35,7 @@ export function RunHistory({token,onSelect}:{token:string;onSelect:(runID:string
    <Button variant="outline" size="sm" onClick={refresh} disabled={!token||loading}><RefreshCw size={15} className={loading?"animate-spin":""}/>{loading?"Loading":"Refresh"}</Button>
   </div>
   {!token&&<p className="muted text-sm">Enter your API token in the Run Inspector below to load history.</p>}
-  {error&&<p role="alert" className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm text-red-300">{error}</p>}
+  {error&&<p role="alert" className="rounded-lg border df-border-error df-bg-error-soft p-3 text-sm df-text-error">{error}</p>}
   {loaded&&<div className="grid gap-3 sm:grid-cols-[1fr_190px]">
    <label className="relative block"><Search className="muted absolute left-3 top-[11px]" size={16}/><input className="field pl-9" aria-label="Search recent runs" value={search} onChange={e=>{setSearch(e.target.value);setPage(0)}} placeholder="Run ID, source or destination"/></label>
    <select className="field" aria-label="Filter run status" value={status} onChange={e=>{setStatus(e.target.value);setPage(0)}}><option value="all">All statuses</option><option value="succeeded">Succeeded</option><option value="failed">Failed</option><option value="running">Running</option><option value="queued">Queued</option></select>
