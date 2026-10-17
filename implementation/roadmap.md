@@ -1,5 +1,7 @@
 # Implementation roadmap
 
+> **Historical phased plan.** The Phase 0–5 unchecked items below are not a current completion report. For delivered milestones, outstanding work, accurate developer-preview vs production gates and prioritized V3.2B→V4 roadmap, use [MASTER_ROADMAP_AND_STATUS.md](../docs/MASTER_ROADMAP_AND_STATUS.md) and [PROJECT_HANDOFF_LATEST.md](../docs/PROJECT_HANDOFF_LATEST.md). Always confirm current code/CI.
+
 ## Phase 0
 - [ ] Repo foundations, CI, PostgreSQL migration and Compose.
 - [ ] Verify SQL Server source types, indexes, isolation, permissions.
