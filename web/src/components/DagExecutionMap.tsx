@@ -54,7 +54,11 @@ const SignalNode=memo(function SignalNode({data,selected}:NodeProps<EvidenceNode
 const nodeTypes={evidence:SignalNode};
 
 function buildGraph(plan:PipelineNode[]|undefined,state:Record<string,string>,attempts:Record<string,number>,errors:Record<string,string>){
- const source=plan?.length?plan: Object.keys(state).sort().map(id=>({id,job_id:"",requires:[] as string[]}));
+ const known=new Set((plan??[]).map(n=>n.id));
+ // A DAG may have been edited after this historical run. Keep observed old
+ // steps visible even when they no longer belong to the latest definition.
+ const missing=Object.keys(state).filter(id=>!known.has(id)).sort().map(id=>({id,job_id:"",requires:[] as string[]}));
+ const source=plan?.length?[...plan,...missing]:missing;
  const included=source.slice(0,MAX_RENDERED);
  const names=new Set(included.map(n=>n.id));
  const ranks=new Map(included.map(n=>[n.id,0]));
@@ -132,6 +136,6 @@ export function DagExecutionMap({theme,plan,state,attempts,errors}:Props){
    </ReactFlow>
   </div>
   {graph.total>MAX_RENDERED&&<p className="muted text-xs">Showing first {MAX_RENDERED} of {graph.total} DAG nodes. Open the saved DAG definition to inspect additional nodes.</p>}
-  <p className="muted text-xs">Edges reflect saved dependencies, not chronological execution. Missing node results and timing remain unreported; dragging cannot change the pipeline.</p>
+  <p className="muted text-xs">Topology is based on the current saved DAG definition, which may have changed since this run. Unmatched historical outcome nodes remain visible without invented edges. Statuses/attempts are from this run. Missing timings remain unreported; editing is disabled.</p>
  </section>;
 }
