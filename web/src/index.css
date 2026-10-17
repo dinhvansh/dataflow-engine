@@ -222,14 +222,15 @@ body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
  --signal-status-success:#78dbad; --signal-status-error:#f29890; --signal-status-warning:#edca83;
 }
 :root.theme-light{
- --background:158 23% 95%; --foreground:159 39% 16%; --card:0 0% 100%;
- --muted:165 26% 92%; --border:159 16% 81%; --primary:173 100% 21%;
- --console-bg:#eff6f3; --console-sidebar:#e0f2f1; --console-header:#ffffff;
- --console-card:#ffffff; --console-field:#f5faf8; --console-text:#183b32;
- --console-muted:#526b61; --console-border:#c6d9d0; --console-hover:#e0f0e9;
- --console-accent:#006c61; --signal-teal:#00796b; --signal-volt:#c0f273;
- --signal-grid:rgba(0,77,64,.10); --signal-soft:rgba(0,121,107,.06);
- --signal-status-success:#1b5e20; --signal-status-error:#b71c1c; --signal-status-warning:#93450e;
+ --background:214 57% 98%; --foreground:222 38% 15%; --card:0 0% 100%;
+ --muted:214 45% 96%; --border:214 45% 89%; --primary:217 68% 43%;
+ --primary-foreground:0 0% 100%;
+ --console-bg:#f7faff; --console-sidebar:#ffffff; --console-header:#ffffff;
+ --console-card:#ffffff; --console-field:#f8fbff; --console-text:#1b2940;
+ --console-muted:#596d86; --console-border:#dce7f4; --console-hover:#edf4ff;
+ --console-accent:#245fc3; --signal-teal:#2b7ccd; --signal-volt:#c0f273;
+ --signal-grid:rgba(40,96,176,.095); --signal-soft:rgba(36,95,195,.07);
+ --signal-status-success:#167446; --signal-status-error:#b42332; --signal-status-warning:#9b5816;
 }
 :root.theme-dark .enterprise-badge-success{color:var(--signal-status-success)}
 :root.theme-light .enterprise-badge-success{color:var(--signal-status-success)}
@@ -244,3 +245,20 @@ body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
 .xyflow-signal-node.status-running,.xyflow-signal-node.status-queued{border-left-color:var(--signal-status-warning)}
 :root.theme-dark .xyflow-signal-canvas .react-flow__minimap-mask{fill:rgba(22,29,27,.52)}
 :root.theme-light .xyflow-signal-canvas .react-flow__minimap-mask{fill:rgba(239,246,243,.62)}
+
+
+/* SIGNALROOM LIGHT / WHITE + BLUE
+   White surfaces and subtle navy/ice contrast; deliberately NO mint page tint.
+   Dark graphite/volt mode remains unchanged. */
+:root.theme-light .enterprise-hero{background:var(--console-card);border-left-color:var(--console-accent)}
+:root.theme-light .enterprise-dag-canvas{background-color:var(--console-bg)}
+:root.theme-light .brand-mark{background:linear-gradient(135deg,#245fc3,#378ee3);color:#fff}
+:root.theme-light .env-tag{color:#245fc3;background:#f0f6ff;border-color:#dce7f4}
+:root.theme-light .signal-node-error{color:var(--signal-status-error)}
+:root.theme-light .enterprise-badge-default{color:var(--console-accent);background:var(--signal-soft)}
+:root.theme-light .xyflow-signal-canvas .react-flow__minimap-mask{fill:rgba(247,250,255,.62)}
+:root.theme-light .xyflow-signal-canvas .react-flow__controls-button{background:var(--console-card)}
+:root.theme-light .xyflow-signal-canvas{background:var(--console-bg)}
+:root.theme-light .enterprise-badge-success{color:var(--signal-status-success)}
+:root.theme-light .enterprise-badge-danger{color:var(--signal-status-error)}
+:root.theme-light .enterprise-badge-warning{color:var(--signal-status-warning)}
