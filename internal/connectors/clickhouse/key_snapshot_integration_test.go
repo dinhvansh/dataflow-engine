@@ -46,3 +46,43 @@ func TestSnapshotDiffIntegration(t *testing.T){
  if err!=nil{t.Fatalf("real ClickHouse diff query failed: %v",err)}
  if diff.Added!=1||diff.Deleted!=1||diff.Changed!=1{t.Fatalf("unexpected diff %+v; want +1/-1/~1",diff)}
 }
+
+// Live scratch-only regression: A->missing->still missing must confirm the
+// delete, while missing->reappeared must cancel any pending candidate.
+func TestHardDeleteThreeGenerationSnapshotIntegration(t *testing.T){
+ endpoint:=os.Getenv("DATAFLOW_INTEGRATION_CH_URL")
+ if endpoint==""{t.Skip("disposable ClickHouse required")}
+ ctx,cancel:=context.WithTimeout(context.Background(),2*time.Minute);defer cancel()
+ table:=fmt.Sprintf("df_harddelete_qa_%d",time.Now().UnixNano())
+ w:=&Writer{Endpoint:endpoint,Database:"scratch",Table:table,Username:os.Getenv("DATAFLOW_INTEGRATION_CH_USER"),Password:os.Getenv("DATAFLOW_INTEGRATION_CH_PASSWORD")}
+ if err:=w.exec(ctx,"CREATE TABLE scratch."+table+" (_stream_id String,_snapshot_id String,_pk String,_sysrevid String) ENGINE=MergeTree ORDER BY (_stream_id,_snapshot_id,_pk)");err!=nil{t.Fatal(err)}
+ defer func(){cleanup,done:=context.WithTimeout(context.Background(),20*time.Second);defer done();_=w.exec(cleanup,"DROP TABLE IF EXISTS scratch."+table)}()
+ const stream="12345678-1234-1234-1234-123456789012"
+ const a="12345678-1234-1234-1234-123456789013"
+ const b="12345678-1234-1234-1234-123456789014"
+ const c="12345678-1234-1234-1234-123456789015"
+ const d="12345678-1234-1234-1234-123456789016"
+ const kept="12345678-0000-0000-0000-000000000001"
+ const missing="12345678-0000-0000-0000-000000000002"
+ appendSnapshot:=func(id string,keys ...string){
+  t.Helper()
+  rows:=make([]map[string]any,0,len(keys))
+  for _,k:=range keys{rows=append(rows,map[string]any{"_stream_id":stream,"_snapshot_id":id,"_pk":k,"_sysrevid":"0x0000000000000001"})}
+  if err:=w.Write(ctx,engine.Batch{Rows:rows});err!=nil{t.Fatal(err)}
+ }
+ appendSnapshot(a,kept,missing)
+ appendSnapshot(b,kept)
+ appendSnapshot(c,kept)
+ appendSnapshot(d,kept,missing)
+ assertKeys:=func(label string,actual []string,err error,want ...string){
+  t.Helper()
+  if err!=nil||len(actual)!=len(want){t.Fatalf("%s: keys=%v want=%v err=%v",label,actual,want,err)}
+  for i:=range want{if actual[i]!=want[i]{t.Fatalf("%s: keys=%v want=%v",label,actual,want)}}
+ }
+ candidate,e:=w.MissingSnapshotKeys(ctx,stream,a,b);assertKeys("first omission",candidate,e,missing)
+ newMissing,e:=w.MissingSnapshotKeys(ctx,stream,b,c);assertKeys("second omission is not NEW deletion",newMissing,e)
+ stillMissing,e:=w.AddedSnapshotKeys(ctx,stream,b,c);assertKeys("second omission is not reappearance",stillMissing,e)
+ confirmed,e:=w.ConfirmedMissingSnapshotKeys(ctx,stream,a,b,c);assertKeys("confirmed after two omissions",confirmed,e,missing)
+ reappeared,e:=w.AddedSnapshotKeys(ctx,stream,c,d);assertKeys("reappeared in fourth generation",reappeared,e,missing)
+ noDelete,e:=w.ConfirmedMissingSnapshotKeys(ctx,stream,a,b,d);assertKeys("reappearance cannot be confirmed",noDelete,e)
+}
