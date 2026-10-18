@@ -5,7 +5,8 @@ RUN npm ci
 COPY web/ ./
 RUN npm run build
 
-FROM nginx:1.27-alpine
+# No root-owned listener or CAP_SETUID requirement in isolated browser QA.
+FROM nginxinc/nginx-unprivileged:1.27-alpine
 COPY deploy/local-qa/nginx.core-qa.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /web/dist/ /usr/share/nginx/html/
-EXPOSE 80
+EXPOSE 8080

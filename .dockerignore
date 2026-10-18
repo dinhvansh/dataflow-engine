@@ -1,0 +1,16 @@
+# Never copy local QA credentials or user data into API/Web builder layers.
+.git
+.git/**
+.env
+.env.*
+**/.env
+**/.env.*
+qa-results/
+qa-results/**
+**/node_modules/
+**/__pycache__/
+**/.pytest_cache/
+**/dist/
+*.zip
+*.log
+DATAFLOW_LOCAL_QA_RESULTS.zip
