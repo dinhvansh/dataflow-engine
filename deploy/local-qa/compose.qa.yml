@@ -77,6 +77,65 @@ services:
       - ./sql:/qa/sql:ro
     entrypoint: ["/bin/bash", "/qa/sql/init-clickhouse.sh"]
     labels: *qa-labels
+  api:
+    profiles: ["operator"]
+    build:
+      context: ../..
+      dockerfile: deploy/local-qa/Dockerfile.api
+      secrets: [proxy_ca]
+    depends_on:
+      postgres: {condition: service_healthy}
+      mssql-init: {condition: service_completed_successfully}
+      clickhouse-init: {condition: service_completed_successfully}
+    environment:
+      DATAFLOW_POSTGRES_DSN: postgres://dataflow_qa:${POSTGRES_PASSWORD}@postgres:5432/dataflow_qa?sslmode=disable
+      DATAFLOW_SQLSERVER_DSN: sqlserver://qa_erp_reader:${QA_READER_PASSWORD}@mssql:1433?database=DataFlowFixtureQA&encrypt=true&TrustServerCertificate=true
+      DATAFLOW_CH_URL: http://clickhouse:8123
+      DATAFLOW_CH_USER: qa_dbt_writer
+      DATAFLOW_CH_PASSWORD: ${CLICKHOUSE_WRITER_PASSWORD}
+      DATAFLOW_CH_READONLY_USER: qa_ro
+      DATAFLOW_CH_READONLY_PASSWORD: ${CLICKHOUSE_READER_PASSWORD}
+      DATAFLOW_API_TOKEN: ${DATAFLOW_LIVE_API_TOKEN:-}
+      DATAFLOW_ALLOW_TEST_LOAD: "true"
+      DATAFLOW_ENABLE_MANAGED_TEST: "true"
+      DATAFLOW_ENABLE_SQL_JOBS_TEST: "true"
+      DATAFLOW_ENABLE_DBT_TEST: "true"
+      DATAFLOW_ENABLE_AUTO_BUILD_TEST: "true"
+      DATAFLOW_ENABLE_SAFE_TABLE_TEST: "true"
+      DATAFLOW_ENABLE_CORE_PIPELINE_TEST: "true"
+      DATAFLOW_TEST_TARGET_DATABASE: scratch
+      NO_PROXY: clickhouse,postgres,mssql,127.0.0.1,localhost
+    ports: ["127.0.0.1:18080:8080"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz | grep -qx ok"]
+      interval: 4s
+      timeout: 3s
+      retries: 30
+    read_only: true
+    tmpfs: ["/tmp:rw,nosuid,nodev,size=64m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 600m
+    labels: *qa-labels
+  web:
+    profiles: ["operator"]
+    build:
+      context: ../..
+      dockerfile: deploy/local-qa/Dockerfile.web
+    depends_on:
+      api: {condition: service_healthy}
+    ports: ["127.0.0.1:15173:8080"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz | grep -qx ok"]
+      interval: 4s
+      timeout: 3s
+      retries: 30
+    read_only: true
+    tmpfs: ["/tmp:rw,nosuid,nodev,size=32m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 150m
+    labels: *qa-labels
   dbt-worker:
     build:
       context: ../..

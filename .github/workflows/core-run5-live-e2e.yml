@@ -1,0 +1,42 @@
+name: Core Run 5 REAL Operator E2E (disposable)
+on:
+  pull_request:
+    paths:
+      - "deploy/local-qa/**"
+      - "qa/browser/test_core_live.py"
+      - ".github/workflows/core-run5-live-e2e.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: core-run5-live-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  real-operator-e2e:
+    # Unlike mock-browser QA, this boots actual disposable Docker services.
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      DATAFLOW_QA_MIN_FREE_BYTES: "4294967296"
+      DATAFLOW_LIVE_QA_OPT_IN: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pinned Playwright Chromium and test tools
+        run: |
+          python -m pip install 'pytest==8.4.2' 'playwright==1.56.0'
+          python -m playwright install --with-deps chromium
+      - name: Boot labeled isolated SQL Server / PG / ClickHouse fixtures
+        run: bash deploy/local-qa/up.sh
+      - name: Real UI → Go HTTP API → SQL Server → PG → ClickHouse → dbt → DQ → publish / rollback
+        run: bash deploy/local-qa/run-core-operator.sh
+      - name: Upload redacted browser and source-vs-target evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-run5-live-operator-evidence
+          path: qa-results/core-run5/
+          if-no-files-found: warn
+          retention-days: 14
