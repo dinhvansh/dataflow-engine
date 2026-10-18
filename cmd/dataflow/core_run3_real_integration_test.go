@@ -313,4 +313,3 @@ func realCoreIntegration(t *testing.T,withFaults bool){
  }
  t.Logf("CORE-RUN-4 REAL PASS: 10000-row repeat real dbt E2E → external ClickHouse publish crash window → new worker replay preserves UUID → explicit rollback restores old UUID → rollback retry idempotent → model SQL drift blocks new flow/publish → 3 committed SQL-only checkpoints preserved")
 }
-}
