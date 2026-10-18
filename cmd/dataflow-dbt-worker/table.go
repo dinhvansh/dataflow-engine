@@ -88,6 +88,12 @@ func guardedTableOperation(ctx context.Context,pg *pgxpool.Pool,c tableClaim,ope
   c.ID,c.Owner,c.Fence,c.State).Scan(&owner)
  if err!=nil{return fmt.Errorf("table fencing rejected operation: %w",err)}
  if owner!=c.Owner{return errors.New("stale table worker")}
+ // Serialize the EXTERNAL ClickHouse UUID preflight + EXCHANGE with every
+ // other table/core publish targeting the same scratch relation. Row locks
+ // on different table_runs IDs do NOT prevent double EXCHANGE by two jobs.
+ // PG advisory key 84721 is reserved for DataFlow; hash collisions merely
+ // serialize unrelated scratch tables, never weaken safety.
+ if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(84721,hashtext('scratch.'||$1::text))`,c.Target);err!=nil{return err}
  if err=operation();err!=nil{return err}
  return tx.Commit(ctx)
 }
