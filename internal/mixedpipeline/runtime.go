@@ -138,13 +138,17 @@ func Execute(ctx context.Context,p Plan,handlers map[Kind]Handler)(Report,error)
 		}
 		blocked,e:=graph.Blocked(states)
 		if e!=nil{return report,ErrInvalid}
+		skippedThisPass:=0
 		for _,id:=range blocked{
-			if states[id]==dag.Pending{states[id]=dag.Skipped;completed++}
+			if states[id]==dag.Pending{states[id]=dag.Skipped;completed++;skippedThisPass++}
 		}
 		ready,e:=graph.Ready(states)
 		if e!=nil{return report,ErrInvalid}
 		if len(ready)==0{
 			if completed==len(frozen.Nodes){break}
+			// Failed ancestors may be multiple edges away from Publish. Propagate
+			// SKIPPED transitively before evaluating the terminal run result.
+			if skippedThisPass>0{continue}
 			return report,ErrIncomplete
 		}
 		sort.Strings(ready)
