@@ -141,8 +141,11 @@ def test_core_run6_sigkill_and_network_failure_recovery():
         second_id = run(outage_stream, model_id)
         failed = until(lambda: (s if s["status"] in ("succeeded","failed") else None)
               if (s := state(second_id)) else None,
-              "terminal ClickHouse outage result", 210)
+              "terminal ClickHouse outage result", 150)
         assert failed["status"] == "failed", failed
+        attempts = int(fixture.pg(
+            f"SELECT dispatch_attempts FROM managed_runs WHERE id='{failed['managed_run_id']}'"))
+        assert attempts == 3, f"Expected bounded 3-attempt retry under outage, got {attempts}"
         assert cursor(outage_stream) == 0
         assert cursor(stream_id) == 1
         events.append("actual CH network outage with 200 source rows did not advance source checkpoint")

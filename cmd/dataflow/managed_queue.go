@@ -8,6 +8,9 @@ import (
  "io"
  "log"
  "net"
+ "net/http"
+ "os"
+ "strconv"
  "time"
 
  "github.com/dinhvansh/dataflow-engine/internal/connectors/clickhouse"
@@ -20,6 +23,23 @@ import (
 
 const managedMaxAttempts=3
 const managedLeaseDuration=5*time.Minute
+
+// Limit individual ClickHouse writes only inside an explicitly disposable QA
+// environment. The default production HTTP timeout stays at five minutes.
+// This bounds fault injection without weakening/reclassifying retry fencing.
+func managedWriteHTTPClient()(*http.Client,error){
+ raw:=os.Getenv("DATAFLOW_QA_MANAGED_WRITE_TIMEOUT_SECONDS")
+ if raw==""{return nil,nil} // Writer default: 5m
+ if os.Getenv("DATAFLOW_ALLOW_TEST_LOAD")!="true"||
+    os.Getenv("DATAFLOW_TEST_TARGET_DATABASE")!="scratch"{
+  return nil,errors.New("managed write timeout override requires isolated scratch QA")
+ }
+ secs,err:=strconv.Atoi(raw)
+ if err!=nil||secs<5||secs>300{
+  return nil,errors.New("QA managed ClickHouse HTTP timeout must be 5..300 seconds")
+ }
+ return &http.Client{Timeout:time.Duration(secs)*time.Second},nil
+}
 
 type managedClaim struct{
  RunID string
@@ -234,11 +254,13 @@ func(s *server)runClaimedManaged(parent context.Context,c managedClaim){
  if err==nil&&(cfg.TargetDatabase!=scratchDatabase()||cfg.TargetTable!="dataflow_raw_events"){
   err=errors.New("managed destination must be isolated scratch raw events")
  }
+ var managedClient *http.Client
+ if err==nil{managedClient,err=managedWriteHTTPClient()}
  if err==nil{
   reader:=&sqlserver.RowVersionReader{DB:s.sql,Schema:cfg.SourceSchema,Table:cfg.SourceTable,
    BatchSize:cfg.BatchSize,Lower:c.Lower}
   dest:=&clickhouse.Writer{Endpoint:s.chURL,Database:cfg.TargetDatabase,Table:cfg.TargetTable,
-   Username:s.chUser,Password:s.chPass}
+   Username:s.chUser,Password:s.chPass,Client:managedClient}
   writer:=&clickhouse.EventWriter{Destination:dest,StreamID:c.StreamID,RunID:c.OwnerID}
   stats,err=engine.Run(ctx,engine.Config{Workers:cfg.Workers,QueueCapacity:cfg.QueueCapacity},reader,writer)
   if err==nil{err=ctx.Err()}

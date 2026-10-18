@@ -38,3 +38,9 @@ recovery test creates a **new** run. SIGKILL here affects the API during
 active SQL Server reader lease. Real dbt mid-execution lease expiry,
 concurrent publish race, fault-tolerant 7m benchmark, owner-local demo, and
 production IdP/Vault/TLS remain separate acceptance gates. Production NO-GO.
+
+QA-only `DATAFLOW_QA_MANAGED_WRITE_TIMEOUT_SECONDS=15` is explicitly scoped to
+`DATAFLOW_ALLOW_TEST_LOAD=true` and `DATAFLOW_TEST_TARGET_DATABASE=scratch`;
+without override, ClickHouse writer retains its original five-minute timeout.
+The outage must exhaust exactly three real managed attempts and remain failed;
+this is not presented as automatic recovery. Evidence records actual retry count.
