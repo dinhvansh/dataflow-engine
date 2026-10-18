@@ -4,6 +4,7 @@ import {Button} from "./ui/button";
 import {ConfirmActionDialog} from "./ui/confirm-action-dialog";
 import {VisualPipelineCanvas} from "./VisualPipelineCanvas";
 import {PipelineRunInspector,type CanvasRunRequest} from "./PipelineRunInspector";
+import {CorePipelineRunner} from "./CorePipelineRunner";
 import {sqlDAGApi,validatePipeline,type ExecutableDAG,type PipelineNode,type PipelinePlan,type PipelineValidation,type SQLJob} from "../lib/api";
 
 type Props={token:string;onTokenChange:(value:string)=>void;theme:"light"|"dark";onOpenOperations:()=>void};
@@ -210,6 +211,7 @@ export function PipelineEditor({token,onTokenChange,theme,onOpenOperations}:Prop
    </div>
   </div>
    <PipelineRunInspector token={token} dags={savedDags} selectedId={selectedSaved} theme={theme} onOpenOperations={onOpenOperations} canvasRunRequest={canvasRunRequest} currentRevision={version.current}/>
+  <CorePipelineRunner token={token} onTokenChange={updateToken}/>
   {pendingSave&&<ConfirmActionDialog title={pendingSave.existing?"Overwrite saved pipeline?":"Enable TEST pipeline?"}
    message={pendingSave.existing?"This pipeline name already exists. Saving replaces its saved DAG definition and enabled flag. Ensure no conflicting test run is active.":"Enabling allows authorized users to start this SQL DAG later under backend TEST guards. Saving does not start execution."}
    target={pendingSave.payload.name} targetLabel="Named SQL DAG · verify before saving"
