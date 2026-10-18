@@ -132,8 +132,7 @@ def test_core_run6_sigkill_and_network_failure_recovery():
               "terminal ClickHouse outage result", 210)
         assert failed["status"] == "failed", failed
         assert cursor(stream_id) == 1
-        assert uuid() == original and raw(stream_id) == "10000\t10000"
-        events.append("actual CH network disconnect left cursor, raw data and target UUID unchanged")
+        events.append("actual CH network disconnect failed, checkpoint stayed unchanged")
     finally:
         # Restore ONLY the owner-verified QA resources even on test assertion failure.
         if disconnected and not connected(ch_id):
@@ -143,6 +142,10 @@ def test_core_run6_sigkill_and_network_failure_recovery():
         if fixture.shell("docker", "inspect", "-f", "{{.State.Running}}", api_id) != "true":
             fixture.shell("docker", "start", api_id)
 
+    # Network-detached ClickHouse can also lose its host-published port.
+    # Verify physical immutability AFTER restoring the isolated network.
+    assert uuid() == original and raw(stream_id) == "10000\t10000"
+    events.append("physical UUID and raw source rows unchanged after outage")
     assert state(second_id)["status"] == "failed"
     recovery_id = run(stream_id, model_id)  # deliberate new operator run
     result = until(lambda: (s if s["status"] in ("succeeded","failed") else None)
