@@ -37,6 +37,8 @@ def ui(browser, request):
             {"id": "qa_model_c", "name": "m_c", "model": {"name": "m_c", "mode": "visual", "source": {"database": "scratch", "table": "dfv_m_b"}, "steps": []}},
         ],
         "incremental": None,
+        "core_runs": {},
+        "core_count": 0,
         "sql_jobs": [
             {"id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "name": "revenue_quality_check",
              "database": "scratch", "query": "SELECT count() AS total_rows FROM scratch.events", "enabled": True},
@@ -149,6 +151,47 @@ def ui(browser, request):
                      "dag_id": "33333333-3333-4333-8333-333333333333",
                      "status": "succeeded", "error": ""}
                 ]}
+        elif path == "/api/v1/managed/streams":
+            result = {"streams": [
+                {"id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+                 "source_schema": "Erp", "source_table": "PartTran",
+                 "target_database": "scratch", "target_table": "dataflow_raw_events",
+                 "batch_size": 1000, "workers": 2, "queue_capacity": 2,
+                 "lower_cursor": "0x0000000000000000"}
+            ]}
+        elif path == "/api/v1/core/runs":
+            if method == "POST":
+                state["core_count"] += 1
+                number = state["core_count"]
+                core_id = f"f{number:07d}-1111-4111-8111-111111111111"
+                state["core_runs"][core_id] = {
+                    "run_id": core_id, "status": "succeeded",
+                    "managed_run_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+                    "managed_status": "succeeded",
+                    "model_flow_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+                    "model_flow_status": "succeeded",
+                    "target": "scratch.dft_core_m_c",
+                    "rows_verified": 10000, "error": "",
+                    "has_backup": number > 1,
+                }
+                result = {"run_id": core_id,
+                          "status": "waiting_sync",
+                          "dependency_order": ["m_a", "m_b", "m_c"]}
+            else:
+                run_id = req.url.split("id=", 1)[-1]
+                result = state["core_runs"].get(run_id)
+                if result is None:
+                    route.fulfill(status=404, body="unknown core run")
+                    return
+        elif path == "/api/v1/core/actions":
+            run_id = body.get("run_id")
+            current = state["core_runs"].get(run_id)
+            if method != "POST" or body.get("action") != "rollback" or body.get("confirm") != "ROLLBACK" or not current or not current["has_backup"] or current["status"] != "succeeded":
+                route.fulfill(status=409, body="rollback denied")
+                return
+            current["status"] = "rolled_back"
+            result = {"run_id": run_id, "status": "rolled_back",
+                      "target": current["target"], "checkpoint_changed": False}
         elif path == "/api/v1/bootstrap/history":
             result = {"count": 2, "runs": [
                 {"run_id": "11111111-1111-4111-8111-111111111111", "status": "succeeded",
@@ -906,3 +949,56 @@ def test_ui26_connection_draft_registry_admin_only_metadata(ui):
     assert all(c["path"] != "/api/v1/sql/dag-runs" for c in state["calls"])
     assert not any(k in str(c["body"]).lower() for c in created_calls
                    for k in ["password", "dsn", "host", "endpoint", "token", "secret"])
+
+
+def test_ui27_core_real_api_panel_wires_run_and_backup_gated_rollback(ui):
+    """Mocks prove UI contract only; real four-service execution is covered separately in hosted SQL QA."""
+    page, state = ui
+    open_tab(page, "Pipelines")
+    panel = page.get_by_label("Durable core pipeline operator")
+    expect(panel).to_be_visible()
+    expect(panel.get_by_role("button", name="Run complete core pipeline")).to_be_disabled()
+    panel.get_by_role("button", name="Load saved streams and models").click()
+    expect(panel.get_by_label("Core source stream")).to_have_value("cccccccc-cccc-4ccc-8ccc-cccccccccccc")
+    panel.get_by_label("Core final model").select_option("qa_model_c")
+    panel.get_by_label("Core final output unique key").fill("stream")
+    assert not any(c["path"] == "/api/v1/core/runs" for c in state["calls"])
+
+    panel.get_by_role("button", name="Run complete core pipeline").click()
+    expect(page.get_by_role("dialog", name="Start real core execution in disposable QA?")).to_be_visible()
+    assert not any(c["path"] == "/api/v1/core/runs" and c["method"] == "POST"
+                   for c in state["calls"])
+    page.get_by_role("button", name="Start CORE Run").click()
+    expect(panel.get_by_text("Published rows:")).to_be_visible()
+    expect(panel.get_by_text("10,000", exact=True)).to_be_visible()
+    expect(panel.get_by_role("button", name="Rollback to previous physical version")).to_have_count(0)
+    starts = [c for c in state["calls"] if c["path"] == "/api/v1/core/runs" and c["method"] == "POST"]
+    assert len(starts) == 1
+    assert starts[0]["body"] == {
+        "stream_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        "model_id": "qa_model_c",
+        "unique_column": "stream",
+    }
+
+    # A later real backend publication can expose a prior physical backup,
+    # but the action remains an explicit, user-confirmed POST.
+    panel.get_by_role("button", name="Run complete core pipeline").click()
+    page.get_by_role("button", name="Start CORE Run").click()
+    rollback = panel.get_by_role("button", name="Rollback to previous physical version")
+    expect(rollback).to_be_visible()
+    rollback.click()
+    expect(page.get_by_role("dialog", name="Restore previous scratch table version?")).to_be_visible()
+    assert not any(c["path"] == "/api/v1/core/actions" for c in state["calls"])
+    page.get_by_role("button", name="Confirm scratch rollback").click()
+    expect(panel.get_by_text("Rollback acknowledged by PostgreSQL. Checkpoint unchanged.")).to_be_visible()
+    actions = [c for c in state["calls"] if c["path"] == "/api/v1/core/actions"]
+    assert len(actions) == 1
+    assert actions[0]["method"] == "POST"
+    assert actions[0]["body"] == {
+        "run_id": "f0000002-1111-4111-8111-111111111111",
+        "action": "rollback", "confirm": "ROLLBACK",
+    }
+    expect(panel.get_by_role("button", name="Rollback to previous physical version")).to_have_count(0)
+    panel.get_by_label("Core API bearer token").fill("other-qa-token")
+    expect(panel.get_by_label("Core run UUID")).to_have_value("")
+    assert all(c["path"] != "/api/v1/bootstrap/runs" for c in state["calls"])

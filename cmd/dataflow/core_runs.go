@@ -140,15 +140,15 @@ func(s *server)coreRunsAPI(w http.ResponseWriter,r *http.Request){
   id:=r.URL.Query().Get("id")
   if !validUUID.MatchString(id){http.Error(w,"valid run id required",400);return}
   var row struct{
-   ID,ManagedID,FlowID,Status,Target,Stage,Issue string
+   ID,ManagedID,FlowID,Status,Target,Stage,Issue,OldUUID string
    Rows int64
   }
   err:=s.pg.QueryRow(ctx,`SELECT id::text,managed_run_id::text,
     COALESCE(flow_id::text,''),status,target_name,stage_name,
-    COALESCE(rows_verified,0),COALESCE(error_message,'')
+    COALESCE(rows_verified,0),COALESCE(error_message,''),COALESCE(old_uuid,'')
    FROM core_pipeline_runs WHERE id=$1::uuid`,id).
     Scan(&row.ID,&row.ManagedID,&row.FlowID,&row.Status,&row.Target,
-      &row.Stage,&row.Rows,&row.Issue)
+      &row.Stage,&row.Rows,&row.Issue,&row.OldUUID)
   if err!=nil{http.Error(w,"core run not found",404);return}
   var managedStatus string
   if e:=s.pg.QueryRow(ctx,`SELECT status FROM managed_runs WHERE id=$1::uuid`,
@@ -167,6 +167,7 @@ func(s *server)coreRunsAPI(w http.ResponseWriter,r *http.Request){
    "managed_status":managedStatus,"model_flow_id":row.FlowID,
    "model_flow_status":flowStatus,"stage":"scratch."+row.Stage,
    "target":"scratch."+row.Target,"rows_verified":row.Rows,"error":row.Issue,
+   "has_backup":row.OldUUID!="",
   })
  default:http.Error(w,"method not allowed",405)
  }

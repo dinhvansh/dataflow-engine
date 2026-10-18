@@ -1,0 +1,37 @@
+# CORE-RUN-1 → CORE-RUN-4: real execution evidence and handoff (2026-10-18)
+
+**User-approved funding gate: a repeatable real product demo BEFORE approaching investors.** This document distinguishes actual hosted test evidence from untested capabilities. The engine is **Developer Preview / isolated QA**. Production readiness remains **NO-GO**. ERP is strictly **SELECT-only**, never modified or accessed by hosted QA.
+
+## Verified code milestones
+
+| Gate | PR | Exact-head acceptance | What actually ran |
+| --- | --- | --- | --- |
+| CORE-RUN-1 | [#93](https://github.com/dinhvansh/dataflow-engine/pull/93) | [general CI #39106694398](https://github.com/dinhvansh/dataflow-engine/actions/runs/39106694398) PASS; [SQL QA #39106694427](https://github.com/dinhvansh/dataflow-engine/actions/runs/39106694427) PASS | Real HTTP POST/GET → durable PG queue → SELECT-only SQL Server → ClickHouse 200 records → persisted checkpoint; second real incremental 0 rows/no duplicates |
+| CORE-RUN-2 | [#94](https://github.com/dinhvansh/dataflow-engine/pull/94) | [general CI #39107267980](https://github.com/dinhvansh/dataflow-engine/actions/runs/39107267980) PASS; [SQL QA #39107268009](https://github.com/dinhvansh/dataflow-engine/actions/runs/39107268009) PASS | Partial ClickHouse write from actual SQL row, expired PG lease crash-equivalent, new fenced worker completes 200 rows; physical 201 events / 200 unique versions; simulated 503 requeues and retry succeeds |
+| CORE-RUN-3 | [#95](https://github.com/dinhvansh/dataflow-engine/pull/95) | [general CI #39108304868](https://github.com/dinhvansh/dataflow-engine/actions/runs/39108304868) PASS; [SQL QA #39108306006](https://github.com/dinhvansh/dataflow-engine/actions/runs/39108306006) PASS | **Real four-service E2E**: operator POST → 10,000 SQL Server SELECT-only rows → ClickHouse raw → PG dbt A→B→C with actual dbt Core → 3 DQ checks → UUID-pinned atomic scratch publish → GET succeeded with 10,000 source-derived events |
+| CORE-RUN-4 | [#96](https://github.com/dinhvansh/dataflow-engine/pull/96) | [general CI #39109246343](https://github.com/dinhvansh/dataflow-engine/actions/runs/39109246343) PASS; [SQL QA #39109246331](https://github.com/dinhvansh/dataflow-engine/actions/runs/39109246331) PASS | New worker detects external ClickHouse publish already committed but PG status not yet recorded; UUID replay does not double EXCHANGE; explicit API rollback and repeated rollback restore same original physical table; model SQL drift blocks publication; checkpoint remains committed |
+| Minimal real-core operator control | This follow-up UI PR (see live PR) | **Pending exact-head CI before merge** | Authenticated form on existing Pipelines page calls `/api/v1/core/runs` (POST/GET) and explicit `/api/v1/core/actions` rollback, with backend-dependent eligibility and polling. The existing SQL DAG Canvas executor is **distinct**; a button on that Canvas is NOT claimed to start this core pipeline. |
+
+## How to operate in an isolated, approved QA environment
+
+1. Prepare the disposable QA service stack, verify the SQL Server database is exactly `DataFlowFixtureQA`, connected SQL principal is `qa_erp_reader` with SELECT only, and ClickHouse scratch + PostgreSQL migrations **001–029** as required. API must have server-only secrets, no real ERP configuration.
+2. Enable only isolated test flags: `DATAFLOW_ALLOW_TEST_LOAD=true`, `DATAFLOW_ENABLE_MANAGED_TEST=true`, `DATAFLOW_ENABLE_SQL_JOBS_TEST=true`, `DATAFLOW_ENABLE_DBT_TEST=true`, `DATAFLOW_ENABLE_AUTO_BUILD_TEST=true`, `DATAFLOW_ENABLE_SAFE_TABLE_TEST=true`, `DATAFLOW_ENABLE_CORE_PIPELINE_TEST=true`, `DATAFLOW_TEST_TARGET_DATABASE=scratch`. The actual workers require approved QA ClickHouse reader/writer credentials and pinned dbt binary.
+3. In DataFlow **Pipelines**, open **Real Core Pipeline / QA**, enter the existing TEST API Bearer token (browser memory only), and click **Load saved streams and models**. Choose a managed stream whose target is `scratch.dataflow_raw_events` and a saved Visual final model. The first saved dependency model must start from the raw event table and any next model must read the previous saved `dfv_` View. Choose an actual unique column present in the **final output** and deliberately confirm Run.
+4. The UI uses the authoritative backend-generated Core `run_id`. Watch source sync, dbt/DQ and final publish status; re-open by pasting the persisted UUID after a browser refresh. The UI polls GET while active and does **not** fabricate completed results.
+5. The initial successful publish has no backup/rollback option; a later successful publication with an exact previous physical UUID can be rolled back with an explicit destructive confirmation. Backups can only be restored when the backend's current physical UUID still matches; SQL source and checkpoints are never rewound. Do not treat a failed response as permission to retry a new publish blindly.
+6. To reproduce the hosted core proof, inspect exact actions above: each SQL QA job explicitly executes `TestCoreRun3UnifiedRealFourServiceIntegration` and `TestCoreRun4FaultRollbackFourServiceIntegration` with **`=== RUN` / `--- PASS`**. An `ok` process where these were skipped is insufficient evidence.
+
+## 7,000,000+ rows — still NOT measured
+
+[Optional local 7m runner](../deploy/local-qa/run-core-7m.sh) and [SQL Server disposable fixture generator](../deploy/local-qa/sql/006_scale_7m.sql) exist, but **NO 7m benchmark has actually been executed or measured through this chat / GitHub hosted CI**. Never report throughput, runtime, memory, source 7m correctness, or funding/production acceptance as PASS for this workload.
+
+The opt-in runner refuses non-owned Docker containers/network or DB, verifies disposable isolation and SELECT-only reader, requires at least **16 GiB free**, seeds `DataFlowFixtureQA.Erp.PartTranScale7M` in 50k transactional batches, runs a bounded real managed SQL→ClickHouse benchmark, and writes observed test logs plus Docker resource stats to `qa-results`. Operator must opt in deliberately and capture hardware, disk, peak CPU/RAM, real rows/sec, source/target count checks. This is **managed raw ingestion benchmark only**, not an end-to-end 7m dbt/DQ/publish benchmark.
+
+### Remaining hard GO gates (do not misrepresent)
+
+- Browser end-to-end operator demonstration on an actual QA-hosted DataFlow instance with durable API jobs, visible validated results and rollback; CI frontend build is necessary but **not a replacement** for actual browser QA.
+- Real process SIGKILL/host failure, injected network transport loss, trust and authorization revocation, multi-instance/failover and multiple-stream isolation; current tests use **QA-injected lease expiry / simulated HTTP 503**, plus real publish acknowledgment crash window.
+- Formal 7m+ workload execution and measured memory/CPU/throughput/lag plus correctness at target scale, including **incremental and dbt/DQ/publish**; not just the optional managed benchmark.
+- Production security independently enrolled: IdP, Vault custody/recovery and writer fence, TLS cert and IP admission, tenant/workspace RBAC, real egress permissions and operator sign-off. None can be invented in CI.
+
+**Next decision:** ensure real QA browser walkthrough and operator-run full system trace work; run opt-in local benchmark with suitable hardware and actual evidence; fix uncovered defects. UI cosmetics and investor claims remain secondary to these acceptance checks.

@@ -106,3 +106,27 @@ export const connectionDefinitionsApi={
    headers:{...registryHeaders(token,adminToken),"Content-Type":"application/json"},
    body:JSON.stringify(draft)}))
 };
+
+export type CorePipelineRun={
+ run_id:string;status:"waiting_sync"|"waiting_flow"|"publishing"|"succeeded"|"failed"|"rolled_back";
+ managed_run_id:string;managed_status?:string;model_flow_id?:string;
+ model_flow_status?:string;rows_verified?:number;stage?:string;target?:string;
+ error?:string;has_backup?:boolean;dependency_order?:string[];
+};
+export const corePipelineApi={
+ start:(stream_id:string,model_id:string,unique_column:string,token:string)=>
+  parse<CorePipelineRun>(fetch("/api/v1/core/runs",{
+   method:"POST",
+   headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},
+   body:JSON.stringify({stream_id,model_id,unique_column})
+  })),
+ status:(run_id:string,token:string)=>
+  getSource<CorePipelineRun>(`/api/v1/core/runs?id=${encodeURIComponent(run_id)}`,token),
+ rollback:(run_id:string,token:string)=>
+  parse<{run_id:string;status:"rolled_back";target:string;checkpoint_changed:boolean}>(
+   fetch("/api/v1/core/actions",{
+    method:"POST",
+    headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},
+    body:JSON.stringify({run_id,action:"rollback",confirm:"ROLLBACK"})
+   }))
+};
