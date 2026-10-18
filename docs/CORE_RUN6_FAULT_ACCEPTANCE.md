@@ -1,7 +1,6 @@
 # CORE-RUN-6 — real fault injection & recovery (disposable QA only)
 
-**NOT ACCEPTED until exact-head REAL fault workflow PASS.** This code drives real
-containers; a source-only review, static CI, or mocked tests do not prove recovery.
+**CORE-RUN-6A HOSTED DISPOSABLE QA ACCEPTED (2026-10-18):** [PR #100](https://github.com/dinhvansh/dataflow-engine/pull/100) merged at `44e63af`; [Real Fault #39135353067](https://github.com/dinhvansh/dataflow-engine/actions/runs/39135353067) **PASS** (`1 passed in 81.80s`), exact-head CI/regressions all PASS. The test drives real containers and records 14-day `core-run6-real-fault-evidence`. This does NOT accept the broader 6B worker/fencing/race matrix or production.
 
 ## Reproduce
 
@@ -30,7 +29,7 @@ version and allow UUID-safe rollback without rewinding cursor.
 Evidence: \`qa-results/core-run6/fault-result.json\`, uploaded as the
 14-day GitHub Actions artifact \`core-run6-real-fault-evidence\` on PASS.
 
-## Explicitly OUT of scope
+## Explicitly OUT of scope / next CORE-RUN-6B
 
 A failure that becomes terminal **does not automatically resume**; the
 recovery test creates a **new** run. SIGKILL here affects the API during
