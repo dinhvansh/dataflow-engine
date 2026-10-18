@@ -49,7 +49,7 @@ def test_dbt_table_actual_sql_sigkill_rebuild_and_publish():
     name="midsql"+suffix
     target="dft_"+name
     query=("SELECT number AS id, sleepEachRow(0.025) AS qa_delay "
-           "FROM numbers(1600)")
+           "FROM numbers(1600) SETTINGS max_block_size=64")
     assert re.fullmatch("[a-z][a-z0-9_]+",name)
     model=f.pg("INSERT INTO transform_models(name,definition,compiled_sql) "
        f"VALUES('{name}','{{}}'::jsonb,'{query}') RETURNING id").splitlines()[0]
