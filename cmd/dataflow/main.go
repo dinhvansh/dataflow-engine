@@ -223,6 +223,7 @@ func main() {
 	mux.HandleFunc("/api/v1/managed/streams", svc.streamAPI)
 	mux.HandleFunc("/api/v1/managed/runs", svc.managedRunAPI)
 	mux.HandleFunc("/api/v1/core/runs", svc.coreRunsAPI)
+	mux.HandleFunc("/api/v1/core/actions", svc.coreActionAPI)
 	mux.HandleFunc("/api/v1/managed/schedules", svc.scheduleAPI)
 	mux.HandleFunc("/api/v1/reconcile/runs", svc.reconciliationAPI)
 	mux.HandleFunc("/api/v1/reconcile/hard-delete", svc.hardDeleteAPI)
