@@ -1,0 +1,16 @@
+# V3.2B-5E-4D — Signed divergent rotation compensation escalation
+
+**Scope:** isolated synthetic PostgreSQL/Vault foundation, NOT an automated Vault rollback/repair and NOT production security approval.
+
+A `NEEDS_REVIEW` rotation can become divergent when a Vault version exists while PostgreSQL profile metadata has changed in an unexpected way. Unlike 5E-4C (already consistent), **there is no safe general rule for choosing the source of truth**. A PostgreSQL lock cannot prevent another writer from modifying Vault; two reads before/after an operation are not a distributed lock.
+
+This stage implements a fully auditable, **fail-closed escalation**:
+1. The requester presents a real validated pinned-issuer JWT and a current, row-locked workspace `MANAGE` grant. Two independently pinned Ed25519 operator keys must sign a **fresh** purpose-separated `escalate_manual_reconciliation` request with immutable, 15-minute-bound rotation/workspace/review UUIDs, target version, original journal revision, current profile revision + version, and observed Vault latest version. No browser-requested operator key is trusted.
+2. Prior immutable review must be for this same actor/workspace/rotation and classified **`diverged`**. Profile remains `draft`, handle unchanged and version/revision must match the signed envelope. An already-applied state cannot be escalated.
+3. The workspace-bound Vault adapter must prove that the target is readable, bytes are wiped even on partial-error return, and the latest KV-v2 metadata matches the *exact* operator-signed expected version both before and after the pinned read. Outage/missing/deleted/version change fails.
+4. One PostgreSQL transaction stores an immutable, digest-only signed plan (migration **026**) and `compensation_planned` audit action. Exactly repeating an accepted signed request is a no-op while current MANAGE and frozen metadata remain consistent; modifications require new signatures. **The journal stays `NEEDS_REVIEW`. No profile/Vault write or activation is permitted.**
+5. CI exercises refused forged workspace/actor/tenant/action/revision/versions, absent/duplicate signer, stale approvals, missing review, Vault changes, replay, immutable audit, revocation before Vault IO and quarantine retention. Historical migrations 022/024/025 permit the new append-only audit action upon replay.
+
+**Operations runbook prerequisite for actual compensation:** independently verify Vault tenant, key ACLs and latest metadata, stop all external writers with a provable lock/maintenance window, select an explicit source of truth, decide whether to create a brand-new KV-v2 secret version via CAS (never overwrite old history), validate affected connection users and rollback plan, obtain two-person security approval and perform isolated failure-injection. Then obtain a new `target` review and `confirm_already_applied` signed recovery if its exact metadata contract is met. A divergent case must never be silently unquarantined.
+
+**Production NO-GO:** no trusted IdP/operator enrollment, external Vault writer-freeze, credential egress/policy sign-off, TLS ingress hardening or real runtime binding. ERP remains strictly SELECT-only. Reference [5E-4C](connections-v32b5e4c-safe-recovery.md) for the already-consistent subset.
