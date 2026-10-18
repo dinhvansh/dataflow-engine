@@ -7,6 +7,14 @@
 
 **Connection Manager release gate:** [CONNECTIONS_RELEASE_ACCEPTANCE.md](CONNECTIONS_RELEASE_ACCEPTANCE.md) — authoritative external IdP/Vault/TLS/compensation/TEST acceptance, all production gates currently NO-GO.
 
+## REQUIRED USER PRIORITY: CORE FIRST (locked 2026-10-18)
+
+**Complete and verify the DATAFLOW BACKEND/ENGINE CORE before new UI work or peripheral features.** Read **[CORE_FIRST_ENGINE_GATE.md](CORE_FIRST_ENGINE_GATE.md)** before deciding any future task. This policy supersedes earlier cosmetic/UI-first suggestions.
+
+**Critical path (in order, with real disposable E2E evidence):** secure minimum test-connection and active binding → SQL Server SELECT-only ingestion into ClickHouse → stateful checkpoint/incremental/table materialization → Auto Build Dependencies (A→B→C) → durable job/API/Canvas engine, retry/resume/idempotency → DQ validation + controlled publish/rollback → failure injection and benchmark of 7m+ records where test environment permits.
+
+**Hard gate:** do NOT resume UI redesign, animations, reports/dashboards or unrelated features before the core E2E acceptance passes. Minimal QA-blocking UI fixes/Run controls are allowed. Every PR exact-head CI PASS then merge, no ERP write, document truthful mock-vs-real findings. Real IdP/Vault/TLS/operator approvals remain **separate production blockers**, not proof that core works. **Production NO-GO.**
+
 ## Current project status
 
 - Public repository: https://github.com/dinhvansh/dataflow-engine
@@ -67,6 +75,9 @@
 
 ## How to work in the next chat
 
+**Instruction precedence:** before choosing new milestones, follow [CORE FIRST](CORE_FIRST_ENGINE_GATE.md). Choose highest missing nonmock core gate, not UI polish or optional non-core features. Declare completion only with disposable full-path E2E + failure injection + exact-head CI; do not imply production approval.
+
+
 1. Fetch live GitHub `main`, open PRs, branches, running/completed Actions and compare relevant changes; report divergence before edits.
 2. Read **both this file and [MASTER_ROADMAP_AND_STATUS.md](MASTER_ROADMAP_AND_STATUS.md)**, then relevant source files and historical release evidence. Do not use old snapshot SHA as a hardcoded branch base.
 3. Continue V3.2B-5E real trusted IdP/Vault/TLS enrollment (JWKS #74, inspection #77, signed bootstrap #80, Vault scope #82, signed review #83, safe-case recovery #85 and signed divergent escalation #87 already merged) and operator-approved **divergent** journal recovery/compensation (safe-case #85 can only clear already-consistent `NEEDS_REVIEW` in isolated TEST), then V3.2C-2B2 Vault-bound, TLS-pinned and egress-allowed TEST (2B1 isolated SQL driver scope #88 merged). SQL Server disposable fixture read-only QA is now covered by #76 but no connection manager runtime binding is active. Next V3.3 active execution bindings, V3.4 synthetic multi-instance E2E, V4.0 durable mixed-step backend/canvas, V4.1 trusted metric extraction and DQ Publish, V4.2 efficient 7m+ incremental. **Do not claim any of these complete just from mocked foundation tests.**
@@ -76,7 +87,7 @@
 
 ## Copy into a new chat
 
-> Tiếp tục **DataFlow Engine** từ https://github.com/dinhvansh/dataflow-engine. BẮT BUỘC đọc `docs/PROJECT_HANDOFF_LATEST.md` và `docs/MASTER_ROADMAP_AND_STATUS.md` ở live `main`; kiểm tra HEAD/PR/Actions/conflicts trước bất cứ thay đổi nào. Các PR #67–#88 (các mốc tương ứng) đã merge: V3.2B-5E-2 inspection, 5E-3 lab MANAGE bootstrap, 5E-4A Vault scope, 5E-4B signed review và 5E-4C confirmed-applied-only recovery, 5E-4D signed escalation, V3.2C-2B1 QA driver TEST, V3.2C offline allowlist + fake TCP, V3.3 draft binding snapshots, V4.0 synthetic mixed-step executor, V4.1 synthetic DQ contracts; **chưa phải live/credential-bound Test Connection, active multi-connection hay end-to-end canvas runtime**. Triển khai tiếp real IdP/Vault/egress có phê duyệt, pinned TLS/Vault-bound driver TEST, runtime binding, mixed-stage API/canvas, metrics/DQ/publish, efficient incremental và E2E theo master roadmap. Tự làm code/PR/test/fix/merge sau CI PASS đúng SHA, cập nhật hai handoff. ERP SELECT-only, không ghi/sửa/xóa dữ liệu nguồn thật. UI Signalroom trắng/xanh #238047, Dark graphite/volt #C0F273. Production NO-GO cho tới acceptance.
+> Tiếp tục **DataFlow Engine** từ https://github.com/dinhvansh/dataflow-engine. BẮT BUỘC đọc `docs/PROJECT_HANDOFF_LATEST.md` và `docs/MASTER_ROADMAP_AND_STATUS.md` ở live `main` cùng `docs/CORE_FIRST_ENGINE_GATE.md` (CORE-FIRST: hoàn thiện engine & E2E trước nâng cấp UI); kiểm tra HEAD/PR/Actions/conflicts trước bất cứ thay đổi nào. Các PR #67–#88 (các mốc tương ứng) đã merge: V3.2B-5E-2 inspection, 5E-3 lab MANAGE bootstrap, 5E-4A Vault scope, 5E-4B signed review và 5E-4C confirmed-applied-only recovery, 5E-4D signed escalation, V3.2C-2B1 QA driver TEST, V3.2C offline allowlist + fake TCP, V3.3 draft binding snapshots, V4.0 synthetic mixed-step executor, V4.1 synthetic DQ contracts; **chưa phải live/credential-bound Test Connection, active multi-connection hay end-to-end canvas runtime**. Triển khai tiếp real IdP/Vault/egress có phê duyệt, pinned TLS/Vault-bound driver TEST, runtime binding, mixed-stage API/canvas, metrics/DQ/publish, efficient incremental và E2E theo master roadmap. Tự làm code/PR/test/fix/merge sau CI PASS đúng SHA, cập nhật hai handoff. ERP SELECT-only, không ghi/sửa/xóa dữ liệu nguồn thật. UI Signalroom trắng/xanh #238047, Dark graphite/volt #C0F273. Production NO-GO cho tới acceptance.
 
 **#85 CI evidence:** https://github.com/dinhvansh/dataflow-engine/actions/runs/39095397971 (hosted Go/race/PG/ClickHouse/dbt/web PASS) and https://github.com/dinhvansh/dataflow-engine/actions/runs/39095398025 (SQL Server SELECT-only PASS), on exact PR head `a9108c5`. Post-merge main CI must be verified. No live Vault or ERP source changes.
 
