@@ -20,6 +20,7 @@ func TestManageBootstrapIntegration(t *testing.T) {
 	if os.Getenv("DATAFLOW_INTEGRATION_PG_ISOLATED")!="true" {
 		t.Fatal("refusing security bootstrap against non-isolated PostgreSQL")
 	}
+	t.Setenv(secureViewIsolatedFlag,"true")
 	ctx,cancel:=context.WithTimeout(context.Background(),45*time.Second)
 	defer cancel()
 	pg,err:=pgxpool.New(ctx,dsn)
