@@ -102,26 +102,46 @@ func NewSecureViewHandlerFromEnv(ctx context.Context, pg *pgxpool.Pool) (http.Ha
 	audience := os.Getenv("DATAFLOW_SECURE_OIDC_AUDIENCE")
 	kid := os.Getenv("DATAFLOW_SECURE_OIDC_KID")
 	keyFile := os.Getenv("DATAFLOW_SECURE_OIDC_RS256_PUBLIC_KEY_FILE")
-	if issuer == "" || audience == "" || kid == "" || keyFile == "" {
+	jwksFile := os.Getenv("DATAFLOW_SECURE_OIDC_PINNED_JWKS_FILE")
+	if issuer == "" || audience == "" {
 		return nil, errors.New("secure connection view OIDC configuration incomplete")
 	}
-	keyBytes, err := os.ReadFile(keyFile)
-	if err != nil || len(keyBytes) > 16384 {
-		return nil, errors.New("secure connection view public key unavailable")
+	var keys map[string]*rsa.PublicKey
+	if jwksFile != "" {
+		// The operator must select exactly one source of trust. Never combine
+		// a stale PEM key with a staged JWKS key set.
+		if kid != "" || keyFile != "" {
+			return nil, errors.New("secure connection view OIDC trust configuration conflicts")
+		}
+		var err error
+		keys, err = LoadPinnedJWKSFile(jwksFile)
+		if err != nil {
+			return nil, errors.New("secure connection view pinned JWKS invalid")
+		}
+	} else {
+		// Backward-compatible single-key mode for existing isolated labs.
+		if kid == "" || keyFile == "" {
+			return nil, errors.New("secure connection view OIDC configuration incomplete")
+		}
+		keyBytes, err := os.ReadFile(keyFile)
+		if err != nil || len(keyBytes) > 16384 {
+			return nil, errors.New("secure connection view public key unavailable")
+		}
+		block, rest := pem.Decode(keyBytes)
+		if block == nil || block.Type != "PUBLIC KEY" || len(strings.TrimSpace(string(rest))) != 0 {
+			return nil, errors.New("secure connection view public key invalid PEM")
+		}
+		parsed, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			return nil, errors.New("secure connection view public key invalid")
+		}
+		publicKey, ok := parsed.(*rsa.PublicKey)
+		if !ok {
+			return nil, errors.New("secure connection view requires pinned RSA public key")
+		}
+		keys = map[string]*rsa.PublicKey{kid: publicKey}
 	}
-	block, rest := pem.Decode(keyBytes)
-	if block == nil || block.Type != "PUBLIC KEY" || len(strings.TrimSpace(string(rest))) != 0 {
-		return nil, errors.New("secure connection view public key invalid PEM")
-	}
-	parsed, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return nil, errors.New("secure connection view public key invalid")
-	}
-	publicKey, ok := parsed.(*rsa.PublicKey)
-	if !ok {
-		return nil, errors.New("secure connection view requires pinned RSA public key")
-	}
-	verifier, err := NewRS256Verifier(issuer, audience, map[string]*rsa.PublicKey{kid: publicKey})
+	verifier, err := NewRS256Verifier(issuer, audience, keys)
 	if err != nil {
 		return nil, errors.New("secure connection view verifier configuration invalid")
 	}
