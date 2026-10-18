@@ -151,7 +151,7 @@ export function CorePipelineRunner({token,onTokenChange}:Props){
     <div className="flex flex-wrap items-center justify-between gap-2">
      <div><span className={"font-semibold "+(run.status==="succeeded"?"df-text-success":run.status==="failed"?"df-text-error":"df-text-warning")} role="status">{run.status}</span>
       <p className="muted mt-1 break-all font-mono text-xs">{run.run_id}</p></div>
-     <div className="text-right text-sm">Published rows: <strong>{run.rows_verified??0}</strong><p className="muted text-xs">{run.target??"Pending target"}</p></div>
+     <div className="text-right text-sm">Published rows: <strong>{(run.rows_verified??0).toLocaleString()}</strong><p className="muted text-xs">{run.target??"Pending target"}</p></div>
     </div>
     <div className="grid gap-2 sm:grid-cols-3 text-xs">
      <div>Source ingestion: <strong>{run.managed_status||"waiting"}</strong></div>
