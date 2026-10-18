@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strconv"\n "strings"
+	"strconv"
+ "strings"
 )
 
 // CurrentVaultVersion is separate from Vault.Read. A pinned readable version
@@ -22,7 +23,9 @@ func(v *KVv2Vault) latestVersion(ctx context.Context,ref SecretRef)(uint64,error
 		!validWorkspace(ref.WorkspaceID())||ref.OpaqueHandle()=="" {
 		return 0,ErrUnavailable
 	}
-	if !opaqueHandle.MatchString(ref.OpaqueHandle())||\n  !strings.HasPrefix(ref.OpaqueHandle(),"ref/")||\n  strings.Contains(ref.OpaqueHandle(),"//")||strings.HasSuffix(ref.OpaqueHandle(),"/"){return 0,ErrInvalid}
+	if !opaqueHandle.MatchString(ref.OpaqueHandle())||
+  !strings.HasPrefix(ref.OpaqueHandle(),"ref/")||
+  strings.Contains(ref.OpaqueHandle(),"//")||strings.HasSuffix(ref.OpaqueHandle(),"/"){return 0,ErrInvalid}
 	dst:=*v.base
 	dst.Path="/v1/"+v.mount+"/metadata/workspaces/"+ref.WorkspaceID()+"/"+ref.OpaqueHandle()[4:]
 	dst.RawPath=""
@@ -49,7 +52,8 @@ func(v *KVv2Vault) latestVersion(ctx context.Context,ref SecretRef)(uint64,error
 		return 0,ErrUnavailable
 	}
 	item,ok:=obj.Data.Versions[strconv.FormatUint(obj.Data.CurrentVersion,10)]
-	if !ok||item.Destroyed==nil||item.DeletionTime==nil||\n  *item.Destroyed||*item.DeletionTime!="" {return 0,ErrUnavailable}
+	if !ok||item.Destroyed==nil||item.DeletionTime==nil||
+  *item.Destroyed||*item.DeletionTime!="" {return 0,ErrUnavailable}
 	return obj.Data.CurrentVersion,nil
 }
 
