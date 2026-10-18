@@ -62,13 +62,23 @@ func (j RotationJournal) Inspect(ctx context.Context,actor,workspace,id string,p
 	ref,err:=NewSecretRef(workspace,handle,uint64(targetVersion))
 	if err!=nil{return RotationInspection{},ErrUnavailable}
 	secret,err:=provider.Read(ctx,ref)
-	if err!=nil{return RotationInspection{},ErrUnavailable}
 	readable:=len(secret)>0
+	// A provider may return a partial buffer along with an error.
 	clear(secret)
-	if !readable{return RotationInspection{},ErrUnavailable}
+	if err!=nil||!readable{return RotationInspection{},ErrUnavailable}
 	prepared:=actualVersion==fromVersion&&actualRevision==expectedRevision
 	applied:=actualVersion==targetVersion&&actualRevision==expectedRevision+1
 	review:=state=="needs_review"||(state=="prepared"&&!prepared)||(state=="applied"&&!applied)
+	// Successful credential-probe inspection is append-only audited, in the
+	// same transaction as the locked MANAGE check. Failure to audit fails
+	// the entire operation; neither profile nor journal state is mutated.
+	if _,err=tx.Exec(ctx,`INSERT INTO connection_security_audit
+		(workspace_id,actor_id,connection_id,action)
+		SELECT workspace_id,$2,connection_id,'rotation_inspected'
+		FROM connection_security_rotation_journal
+		WHERE id::text=$1 AND workspace_id=$3`,id,actor,workspace);err!=nil{
+		return RotationInspection{},ErrUnavailable
+	}
 	if err=tx.Commit(ctx);err!=nil{return RotationInspection{},ErrUnavailable}
 	return RotationInspection{
 		state:state,targetReadable:true,metadataPrepared:prepared,
