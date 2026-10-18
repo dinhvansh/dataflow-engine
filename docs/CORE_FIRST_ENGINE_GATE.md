@@ -2,6 +2,8 @@
 
 **Owner-approved priority, effective 2026-10-18:** **Finish and verify the backend/core execution engine before expanding the product UI, dashboard polish, extra features or speculative integrations.** This rule takes precedence over any earlier roadmap order when that order prioritizes UI/productization before reliable execution. Reconfirm future work against this document and the canonical handoff.
 
+**Funding readiness hard gate (2026-10-18):** user intends to fundraise **only after DataFlow actually runs as a repeatable operator-triggered core product**, not simply after writing handoff/docs or green synthetic CI. Cross-service real QA slice [SQL Server → ClickHouse, 10k rows, PR #91](core-real-sqlserver-clickhouse-e2e.md) is a PARTIAL PASS; the durable API/Canvas E2E demo, incremental/retry, DQ/publish and fail/recovery evidence are still required. See [fundraising acceptance](MASTER_ROADMAP_AND_STATUS.md#fundraising-reality-gate--executable-product-before-investor-outreach-2026-10-18).
+
 ## What "complete core" actually means
 
 The core is NOT considered complete just because functions compile, a synthetic unit test passes or a React Flow diagram looks good. The minimal working path must be executable end to end in **identity-verified disposable infrastructure**:

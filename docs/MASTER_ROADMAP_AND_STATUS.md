@@ -14,6 +14,21 @@ Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Origi
 
 Every milestone requires actual nonmock integration tests and exact-HEAD CI; do not mistake partial mock foundations, merged PR count or QA-only driver tests for complete core. Real Vault/IdP/production operator approvals remain **separate production NO-GO blockers**; do not use them as an excuse to defer safely isolated core tests or pretend they are available.
 
+## FUNDRAISING REALITY GATE — executable product BEFORE investor outreach (2026-10-18)
+
+**Owner's explicit criterion: NO fundraising until DataFlow genuinely runs as a repeatable, investor-visible product workflow.** A green CI, documentation-only milestone or static Canvas prototype does not fulfill it. Continue core implementation until durable product E2E on real disposable services is operational; keep this status evidence-backed. Funding demo and Production GO are different gates; Production GO also needs approved Vault/IdP/egress/TLS controls.
+
+**Real integrated proof delivered, still PARTIAL: [PR #91](https://github.com/dinhvansh/dataflow-engine/pull/91) merged `546b447`.** A single GitHub runner started Microsoft SQL Server 2022 + ClickHouse 25.3, streamed **10,000 real fixture `Erp.PartTran` rows in 40 batches** using the existing Go Reader/Engine/Writer, reconciled 10,000 distinct keys, numeric sum **50,005,000** and **88** Vietnamese-text records across source/destination; ClickHouse DQ, initial publication and replay passed; deliberately duplicate records failed DQ without touching the published target. Read-only SQL Server `qa_erp_reader` permission checks passed; ERP actual untouched. Exact PR head `06ebce9`: [general CI run 39102011212](https://github.com/dinhvansh/dataflow-engine/actions/runs/39102011212) PASS and [real cross-service SQL QA run 39102011294](https://github.com/dinhvansh/dataflow-engine/actions/runs/39102011294) PASS, **`=== RUN` + `REAL QA E2E PASS`** in logs; [test explanation](core-real-sqlserver-clickhouse-e2e.md).
+
+**Hard remaining core/funding-demo gates:**
+1. **Operator-triggered workflow, not Go test harness:** actual API/Canvas Run with connected source and destination and PostgreSQL persisted run/step/job states, progress, cancellation and visible result.
+2. **Real incremental + correctness:** change capture/watermark; restart/checkpoint, duplicate/lost batch safety, retry/idempotency/lease fencing, delete semantics and schema drift. Must not promise exactly-once or physical deletes unless proven.
+3. **Unified materialization execution:** real raw/ODS → dbt dependencies A→B→C → incremental/table materialization → real DQ → durable publish/rollback using one executable DAG and failure isolation.
+4. **Failure/acceptance matrix:** real services with injected network failure/crash/revocation, verified no unsafe publish, safe replay/recovery, source/target reconciliation, reproducible performance measurement including 7m+ row benchmark if resource-adequate.
+5. **Investor walkthrough:** documented one-command disposable startup, seeded fixture, operator Run, monitor graph/logs, metrics, before/after dataset and failure recovery in a real end-to-end result. Until this works, investor-demo readiness remains **NOT READY**, despite #91 partial proof.
+
+**Immediate engineering next step:** replace #91's integration-test-only orchestration with a **real runnable, persisted pipeline core entrypoint** (CLI/API via the existing worker/queue). Require source SELECT-only + ClickHouse scratch in disposable QA and stored run evidence; link Canvas Run/monitor only when the backend path passes. No UI polishing or unrelated features. Update both canonical documents after real code and CI PASS; do not prioritize paperwork over execution.
+
 ## 1. Product direction
 
 **Vision:** DataFlow is a developer-oriented, visual ETL/ELT and orchestration workbench: discover sources → ingest → build ClickHouse raw/ODS → transform visually/SQL → dbt/model dependencies → data quality → controlled publish → monitor, investigate and recover.
@@ -154,7 +169,7 @@ Stack: Go API/workers; SQL Server source **SELECT-only**; ClickHouse for disposa
 | Scalability | CI integration with isolated DBs; prior selective local synthetic QA evidence | Instrumented 7m+ dataset benchmark, failure/recovery and Airbyte comparison |
 | Enterprise readiness | Read-only ERP rule, opt-in scratch guards, admin-gated Draft | Security review, user RBAC/SSO, monitoring/on-call, backups, production approval |
 
-**Investor-demo wording:** “Working developer preview with a verified synthetic CI foundation and an ongoing secure multi-connection roadmap.” Do **not** advertise multi-instance live connectivity, fully automated source deletes, production-grade incremental performance, or Epicor production certification as completed.
+**Investor-demo wording (until integrated operator-run gate passes):** “Developer preview with a verified REAL QA cross-database data-transfer/DQ/publish slice (10k rows, PR #91) plus independently tested partial core components; a durable operator-triggered E2E pipeline is still under development.” Do **not** advertise multi-instance live connectivity, fully automated source deletes, production-grade incremental performance, or Epicor production certification as completed.
 
 ## 5. Verification and release discipline
 
@@ -165,6 +180,9 @@ Stack: Go API/workers; SQL Server source **SELECT-only**; ClickHouse for disposa
 5. Keep canonical `docs/PROJECT_HANDOFF_LATEST.md` and this roadmap updated **after every major feature merge**; don't allow summaries to overwrite actual code or CI evidence.
 
 ## 6. Immediate next session
+
+**Top of queue: real runnable product core BEFORE fundraising.** The connected 10k-row SQL Server→ClickHouse E2E fixture slice in #91 PASSED, but runs from a Go integration test and cannot yet be triggered/recovered from DataFlow Canvas/API as one durable pipeline. Build that next with persisted job/step run state, source checkpoint, dbt dependency materialization, DQ and safe publish; collect real runner evidence. Do not spend another sprint only updating docs. See funding gate above.
+
 
 1. Verify live GitHub main, PRs #67–#71 merged, any later Actions/PRs, conflicts and CI exact head before new branches; PR #25 gallery was merged via #72; README updated via #73 and #74 key rollover merged.
 2. V3.2B security remains IN PROGRESS: manual pinned JWKS overlap/retirement #74 implemented, but approved real IdP/JWKS key rotation, workspace MANAGE bootstrap, Vault credentials/policies, HTTPS cert lifecycle and operator-approved journal reconciliation/compensation has not been deployed (only inspection #77 and signed isolated MANAGE bootstrap #80 merged). Nothing must allow unreviewed credentials or ERP writes.
