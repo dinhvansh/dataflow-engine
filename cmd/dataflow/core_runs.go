@@ -276,6 +276,10 @@ func(s *server)reconcileOneCore(ctx context.Context)error{
   }
   previous:=""
   if oldUUID!=nil{previous=*oldUUID}
+  // Same target-scoped PostgreSQL advisory lock as dbt Table worker. Hold
+  // through actual CH EXCHANGE and the PG completion commit; prevent
+  // independent publishers from both acting on one old physical UUID.
+  if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(84721,hashtext('scratch.'||$1::text))`,target);err!=nil{return err}
   chCtx,stop:=context.WithTimeout(ctx,20*time.Second);defer stop()
   err=writer.Publish(chCtx,safetable.Publication{
    Target:target,Stage:stage,StageUUID:*stageUUID,OldUUID:previous,
