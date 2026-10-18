@@ -139,6 +139,33 @@ func TestSecureViewHTTPIntegration(t *testing.T) {
 	if r:=run(http.MethodGet,wsA+"&workspace="+wsB,token,true,"admin");r.Code!=400 {t.Fatalf("duplicate workspace: %d",r.Code)}
 	if r:=run(http.MethodGet,wsA+"&actor=admin",token,true,"admin");r.Code!=400 {t.Fatalf("unknown query accepted: %d",r.Code)}
 
+	// Operator-pinned overlapping keys accept both signers without changing
+	// the issuer-scoped actor. Replacing the file and rebuilding the handler
+	// explicitly retires the old signer; no HTTP-supplied JWKS URLs.
+	replacementKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil { t.Fatal(err) }
+	jwksPath := filepath.Join(t.TempDir(), "operator-allowlisted-keys.json")
+	oldPin := syntheticPinnedJWK(key, kid)
+	nextPin := syntheticPinnedJWK(replacementKey, "synthetic-next")
+	writeSyntheticJWKS(t, jwksPath, []pinnedJWK{oldPin, nextPin})
+	t.Setenv("DATAFLOW_SECURE_OIDC_KID", "")
+	t.Setenv("DATAFLOW_SECURE_OIDC_RS256_PUBLIC_KEY_FILE", "")
+	t.Setenv("DATAFLOW_SECURE_OIDC_PINNED_JWKS_FILE", jwksPath)
+	handler, err = NewSecureViewHandlerFromEnv(ctx, pg)
+	if err != nil { t.Fatal(err) }
+	newToken := signedSyntheticJWT(t,replacementKey,map[string]any{"alg":"RS256","kid":"synthetic-next"}, claims)
+	if r:=run(http.MethodGet,wsA,token,true,"");r.Code!=200 {t.Fatalf("old key lost during overlap: %d",r.Code)}
+	if r:=run(http.MethodGet,wsA,newToken,true,"");r.Code!=200 {t.Fatalf("new key unavailable during overlap: %d",r.Code)}
+	writeSyntheticJWKS(t,jwksPath,[]pinnedJWK{nextPin})
+	handler, err = NewSecureViewHandlerFromEnv(ctx, pg)
+	if err != nil { t.Fatal(err) }
+	if r:=run(http.MethodGet,wsA,token,true,"");r.Code!=403 {t.Fatalf("retired key accepted: %d",r.Code)}
+	if r:=run(http.MethodGet,wsA,newToken,true,"");r.Code!=200 {t.Fatalf("replacement key denied: %d",r.Code)}
+	t.Setenv("DATAFLOW_SECURE_OIDC_KID",kid)
+	if _,err:=NewSecureViewHandlerFromEnv(ctx,pg);err==nil {t.Fatal("dual PEM/JWKS trust config accepted")}
+	t.Setenv("DATAFLOW_SECURE_OIDC_KID","")
+	token = newToken
+
 	// Any permission revocation applies on the NEXT request, not cached identity.
 	if _,err=pg.Exec(ctx,`UPDATE connection_security_grants SET revoked_at=now()
 	WHERE actor_id=$1 AND workspace_id=$2 AND scope='VIEW'`,principal.ActorID(),wsA);err!=nil {t.Fatal(err)}
