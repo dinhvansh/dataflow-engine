@@ -158,6 +158,13 @@ func TestRotationJournalIntegration(t *testing.T){
 	if _,err=journal.Inspect(ctx,admin,ws,ticket3.ID(),nil);!errors.Is(err,ErrUnavailable){
 		t.Fatalf("missing provider inspected journal: %v",err)
 	}
+	// Operator inspection is append-only audited and cannot silently resolve
+	// a quarantined rotation or mutate profile references.
+	var inspections int
+	if err=pg.QueryRow(ctx,`SELECT COUNT(*) FROM connection_security_audit
+		WHERE workspace_id=$1 AND connection_id=$2::uuid AND action='rotation_inspected'`,
+		ws,profile.ID).Scan(&inspections);err!=nil{t.Fatal(err)}
+	if inspections!=3{t.Fatalf("expected three successful audited inspections, got %d",inspections)}
 	if _,err=journal.Prepare(ctx,admin,ws,profile.ID,5);!errors.Is(err,ErrForbidden){
 		t.Fatalf("unreconciled failed rotation unblocked: %v",err)
 	}
