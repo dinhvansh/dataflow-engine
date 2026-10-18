@@ -102,6 +102,7 @@ jobs:
             -e CLICKHOUSE_DB=scratch \
             -e CLICKHOUSE_USER=default \
             -e CLICKHOUSE_PASSWORD=qa-disposable-clickhouse-password \
+            -e CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 \
             clickhouse/clickhouse-server:25.3
           ready=0
           for i in $(seq 1 60); do
