@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 )
