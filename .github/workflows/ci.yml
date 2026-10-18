@@ -18,6 +18,8 @@ jobs:
           go-version-file: go.mod
           cache: false
       - run: go mod tidy
+      - name: Validate explicit 7m disposable QA launcher syntax
+        run: bash -n deploy/local-qa/run-core-7m.sh
       - name: QA disk guard regression (no Docker teardown)
         run: bash deploy/local-qa/check-disk-capacity_test.sh
       - name: Go unit and race tests
