@@ -101,6 +101,3 @@ func checkDisposableSQLServerSession(ctx context.Context,db *sql.DB)bool{
   deletePerm.Valid&&deletePerm.Int64==0&&alterPerm.Valid&&alterPerm.Int64==0
 }
 
-// Avoid advertising Test Connection for a DB session unbound to an admitted
-// connectionnet Plan, approved Vault credential reference and TLS identity.
-var _ = time.Second
