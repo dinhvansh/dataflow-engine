@@ -1,6 +1,6 @@
 # DataFlow Engine — Master Roadmap, Status & Acceptance Gates
 
-**Snapshot: 2026-10-18.** Verified GitHub `main@873fa7635dd11913bbce900cbeda0823a49d6e15` after PR #88 merged. Synthetic/lab evidence only. Production NO-GO; always recheck GitHub.
+**Snapshot: 2026-10-18.** Verified GitHub `main@5766ce7bf6651979fc9be0eab855f999c08ee87e` after PR #96. CORE-RUN-1..4 have REAL disposable hosted-service E2E evidence; local operator browser QA + 7m scale remain pending. Production NO-GO; recheck live GitHub.
 
 Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Original phased plan: [implementation/roadmap.md](../implementation/roadmap.md). Historical release evidence: [release-status-v13.md](../implementation/release-status-v13.md) and other `implementation/release-status-v*.md` files.
 
@@ -20,14 +20,22 @@ Every milestone requires actual nonmock integration tests and exact-HEAD CI; do 
 
 **Real integrated proof delivered, still PARTIAL: [PR #91](https://github.com/dinhvansh/dataflow-engine/pull/91) merged `546b447`.** A single GitHub runner started Microsoft SQL Server 2022 + ClickHouse 25.3, streamed **10,000 real fixture `Erp.PartTran` rows in 40 batches** using the existing Go Reader/Engine/Writer, reconciled 10,000 distinct keys, numeric sum **50,005,000** and **88** Vietnamese-text records across source/destination; ClickHouse DQ, initial publication and replay passed; deliberately duplicate records failed DQ without touching the published target. Read-only SQL Server `qa_erp_reader` permission checks passed; ERP actual untouched. Exact PR head `06ebce9`: [general CI run 39102011212](https://github.com/dinhvansh/dataflow-engine/actions/runs/39102011212) PASS and [real cross-service SQL QA run 39102011294](https://github.com/dinhvansh/dataflow-engine/actions/runs/39102011294) PASS, **`=== RUN` + `REAL QA E2E PASS`** in logs; [test explanation](core-real-sqlserver-clickhouse-e2e.md).
 
-**Hard remaining core/funding-demo gates:**
-1. **Operator-triggered workflow, not Go test harness:** actual API/Canvas Run with connected source and destination and PostgreSQL persisted run/step/job states, progress, cancellation and visible result.
-2. **Real incremental + correctness:** change capture/watermark; restart/checkpoint, duplicate/lost batch safety, retry/idempotency/lease fencing, delete semantics and schema drift. Must not promise exactly-once or physical deletes unless proven.
-3. **Unified materialization execution:** real raw/ODS → dbt dependencies A→B→C → incremental/table materialization → real DQ → durable publish/rollback using one executable DAG and failure isolation.
-4. **Failure/acceptance matrix:** real services with injected network failure/crash/revocation, verified no unsafe publish, safe replay/recovery, source/target reconciliation, reproducible performance measurement including 7m+ row benchmark if resource-adequate.
-5. **Investor walkthrough:** documented one-command disposable startup, seeded fixture, operator Run, monitor graph/logs, metrics, before/after dataset and failure recovery in a real end-to-end result. Until this works, investor-demo readiness remains **NOT READY**, despite #91 partial proof.
+**UPDATED CORE-RUN-1/2/3/4 proof (replaces the earlier #91-only plan above):** [full exact-head evidence and operator QA setup](CORE_RUN_1_4_REAL_ACCEPTANCE.md).
+- [#93](https://github.com/dinhvansh/dataflow-engine/pull/93) passed authenticated HTTP → PostgreSQL → real SQL Server → ClickHouse with persisted source rowversion checkpoint and no-op second incremental (200 then 0 rows).
+- [#94](https://github.com/dinhvansh/dataflow-engine/pull/94) passed fenced recovered real partial write, no stale cursor overwrite and bounded simulated transient retry; physical 201 vs 200 distinct versions proves at-least-once—not exact-once.
+- [#95](https://github.com/dinhvansh/dataflow-engine/pull/95) passed integrated operator-triggered **10,000-row SQL Server→PG→ClickHouse→real dbt A→B→C→DQ→physical versioned Publish** on four disposable real services. [General CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/39108304868) PASS; [SQL QA E2E](https://github.com/dinhvansh/dataflow-engine/actions/runs/39108306006) PASS.
+- [#96](https://github.com/dinhvansh/dataflow-engine/pull/96) passed four-service external publish crash-ack replay, idempotent exact UUID rollback, source model drift rejection, checkpoint retention. [General CI](https://github.com/dinhvansh/dataflow-engine/actions/runs/39109246343) PASS; [SQL QA E2E](https://github.com/dinhvansh/dataflow-engine/actions/runs/39109246331) PASS. Both post-merge main workflows PASS.
+- **Operator frontend / current work:** isolated QA form in **Pipelines** starts this real core API with server-validated selected managed stream+saved target Visual model, polls observed PG child states and exposes confirmed rollback only when previous physical version exists. This is **NOT yet the existing React Flow SQL DAG Canvas Run path**. Treat front-end build as wiring evidence only, not hands-on browser deployment QA.
+- **7,000,000+ performance:** explicit guarded owner-local SQL Server QA seeding + benchmark scripts were added in #96 but **NO 7m ingestion/dbt/full E2E benchmark has actually been run or measured**. No rows/s, RAM, CPU, crash SLA or investor-scale claim can be inferred from code alone.
 
-**Immediate engineering next step:** replace #91's integration-test-only orchestration with a **real runnable, persisted pipeline core entrypoint** (CLI/API via the existing worker/queue). Require source SELECT-only + ClickHouse scratch in disposable QA and stored run evidence; link Canvas Run/monitor only when the backend path passes. No UI polishing or unrelated features. Update both canonical documents after real code and CI PASS; do not prioritize paperwork over execution.
+**Funding/demo acceptance still OPEN:**
+1. Run complete **real deployed browser operator walkthrough** on disposable QA with actual API permissions, PG state, source and output reconciliation, DQ/rollback, observable failures and user reproducibility.
+2. Execute process SIGKILL/network outage/schema drift/concurrent host and authorization failure injection as appropriate; current lease-expiry and simulated HTTP 503 tests are not equivalent to real host failure.
+3. Capture **measured** 7m+ SQL source to ClickHouse → incremental/checkpoint, dbt/DQ/publish correctness and throughput/CPU/RAM/disk under owned QA hardware; secure explicit operator approval and store evidence before marking PASS. Existing benchmark launcher only measures managed raw ingest and is not 7m full DAG proof.
+4. Verify real workspace IdP/Vault/TLS/allowlisted egress/tenant isolation and production operations independently. No real ERP credentials or DML/DDL, no production GO.
+5. Only then evaluate fundraising demo readiness; production release requires separate security approval. **No UI cosmetics ahead of the remaining functional gates.**
+
+**Immediate next engineering task after this frontend PR:** QA browser-to-backend reproducible walkthrough, real fault injection and real 7m-scale performance on owned disposable hardware. Update this roadmap/handoff with actual measured artifacts; never silently mark pending as complete.
 
 ## 1. Product direction
 
