@@ -1,0 +1,29 @@
+captured_utc=2026-10-18T23:56:01Z
+git_sha=ee8401e0ca1b21c666d2dd365f11142f478fce3c
+cpu_count=3
+cpu_model=AMD EPYC 9V45 96-Core Processor
+memory_total_bytes=10452471808
+memory_available_bytes=9667764224
+swap_total_bytes=0
+workspace_total_bytes=33770192896
+workspace_used_bytes=29646663680
+workspace_available_bytes=2388766720
+workspace_use_percent=93%
+docker_server=28.4.0\ndocker_driver=vfs\ndocker_cpus=3\ndocker_memory_bytes=10452471808\ndocker_root=/var/lib/docker
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          5         5         3.177GB   233.7MB (7%)
+Containers      7         0         572.7MB   572.7MB (100%)
+Local Volumes   4         4         1.758GB   0B (0%)
+Build Cache     15        0         0B        0B
+containers:
+dataflow-localqa-api|Exited (255) 2 minutes ago|dataflow-localqa|dataflow-localqa|local-qa
+dataflow-localqa-dbt-worker-1|Exited (255) 2 minutes ago|dataflow-localqa|dataflow-localqa|local-qa
+dataflow-localqa-clickhouse-init-1|Exited (0) 2 days ago|dataflow-localqa|dataflow-localqa|local-qa
+dataflow-localqa-mssql-init-1|Exited (0) 2 days ago|dataflow-localqa|dataflow-localqa|local-qa
+dataflow-localqa-postgres|Exited (255) 2 minutes ago|dataflow-localqa|dataflow-localqa|local-qa
+dataflow-localqa-mssql|Exited (255) 2 minutes ago|dataflow-localqa|dataflow-localqa|local-qa
+dataflow-localqa-clickhouse|Exited (255) 2 minutes ago|dataflow-localqa|dataflow-localqa|local-qa
+qa_volumes:
+dataflow-localqa_ch-data|com.docker.compose.project=dataflow-localqa,com.docker.compose.version=2.40.3,com.docker.compose.volume=ch-data,com.dataflow.owner=dataflow-localqa,com.dataflow.role=local-qa,com.docker.compose.config-hash=4acbfcb2735936032d473f14fa98df9255454b0c8023283be5fda3fb9958f89e
+dataflow-localqa_mssql-data|com.dataflow.role=local-qa,com.docker.compose.config-hash=c37622da1f693ba551cd3a4cd306c06eb1e66b9f0386ba17db87386960bf0655,com.docker.compose.project=dataflow-localqa,com.docker.compose.version=2.40.3,com.docker.compose.volume=mssql-data,com.dataflow.owner=dataflow-localqa
+dataflow-localqa_pg-data|com.dataflow.owner=dataflow-localqa,com.dataflow.role=local-qa,com.docker.compose.config-hash=dbd7107ef3c2c528a5612bae7cdc5717deb66480addaa6cebe9d19ce806f4642,com.docker.compose.project=dataflow-localqa,com.docker.compose.version=2.40.3,com.docker.compose.volume=pg-data
