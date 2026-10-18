@@ -18,8 +18,8 @@
 
 [**Architecture**](#architecture) ·
 [**Features & boundaries**](#what-is-implemented) ·
-[**Screenshots**](#console-gallery--synthetic-qa-snapshots) ·
-[**Local QA**](#run-the-local-qa-suite) ·
+[**Screenshots**](#console-gallery) ·
+[**Local QA**](#recommended-run-the-local-qa-suite-first) ·
 [**Get started**](#get-started) ·
 [**Roadmap**](#roadmap)
 
@@ -155,7 +155,7 @@ The current React workspace includes **Overview**, **Sync Jobs**, **Connections*
 > [!NOTE]
 > The views below are **actual screenshots from the synthetic QA Web Console on 17 October 2026**, not mockups and **not evidence of live ERP E2E**. The current UI and feature availability may have changed since capture. All API token fields were left blank.
 
-### Console gallery — synthetic QA snapshots
+### Console gallery
 
 | Overview | Transform Studio | Data Lineage |
 |:---:|:---:|:---:|
