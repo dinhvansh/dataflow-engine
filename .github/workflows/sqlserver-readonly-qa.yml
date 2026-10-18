@@ -74,6 +74,24 @@ jobs:
           go test ./internal/connectors/sqlserver \
             -run 'Test(DisposableSQLServerReadOnlyIntegration|SnapshotReaderSQLServerIntegration|KeySnapshotBinaryRowVersionSQLServerIntegration)$' \
             -count=1 -timeout=3m -v
+      - name: Start disposable PostgreSQL for scoped TEST grants
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name df-qa-test-pg -p 127.0.0.1:5434:5432 -e POSTGRES_DB=dataflow_test_ci -e POSTGRES_USER=dataflow_test_ci -e POSTGRES_PASSWORD=ci-pg-scope-password postgres:16-alpine
+          for i in $(seq 1 50); do
+            if docker exec df-qa-test-pg pg_isready -U dataflow_test_ci -d dataflow_test_ci >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          docker exec df-qa-test-pg pg_isready -U dataflow_test_ci -d dataflow_test_ci
+      - name: Test verified TEST grant and real read-only SQL driver session
+        shell: bash
+        env:
+          DATAFLOW_INTEGRATION_POSTGRES_DSN: "postgres://dataflow_test_ci:ci-pg-scope-password@127.0.0.1:5434/dataflow_test_ci?sslmode=disable"
+          DATAFLOW_INTEGRATION_PG_ISOLATED: "true"
+        run: |
+          set -euo pipefail
+          go test ./internal/connections -run '^TestScopedSQLServerSessionIntegration$' -count=1 -timeout=4m -v
       - name: Failure diagnostics (disposable SQL Server only)
         if: failure()
         shell: bash
