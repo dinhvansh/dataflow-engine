@@ -177,7 +177,8 @@ func realCoreIntegration(t *testing.T,withFaults bool){
  if e=svc2.reconcileOneCore(ctx);e!=nil{t.Fatal(e)} // actual publish by UUID
  _,finished:=coreHTTP(t,api.URL,"GET","/api/v1/core/runs?id="+runID,nil)
  if finished["status"]!="succeeded"||finished["rows_verified"]!=float64(1)||
-  finished["managed_status"]!="succeeded"||finished["model_flow_status"]!="succeeded"{
+  finished["has_backup"]!=false||finished["managed_status"]!="succeeded"||
+  finished["model_flow_status"]!="succeeded"{
   t.Fatalf("unified final product state not successful: %+v",finished)
  }
  actual,e:=cl.Query(ctx,`SELECT stream,events FROM scratch.`+targetName+` FORMAT TabSeparatedRaw`)
@@ -260,7 +261,8 @@ func realCoreIntegration(t *testing.T,withFaults bool){
   t.Fatalf("publication crash-window replay failed: %v",e)
  }
  _,state:=coreHTTP(t,api.URL,"GET","/api/v1/core/runs?id="+secondRun,nil)
- if state["status"]!="succeeded"||state["rows_verified"]!=float64(1){
+ if state["status"]!="succeeded"||state["rows_verified"]!=float64(1)||
+  state["has_backup"]!=true{
   t.Fatalf("replayed publication not acknowledged: %+v",state)
  }
  afterReplay,e:=cl.UUID(ctx,targetName)
