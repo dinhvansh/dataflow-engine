@@ -11,7 +11,7 @@ ALTER TABLE connection_security_audit
 ALTER TABLE connection_security_audit
  ADD CONSTRAINT connection_security_audit_action_check CHECK (
   action IN ('draft_created','reference_staged','reference_rotated',
-             'rotation_inspected','rotation_reviewed','rotation_reconciled')
+             'rotation_inspected','rotation_reviewed','rotation_reconciled','compensation_planned')
  );
 
 CREATE TABLE IF NOT EXISTS connection_security_rotation_recoveries (
