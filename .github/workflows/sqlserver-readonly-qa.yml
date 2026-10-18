@@ -102,6 +102,7 @@ jobs:
             -e CLICKHOUSE_DB=scratch \
             -e CLICKHOUSE_USER=default \
             -e CLICKHOUSE_PASSWORD=qa-disposable-clickhouse-password \
+            -e CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 \
             clickhouse/clickhouse-server:25.3
           ready=0
           for i in $(seq 1 60); do
@@ -146,6 +147,24 @@ jobs:
         run: |
           set -euo pipefail
           go test ./cmd/dataflow -run '^TestCoreRun2RealCrashRetryCheckpointIntegration$' -count=1 -timeout=4m -v
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pinned real dbt Core and ClickHouse adapter for CORE-RUN-3
+        run: python -m pip install 'dbt-core==1.11.0' 'dbt-clickhouse==1.10.3'
+      - name: CORE-RUN-3 REAL authenticated operator SQL Server to dbt A-B-C DQ Publish
+        shell: bash
+        env:
+          DATAFLOW_INTEGRATION_PG_ISOLATED: "true"
+          DATAFLOW_INTEGRATION_POSTGRES_DSN: "postgres://dataflow_test_ci:ci-pg-scope-password@127.0.0.1:5434/dataflow_test_ci?sslmode=disable"
+          DATAFLOW_INTEGRATION_CH_ISOLATED: "true"
+          DATAFLOW_INTEGRATION_CH_URL: "http://127.0.0.1:18123"
+          DATAFLOW_INTEGRATION_CH_USER: "default"
+          DATAFLOW_INTEGRATION_CH_PASSWORD: "qa-disposable-clickhouse-password"
+          DATAFLOW_INTEGRATION_DBT_BIN: "dbt"
+        run: |
+          set -euo pipefail
+          go test ./cmd/dataflow -run '^TestCoreRun3UnifiedRealFourServiceIntegration$' -count=1 -timeout=7m -v
       - name: Failure diagnostics (disposable SQL Server only)
         if: failure()
         shell: bash
