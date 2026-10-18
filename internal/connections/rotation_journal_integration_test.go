@@ -76,6 +76,11 @@ func TestRotationJournalIntegration(t *testing.T){
 		t.Fatalf("cross-workspace journal accepted: %v",err)
 	}
 	vault:=&fakeJournalVault{versions:map[uint64][]byte{}}
+	// Read-only operator diagnosis never guesses that a Vault outage is an
+	// absent version; no state or credentials are changed on probe failure.
+	if _,err=journal.Inspect(ctx,admin,ws,ticket.ID(),vault);!errors.Is(err,ErrUnavailable){
+		t.Fatalf("missing Vault version was misreported: %v",err)
+	}
 	if err=journal.Apply(ctx,admin,ws,ticket.ID(),vault);!errors.Is(err,ErrUnavailable){
 		t.Fatalf("missing vault version moved metadata: %v",err)
 	}
@@ -84,12 +89,27 @@ func TestRotationJournalIntegration(t *testing.T){
 		WHERE id::text=$1`,profile.ID).Scan(&version,&revision);err!=nil{t.Fatal(err)}
 	if version!=1||revision!=2{t.Fatalf("failed probe mutated metadata: %d/%d",version,revision)}
 	vault.versions[2]=[]byte("synthetic-rotated-only-in-disposable-memory")
+	inspection,err:=journal.Inspect(ctx,admin,ws,ticket.ID(),vault)
+	if err!=nil||inspection.State()!="prepared"||!inspection.TargetReadable()||
+		!inspection.MetadataPrepared()||inspection.MetadataApplied()||inspection.NeedsReview(){
+		t.Fatalf("prepared inspection mismatch: %v",err)
+	}
+	redacted,err:=json.Marshal(inspection)
+	if err!=nil||string(redacted)!=`"[REDACTED]"` {t.Fatal("inspection leaked metadata")}
+	if strings.Contains(inspection.String(),ticket.handle)||strings.Contains(inspection.GoString(),ticket.ID()){t.Fatal("inspection leaked sensitive identifiers")}
+	for _,b:=range vault.lastBytes{if b!=0{t.Fatal("inspection did not zero credential bytes")}}
 	if err=journal.Apply(ctx,admin,ws,ticket.ID(),vault);err!=nil{t.Fatal(err)}
 	for _,b:=range vault.lastBytes{if b!=0{t.Fatal("credential bytes not zeroed")}}
 	if err=journal.Apply(ctx,admin,ws,ticket.ID(),vault);err!=nil{t.Fatalf("replay not idempotent: %v",err)}
 	if err=pg.QueryRow(ctx,`SELECT secret_version,revision FROM connection_security_profiles
 		WHERE id::text=$1`,profile.ID).Scan(&version,&revision);err!=nil{t.Fatal(err)}
 	if version!=2||revision!=3{t.Fatalf("metadata CAS not applied exactly once: %d/%d",version,revision)}
+	inspection,err=journal.Inspect(ctx,admin,ws,ticket.ID(),vault)
+	if err!=nil||inspection.State()!="applied"||!inspection.MetadataApplied()||
+		inspection.MetadataPrepared()||inspection.NeedsReview(){t.Fatalf("applied inspection mismatch: %v",err)}
+	if _,err=journal.Inspect(ctx,admin,other,ticket.ID(),vault);!errors.Is(err,ErrForbidden){
+		t.Fatalf("cross-workspace inspection exposed: %v",err)
+	}
 	var applied int
 	if err=pg.QueryRow(ctx,`SELECT COUNT(*) FROM connection_security_rotation_events
 		WHERE rotation_id=$1::uuid AND action='applied'`,ticket.ID()).Scan(&applied);err!=nil{t.Fatal(err)}
@@ -103,6 +123,10 @@ func TestRotationJournalIntegration(t *testing.T){
 	vault.versions[3]=[]byte("synthetic-version-3")
 	if _,err=pg.Exec(ctx,`UPDATE connection_security_grants SET revoked_at=now()
 		WHERE workspace_id=$1 AND actor_id=$2 AND scope='MANAGE'`,ws,admin);err!=nil{t.Fatal(err)}
+	readsBefore:=vault.reads
+	if _,err=journal.Inspect(ctx,admin,ws,ticket2.ID(),vault);!errors.Is(err,ErrForbidden)||vault.reads!=readsBefore{
+		t.Fatalf("revoked admin inspected Vault: %v",err)
+	}
 	if err=journal.Apply(ctx,admin,ws,ticket2.ID(),vault);!errors.Is(err,ErrForbidden){
 		t.Fatalf("revoked admin can apply: %v",err)
 	}
@@ -126,6 +150,14 @@ func TestRotationJournalIntegration(t *testing.T){
 	if err=pg.QueryRow(ctx,`SELECT secret_version FROM connection_security_profiles
 		WHERE id::text=$1`,profile.ID).Scan(&version);err!=nil{t.Fatal(err)}
 	if version!=3{t.Fatalf("conflict unexpectedly changed version: %d",version)}
+	inspection,err=journal.Inspect(ctx,admin,ws,ticket3.ID(),vault)
+	if err!=nil||inspection.State()!="needs_review"||!inspection.NeedsReview()||
+		inspection.MetadataPrepared()||inspection.MetadataApplied(){
+		t.Fatalf("conflict inspection failed closed incorrectly: %v",err)
+	}
+	if _,err=journal.Inspect(ctx,admin,ws,ticket3.ID(),nil);!errors.Is(err,ErrUnavailable){
+		t.Fatalf("missing provider inspected journal: %v",err)
+	}
 	if _,err=journal.Prepare(ctx,admin,ws,profile.ID,5);!errors.Is(err,ErrForbidden){
 		t.Fatalf("unreconciled failed rotation unblocked: %v",err)
 	}
