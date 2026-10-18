@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strconv"
+	"strconv"\n "strings"
 )
 
 // CurrentVaultVersion is separate from Vault.Read. A pinned readable version
@@ -22,7 +22,7 @@ func(v *KVv2Vault) latestVersion(ctx context.Context,ref SecretRef)(uint64,error
 		!validWorkspace(ref.WorkspaceID())||ref.OpaqueHandle()=="" {
 		return 0,ErrUnavailable
 	}
-	if !validIdentity(ref.OpaqueHandle()) {return 0,ErrInvalid}
+	if !opaqueHandle.MatchString(ref.OpaqueHandle())||\n  !strings.HasPrefix(ref.OpaqueHandle(),"ref/")||\n  strings.Contains(ref.OpaqueHandle(),"//")||strings.HasSuffix(ref.OpaqueHandle(),"/"){return 0,ErrInvalid}
 	dst:=*v.base
 	dst.Path="/v1/"+v.mount+"/metadata/workspaces/"+ref.WorkspaceID()+"/"+ref.OpaqueHandle()[4:]
 	dst.RawPath=""
