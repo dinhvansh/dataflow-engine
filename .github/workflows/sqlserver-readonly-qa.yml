@@ -1,0 +1,81 @@
+name: SQL Server Disposable Read-Only QA
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sqlserver-readonly-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  sqlserver-readonly:
+    name: SQL Server 2022 fixture + SELECT-only integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # Disposable, runner-local fixture credentials, never reuse for real SQL.
+      MSSQL_SA_PASSWORD: "DFQA_Disposable_SA_2026!"
+      QA_SEED_PASSWORD: "DFQA_Disposable_Seed_2026!"
+      QA_READER_PASSWORD: "DFQA_Disposable_Read_2026!"
+      DATAFLOW_INTEGRATION_MSSQL_ISOLATED: "true"
+      DATAFLOW_INTEGRATION_SQLSERVER_DSN: "sqlserver://qa_erp_reader:DFQA_Disposable_Read_2026!@127.0.0.1:11433?database=DataFlowFixtureQA&encrypt=true&TrustServerCertificate=true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Provision isolated, loopback-only SQL Server 2022
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker network create --label com.dataflow.owner=dataflow-sqlserver-ci dataflow-sqlserver-ci
+          docker run -d --name df-qa-sqlserver \
+            --network dataflow-sqlserver-ci --network-alias mssql \
+            --label com.dataflow.owner=dataflow-sqlserver-ci \
+            -p 127.0.0.1:11433:1433 --memory=3072m --cpus=2 \
+            -e ACCEPT_EULA=Y -e MSSQL_PID=Developer \
+            -e MSSQL_SA_PASSWORD="$MSSQL_SA_PASSWORD" \
+            mcr.microsoft.com/mssql/server:2022-latest
+          ready=0
+          for i in $(seq 1 75); do
+            if docker exec df-qa-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+              -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" \
+              -Q "SELECT 1" >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 3
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo "Disposable SQL Server did not become healthy" >&2
+            exit 1
+          fi
+          test "$(docker inspect -f '{{index .Config.Labels "com.dataflow.owner"}}' df-qa-sqlserver)" = dataflow-sqlserver-ci
+      - name: Seed the existing disposable ERP-like fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network dataflow-sqlserver-ci \
+            -v "$PWD/deploy/local-qa/sql:/qa/sql:ro" \
+            -e MSSQL_SA_PASSWORD -e QA_SEED_PASSWORD -e QA_READER_PASSWORD \
+            --entrypoint /bin/bash \
+            mcr.microsoft.com/mssql/server:2022-latest /qa/sql/init-mssql.sh
+      - name: Test real SQL driver, SELECT grants, snapshot and rowversion
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test ./internal/connectors/sqlserver \
+            -run 'Test(DisposableSQLServerReadOnlyIntegration|SnapshotReaderSQLServerIntegration|KeySnapshotBinaryRowVersionSQLServerIntegration)$' \
+            -count=1 -timeout=3m -v
+      - name: Failure diagnostics (disposable SQL Server only)
+        if: failure()
+        shell: bash
+        run: |
+          docker logs df-qa-sqlserver --tail 70 2>/dev/null || true
