@@ -9,8 +9,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: core-run6-real-faults-\${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: \${{ github.event_name == 'pull_request' }}
+  group: core-run6-real-faults-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   real-faults:
     runs-on: ubuntu-latest
