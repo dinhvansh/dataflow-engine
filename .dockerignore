@@ -14,3 +14,4 @@ qa-results/**
 *.zip
 *.log
 DATAFLOW_LOCAL_QA_RESULTS.zip
+deploy/local-qa/.qa-build-ca.*

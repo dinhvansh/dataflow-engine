@@ -12,6 +12,16 @@ source "$root/.env.qa.local"
 set +a
 # Public synthetic token only; browser traces must NEVER contain a private bearer.
 export DATAFLOW_LIVE_API_TOKEN="synthetic-live-browser-token-not-a-secret"
+# Buildx Bake forbids reading /etc/ssl directly. Copy ONLY the public CA trust
+# bundle into a one-use ignored file inside this verified QA workspace.
+# Preserve explicit operator trust roots; never disable certificate validation.
+trust_source="${CODEX_PROXY_CERT:-/etc/ssl/certs/ca-certificates.crt}"
+[[ -r "$trust_source" ]] || { echo "Trusted CA bundle is unreadable" >&2; exit 1; }
+qa_build_ca=$(mktemp "$here/.qa-build-ca.XXXXXXXX")
+trap 'rm -f "$qa_build_ca"' EXIT
+cp "$trust_source" "$qa_build_ca"
+chmod 600 "$qa_build_ca"
+export CODEX_PROXY_CERT="$qa_build_ca"
 docker compose --project-name dataflow-localqa --env-file .env.qa.local \
   -f deploy/local-qa/compose.qa.yml --profile operator up -d --build --wait dbt-worker api web
 for url in http://127.0.0.1:18080/healthz http://127.0.0.1:15173/healthz; do
