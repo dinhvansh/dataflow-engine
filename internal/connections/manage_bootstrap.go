@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"os"
 	"regexp"
 	"time"
 
@@ -51,7 +52,9 @@ var bootstrapRequestID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a
 // At least two distinct public keys must be present, and exactly two different
 // signers must approve a specific workspace+target+request with a short expiry.
 func NewIsolatedManageBootstrap(catalog SecureCatalog, verifier *RS256Verifier, operatorKeys map[string]ed25519.PublicKey, isolated bool) (*ManageBootstrap,error) {
-	if !isolated || catalog.PG==nil || verifier==nil || len(operatorKeys)<2 || len(operatorKeys)>16 {
+	if !isolated || os.Getenv(secureViewIsolatedFlag)!="true" ||
+		os.Getenv("DATAFLOW_INTEGRATION_PG_ISOLATED")!="true" ||
+		catalog.PG==nil || verifier==nil || len(operatorKeys)<2 || len(operatorKeys)>16 {
 		return nil,ErrUnavailable
 	}
 	keys:=make(map[string]ed25519.PublicKey,len(operatorKeys))
@@ -136,6 +139,10 @@ func (b *ManageBootstrap) authorizeEnvelope(targetJWT string, request ManageBoot
 // The workspace lock serializes concurrent bootstrap attempts. The grant and
 // immutable evidence commit atomically; failed audit rolls both back.
 func (b *ManageBootstrap) Apply(ctx context.Context,targetJWT string,request ManageBootstrapRequest)(bool,error){
+	if os.Getenv(secureViewIsolatedFlag)!="true" ||
+		os.Getenv("DATAFLOW_INTEGRATION_PG_ISOLATED")!="true" {
+		return false,ErrUnavailable
+	}
 	actor,digest,err:=b.authorizeEnvelope(targetJWT,request)
 	if err!=nil{return false,err}
 	if b.catalog.PG==nil{return false,ErrUnavailable}
