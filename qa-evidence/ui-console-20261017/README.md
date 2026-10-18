@@ -26,4 +26,8 @@ Captured from the running synthetic QA Web Console on 2026-10-17. The API token 
 
 ![Incremental CDC](06-incremental-cdc.png)
 
-These are visual evidence only. Functional and E2E acceptance results remain documented separately; screenshots do not replace test evidence.
+## Evidence and freshness
+
+These six PNGs were captured on **17 October 2026** from the synthetic QA console (not live production). They were reviewed together in [PR #25](https://github.com/dinhvansh/dataflow-engine/pull/25); the API token inputs appear empty, and PNG-format/metadata inspection found no secret-bearing text chunks. Sample schema/table names and scratch fixtures are visible; no customer records or production connection strings appear in the reviewed previews.
+
+**This is a historical UI snapshot.** Later UI and backend foundation PRs may have changed the look and capabilities. Screenshots do **not** prove live Epicor E2E, credential safety in every runtime state, Data Quality results or production readiness. Functional and E2E acceptance remain documented separately in the [canonical handoff](../../docs/PROJECT_HANDOFF_LATEST.md) and [master roadmap](../../docs/MASTER_ROADMAP_AND_STATUS.md).
