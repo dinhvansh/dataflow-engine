@@ -222,6 +222,7 @@ func main() {
 	mux.HandleFunc("/api/v1/bootstrap/history", svc.history)
 	mux.HandleFunc("/api/v1/managed/streams", svc.streamAPI)
 	mux.HandleFunc("/api/v1/managed/runs", svc.managedRunAPI)
+	mux.HandleFunc("/api/v1/core/runs", svc.coreRunsAPI)
 	mux.HandleFunc("/api/v1/managed/schedules", svc.scheduleAPI)
 	mux.HandleFunc("/api/v1/reconcile/runs", svc.reconciliationAPI)
 	mux.HandleFunc("/api/v1/reconcile/hard-delete", svc.hardDeleteAPI)
@@ -270,12 +271,17 @@ func main() {
 	registryErr := svc.checkConnectionRegistrySchema(registryCtx)
 	registryCancel()
 	if registryErr != nil {log.Fatal(registryErr)}
-	root, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	coreCtx, coreStop := context.WithTimeout(context.Background(), 10*time.Second)
+ coreErr := svc.checkCoreSchema(coreCtx)
+ coreStop()
+ if coreErr != nil { log.Fatal(coreErr) }
+ root, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	svc.startManagedDispatcher(root)
 	svc.startManagedScheduler(root)
 	svc.startSQLDAGDispatcher(root)
 	svc.startAutoBuildCoordinator(root)
+	svc.startCoreCoordinator(root)
 	go func() {
 		<-root.Done()
 		shutdownCtx, done := context.WithTimeout(context.Background(), 15*time.Second)
