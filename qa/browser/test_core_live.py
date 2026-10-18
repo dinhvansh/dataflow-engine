@@ -207,10 +207,14 @@ def operator(page, stream_id, model_id):
     return section
 
 
-def execute_ui_run(page, section):
+def execute_ui_run(page, section, prior_id=None):
     section.get_by_role("button", name="Run complete core pipeline").click()
     page.get_by_role("button", name="Start CORE Run").click()
     run_input = section.get_by_label("Core run UUID")
+    # The form retains the previous persisted UUID until the new POST returns.
+    # Do not accidentally count the old successful run as this new one.
+    if prior_id is not None:
+        expect(run_input).not_to_have_value(prior_id, timeout=30000)
     expect(run_input).to_have_value(re.compile(r"^[a-f0-9-]{36}$"), timeout=15000)
     run_id = run_input.input_value()
     observed = section.locator('[aria-label="Observed real core pipeline run"]')
@@ -261,7 +265,8 @@ def test_core_run5_full_live_browser():
             section.get_by_label("Core source stream").select_option(stream_id)
             section.get_by_label("Core final model").select_option(model_id)
             section.get_by_label("Core final output unique key").fill("stream")
-            second_id, second = execute_ui_run(page, section)
+            second_id, second = execute_ui_run(page, section, prior_id=first_id)
+            assert second_id != first_id, "Second operator POST must persist a new UUID"
             assert second["has_backup"] is True
             second_uuid = ch(
                 "SELECT toString(uuid) FROM system.tables "
