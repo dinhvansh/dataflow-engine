@@ -59,7 +59,7 @@ def test_crash_after_real_dbt_claim_and_fenced_reclaim():
     dbt_id=pg("INSERT INTO dbt_runs(model_id,model_name,materialization,"
        "target_database,target_relation,source_definition,compiled_sql) "
        "SELECT id,name,'view','scratch','dfv_'||name,definition,compiled_sql "
-       f"FROM transform_models WHERE name='{name}' RETURNING id")
+       f"FROM transform_models WHERE name='{name}' RETURNING id").splitlines()[0]
     assert re.fullmatch(r"[0-9a-f-]{36}",dbt_id)
     worker=service("dbt-worker")
     # With only this service in QA claim-hold mode, it holds 12s after
@@ -76,7 +76,7 @@ def test_crash_after_real_dbt_claim_and_fenced_reclaim():
     # sleep for the normal 10-minute lease. Never touch actual ERP/PG.
     assert pg("UPDATE dbt_runs SET lease_until=clock_timestamp()-interval '1 second' "
         f"WHERE id='{dbt_id}' AND lease_owner='{old_owner}'::uuid "
-        f"AND fence_token={old_fence} RETURNING id") == dbt_id
+        f"AND fence_token={old_fence} RETURNING id").splitlines()[0] == dbt_id
     f.shell("docker","start",worker)
     try:
         second=until(lambda: (x if int(x[1])==2 else None)
