@@ -1,0 +1,45 @@
+name: PR25 isolated screenshot review
+on:
+  push:
+    branches:
+      - qa/pr25-image-review-20261018
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate PNG and render review previews
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check pillow==11.3.0
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageOps
+          import io, base64, re
+          base=Path('qa-evidence/ui-console-20261017')
+          paths=sorted(base.glob('*.png'))
+          assert len(paths)==6, f'Expected six screenshots, got {len(paths)}'
+          redflags=(b'password=',b'api_key',b'bearer ',b'access_token',b'private key',b'secret_key',b'srverptest',b'erpdbtest')
+          for p in paths:
+              data=p.read_bytes()
+              assert data.startswith(b'\x89PNG\r\n\x1a\n'), f'Not PNG: {p.name}'
+              im=Image.open(io.BytesIO(data))
+              im.verify()
+              im=Image.open(io.BytesIO(data))
+              assert im.format=='PNG' and im.width>=900 and im.height>=500, f'Unusual dimensions: {p.name}: {im.size}'
+              metadata=' '.join(f'{k}={v}' for k,v in im.info.items() if isinstance(v,(str,int,float))).encode()
+              warnings=[s.decode() for s in redflags if s in metadata.lower()]
+              assert not warnings, f'Potential sensitive PNG metadata in {p.name}: {warnings}'
+              assert not any(s in data.lower() for s in redflags), f'Potential uncompressed sensitive text in {p.name}'
+              preview=ImageOps.exif_transpose(im).convert('RGB')
+              preview.thumbnail((1600,1000))
+              output=io.BytesIO()
+              preview.save(output,format='JPEG',quality=80,optimize=True)
+              print(f'PR25_SUMMARY|{p.name}|dimensions={im.width}x{im.height}|metadata_keys={list(im.info.keys())}|preview_bytes={len(output.getvalue())}')
+              print(f'PR25_IMAGE|{p.name}|{base64.b64encode(output.getvalue()).decode()}')
+          PY
