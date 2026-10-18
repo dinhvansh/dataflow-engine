@@ -39,8 +39,8 @@ func(v *KVv2Vault) latestVersion(ctx context.Context,ref SecretRef)(uint64,error
 		Data struct {
 			CurrentVersion uint64 `json:"current_version"`
 			Versions map[string]struct {
-				DeletionTime string `json:"deletion_time"`
-				Destroyed bool `json:"destroyed"`
+				DeletionTime *string `json:"deletion_time"`
+				Destroyed *bool `json:"destroyed"`
 			} `json:"versions"`
 		} `json:"data"`
 	}
@@ -49,7 +49,7 @@ func(v *KVv2Vault) latestVersion(ctx context.Context,ref SecretRef)(uint64,error
 		return 0,ErrUnavailable
 	}
 	item,ok:=obj.Data.Versions[strconv.FormatUint(obj.Data.CurrentVersion,10)]
-	if !ok||item.Destroyed||item.DeletionTime!="" {return 0,ErrUnavailable}
+	if !ok||item.Destroyed==nil||item.DeletionTime==nil||\n  *item.Destroyed||*item.DeletionTime!="" {return 0,ErrUnavailable}
 	return obj.Data.CurrentVersion,nil
 }
 
