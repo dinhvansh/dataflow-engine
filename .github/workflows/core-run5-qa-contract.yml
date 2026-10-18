@@ -1,0 +1,34 @@
+name: Core Run 5 QA Contract (static)
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deploy/local-qa/**"
+      - "qa/browser/test_core_live.py"
+      - ".github/workflows/core-run5-qa-contract.yml"
+  pull_request:
+    paths:
+      - "deploy/local-qa/**"
+      - "qa/browser/test_core_live.py"
+      - ".github/workflows/core-run5-qa-contract.yml"
+permissions:
+  contents: read
+jobs:
+  qa-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify operator scripts parse
+        run: |
+          bash -n deploy/local-qa/run-core-operator.sh
+          bash -n deploy/local-qa/verify-isolation.sh
+          python3 -m py_compile qa/browser/test_core_live.py
+      - name: Validate all services and QA-only environment bindings
+        env:
+          DATAFLOW_LIVE_API_TOKEN: synthetic-live-browser-token-not-a-secret
+        run: |
+          docker compose --project-name dataflow-localqa \
+            --env-file deploy/local-qa/.env.qa.example \
+            -f deploy/local-qa/compose.qa.yml --profile operator config --quiet
+          # This workflow DOES NOT run browser integration tests; only an
+          # owner-verified disposable full-stack operator run is acceptance.
