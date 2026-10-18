@@ -15,6 +15,12 @@ import(
  "github.com/dinhvansh/dataflow-engine/internal/engine"
 )
 var identifier=regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+// WriteHTTPError exposes only a response status, never a ClickHouse response
+// body which might contain sensitive query/connection information.
+// The managed queue uses this typed error to retry transient HTTP failures.
+type WriteHTTPError struct{ StatusCode int }
+func(e *WriteHTTPError)Error()string{return fmt.Sprintf("ClickHouse HTTP %d",e.StatusCode)}
+
 type Writer struct {
  Endpoint string
  Database,Table string
@@ -36,7 +42,7 @@ func (w *Writer) Write(ctx context.Context,b engine.Batch)error{
  req.Header.Set("Content-Type","application/x-ndjson")
  client:=w.Client;if client==nil{client=&http.Client{Timeout:5*time.Minute}}
  res,err:=client.Do(req);if err!=nil{return err};defer res.Body.Close()
- if res.StatusCode<200||res.StatusCode>=300{return fmt.Errorf("ClickHouse HTTP %d",res.StatusCode)}
+ if res.StatusCode<200||res.StatusCode>=300{return &WriteHTTPError{StatusCode:res.StatusCode}}
  return nil
 }
 // This initial writer requires a PRECREATED ClickHouse table with compatible column

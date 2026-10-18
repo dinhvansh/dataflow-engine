@@ -28,7 +28,7 @@ func(w *Writer)CountRunRows(ctx context.Context,runID string)(uint64,error){
  client:=w.Client;if client==nil{client=&http.Client{Timeout:5*time.Minute}}
  resp,err:=client.Do(req);if err!=nil{return 0,err};defer resp.Body.Close()
  raw,err:=io.ReadAll(io.LimitReader(resp.Body,4096));if err!=nil{return 0,err}
- if resp.StatusCode<200||resp.StatusCode>=300{return 0,fmt.Errorf("ClickHouse verification HTTP %d",resp.StatusCode)}
+ if resp.StatusCode<200||resp.StatusCode>=300{return 0,&WriteHTTPError{StatusCode:resp.StatusCode}}
  result,err:=strconv.ParseUint(strings.TrimSpace(string(raw)),10,64)
  if err!=nil{return 0,fmt.Errorf("invalid ClickHouse count response: %w",err)}
  return result,nil

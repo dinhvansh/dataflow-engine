@@ -2,9 +2,12 @@ package main
 
 import (
  "context"
+ "database/sql/driver"
  "errors"
  "fmt"
+ "io"
  "log"
+ "net"
  "time"
 
  "github.com/dinhvansh/dataflow-engine/internal/connectors/clickhouse"
@@ -145,6 +148,50 @@ func(s *server)finishManagedFailure(ctx context.Context,c managedClaim,reason er
  if tag.RowsAffected()!=1{return pgstate.ErrLeaseLost}
  return tx.Commit(ctx)
 }
+// Only transient transport/availability failures are retried. Deterministic
+// source schema, data validation, permission and DQ failures remain terminal.
+// Every retry MUST own a fresh lease/fence and unique destination attempt ID.
+func retryableManagedFailure(err error)bool{
+ if err==nil{return false}
+ var httpErr *clickhouse.WriteHTTPError
+ if errors.As(err,&httpErr){
+  switch httpErr.StatusCode{
+  case 429,500,502,503,504:return true
+  default:return false
+  }
+ }
+ if errors.Is(err,driver.ErrBadConn)||errors.Is(err,io.EOF)||errors.Is(err,io.ErrUnexpectedEOF)||
+   errors.Is(err,context.DeadlineExceeded){return true}
+ var networkErr net.Error
+ return errors.As(err,&networkErr) && (networkErr.Timeout()||networkErr.Temporary())
+}
+
+// finishManagedRetry atomically releases BOTH leases and re-queues the same
+// logical run. The checkpoint is never modified. The next claim increments
+// attempts and takes a new destination _run_id. Fail closed on stale fences.
+func(s *server)finishManagedRetry(ctx context.Context,c managedClaim)error{
+ if c.Attempts>=managedMaxAttempts{return errors.New("retry budget exhausted")}
+ tx,err:=s.pg.Begin(ctx);if err!=nil{return err};defer tx.Rollback(ctx)
+ tag,err:=tx.Exec(ctx,`UPDATE sync_checkpoints SET lease_owner=NULL,
+   lease_expires_at=NULL,updated_at=clock_timestamp()
+   WHERE stream_id=$1::uuid AND lease_owner=$2::uuid AND fence_token=$3
+     AND generation=$4 AND lease_expires_at>clock_timestamp()`,
+   c.StreamID,c.OwnerID,c.Fence,c.Generation)
+ if err!=nil{return err}
+ if tag.RowsAffected()!=1{return pgstate.ErrLeaseLost}
+ tag,err=tx.Exec(ctx,`UPDATE managed_runs SET status='queued',
+   lease_owner=NULL,lease_expires_at=NULL,
+   error_message='Transient transport error; retry queued',
+   rows_written=0,batches_written=0
+   WHERE id=$1::uuid AND stream_id=$2::uuid AND status='running'
+     AND lease_owner=$3::uuid AND fence_token=$4 AND dispatch_attempts=$5
+     AND lease_expires_at>clock_timestamp()`,
+   c.RunID,c.StreamID,c.OwnerID,c.Fence,c.Attempts)
+ if err!=nil{return err}
+ if tag.RowsAffected()!=1{return pgstate.ErrLeaseLost}
+ return tx.Commit(ctx)
+}
+
 func(s *server)checkManagedSchema(ctx context.Context)error{
  if !managedEnabled(){return nil}
  rows,err:=s.pg.Query(ctx,`SELECT dispatch_attempts,lease_owner,lease_expires_at,
@@ -212,6 +259,13 @@ func(s *server)runClaimedManaged(parent context.Context,c managedClaim){
  }
  if err==nil{return}
  if ctx.Err()!=nil{return} // shutdown or lost lease: reclaim from last checkpoint
+ if c.Attempts<managedMaxAttempts && retryableManagedFailure(err){
+  retryCtx,stop:=context.WithTimeout(context.Background(),10*time.Second)
+  retryErr:=s.finishManagedRetry(retryCtx,c)
+  stop()
+  if retryErr!=nil{log.Printf("managed %s bounded retry claim rejected: %v",c.RunID,retryErr)}
+  return
+ }
  finalCtx,stop:=context.WithTimeout(context.Background(),10*time.Second)
  defer stop()
  if failErr:=s.finishManagedFailure(finalCtx,c,err,stats);failErr!=nil{
