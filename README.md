@@ -11,21 +11,39 @@
 
 [![CI](https://github.com/dinhvansh/dataflow-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/dinhvansh/dataflow-engine/actions/workflows/ci.yml)
 ![Stage](https://img.shields.io/badge/stage-developer%20preview-0e7490)
-![Release](https://img.shields.io/badge/milestone-v1.3-164e63)
+![Last shipped milestone](https://img.shields.io/badge/last%20shipped-v1.3-164e63)
+![Security](https://img.shields.io/badge/V3.2B-security%20in%20progress-ca8a04)
+![Pipelines](https://img.shields.io/badge/V4%20typed%20runtime-synthetic%20only-64748b)
 ![Source](https://img.shields.io/badge/Epicor%20%2F%20SQL%20Server-SELECT--only-2563eb)
 
-[**Explore the architecture**](#architecture) ·
-[**See features**](#what-is-implemented) ·
-[**Run local QA**](#run-the-local-qa-suite) ·
+[**Architecture**](#architecture) ·
+[**Features & boundaries**](#what-is-implemented) ·
+[**Screenshots**](#console-gallery) ·
+[**Local QA**](#recommended-run-the-local-qa-suite-first) ·
 [**Get started**](#get-started) ·
 [**Roadmap**](#roadmap)
 
 </div>
 
 > [!IMPORTANT]
-> **Developer preview · Not production-ready.** Automated GitHub CI has verified Go, React, PostgreSQL, ClickHouse and dbt integration paths. **Real Epicor SQL Server end-to-end acceptance, Windows/local QA and large-table benchmarks are still pending.** Most write/materialization features are opt-in and restricted to disposable `scratch` environments.
+> **Developer preview · Not production-ready.** Go/React/PostgreSQL/ClickHouse/dbt code and synthetic integration paths are covered by GitHub CI. V3.2B/V3.2C/V3.3 and V4 foundations are **partially implemented in disconnected or synthetic test code**, not automatically available in the live console. **Real Epicor source acceptance, production IdP/Vault provisioning, driver-level Test Connection, unified pipeline execution, local E2E and 7M+ throughput benchmarks remain unverified.** Source ERP is strictly **SELECT-only**; writes target only explicitly approved disposable scratch fixtures.
 
 ---
+
+## Latest development status · 18 October 2026
+
+DataFlow has progressed beyond the **v1.3 shipped preview** into independently tested security, connection-management, orchestration and Data Quality foundations. The statuses below deliberately distinguish **code delivered** from **a live, user-operable feature**.
+
+| Workstream | Verified implementation | What is **not** yet live |
+|:---|:---|:---|
+| **V3.2B · Security** | Scoped grants, append-only audit and rotation journal; pinned RS256 verifier; optional HashiCorp KV-v2 adapter; default-off TLS 1.3 lab listener and JWT metadata GET. [#57](https://github.com/dinhvansh/dataflow-engine/pull/57) · [#58](https://github.com/dinhvansh/dataflow-engine/pull/58) · [#59](https://github.com/dinhvansh/dataflow-engine/pull/59) · [#61](https://github.com/dinhvansh/dataflow-engine/pull/61) · [#63](https://github.com/dinhvansh/dataflow-engine/pull/63) · [#64](https://github.com/dinhvansh/dataflow-engine/pull/64) · [#65](https://github.com/dinhvansh/dataflow-engine/pull/65) | Production SSO / JWKS life cycle, real Vault secret provisioning, credential write API and audited recovery operations. |
+| **V3.2C · Test Connection safety** | Offline DNS/CIDR/host/port admission with IP pinning and bounded synthetic TCP probe. [#67](https://github.com/dinhvansh/dataflow-engine/pull/67) · [#71](https://github.com/dinhvansh/dataflow-engine/pull/71) | Real SQL Server/ClickHouse driver authentication, network egress approval and scoped TEST endpoint. |
+| **V3.3 · Connection bindings** | Immutable *non-executable* pipeline-node/connection UUID + revision snapshots and tenant isolation in PostgreSQL. [#70](https://github.com/dinhvansh/dataflow-engine/pull/70) | ACTIVE connection lifecycle and execution-time job binding. |
+| **V4.0 · Unified pipelines** | Synthetic typed SOURCE → SYNC → TRANSFORM → QUALITY → PUBLISH DAG with snapshot/failure/cancellation tests. [#68](https://github.com/dinhvansh/dataflow-engine/pull/68) | Persistent mixed-step worker, live source/destination adapters or execution from the canvas. |
+| **V4.1 · Data Quality** | Six fail-closed metric/schema contract checks and synthetic proof that failed QUALITY blocks PUBLISH. [#69](https://github.com/dinhvansh/dataflow-engine/pull/69) | Real read-only metric extraction, persisted evidence and publication gate/rollback. |
+| **V4.2 · Efficient incremental** | The earlier v1.3 safe copy-on-write staging implementation remains available for TEST. | Efficient 7M+ row incremental pipeline, native physical deletes, throughput/latency benchmark against Airbyte. |
+
+**Canonical source of truth:** [Project handoff](docs/PROJECT_HANDOFF_LATEST.md) · [Master roadmap and status](docs/MASTER_ROADMAP_AND_STATUS.md) · [GitHub Actions CI](https://github.com/dinhvansh/dataflow-engine/actions). CI PASS is **synthetic evidence**, not a production security certification or permission to run against a real ERP.
 
 ## Why DataFlow?
 
@@ -125,13 +143,25 @@ flowchart TD
 | **Safe Table** | Build staging Table → DQ → manual publish → atomic exchange → rollback | Disposable scratch, max 1M rows per TEST output |
 | **Incremental CDC** | Versioned insert/update/delete events; staged copy-on-write publish + cursor rollback | Needs prepared append-only delta; full physical copy; max 50k events per TEST batch |
 | **Operations UI** | Run history, job/model status, errors, linked dbt runs | Not a production-grade alerting/RBAC console |
+| **Connection security foundations (V3.2B)** | Audited workspace-scope metadata, JWT signature validation, vault adapter and rotation journal; optional direct-TLS lab read endpoint | Default-off or server-only; no real IdP/Vault credential activation |
+| **Network / Test Connection foundation (V3.2C)** | Host:port/CIDR deny-by-default policy, all-answer DNS check, pinned synthetic TCP probe | No authenticated database connection test or live egress |
+| **Immutable connection plans (V3.3)** | Workspace-scoped Draft binding of pipeline node to connection revision | No execution dispatch or ACTIVE multi-connection binding |
+| **Mixed-step and quality proofs (V4.0–V4.1)** | Typed source/sync/transform/quality/publish synthetic runner and fail-closed DQ contracts | Not attached to React Flow canvas or real worker/runtime |
 
 ### The console today
 
 The current React workspace includes **Overview**, **Sync Jobs**, **Connections**, **Pipelines**, **SQL Jobs**, **Transform Studio**, **Data Lineage**, **Incremental CDC** and **Run History**.
 
 > [!NOTE]
-> These are actual code-level modules, not claimed production screenshots. Captured and annotated UI screenshots will be added **after local browser E2E acceptance**, so the project page does not present mockups as tested software.
+> The views below are **actual screenshots from the synthetic QA Web Console on 17 October 2026**, not mockups and **not evidence of live ERP E2E**. The current UI and feature availability may have changed since capture. All API token fields were left blank.
+
+### Console gallery
+
+| Overview | Transform Studio | Data Lineage |
+|:---:|:---:|:---:|
+| [![DataFlow overview in synthetic QA](qa-evidence/ui-console-20261017/01-overview.png)](qa-evidence/ui-console-20261017/01-overview.png) | [![DataFlow Transform Studio in synthetic QA](qa-evidence/ui-console-20261017/04-transform-studio.png)](qa-evidence/ui-console-20261017/04-transform-studio.png) | [![DataFlow lineage in synthetic QA](qa-evidence/ui-console-20261017/05-data-lineage.png)](qa-evidence/ui-console-20261017/05-data-lineage.png) |
+
+**[Open the full six-screen QA gallery →](qa-evidence/ui-console-20261017/README.md)** includes Sync Jobs, Connections/Source Explorer and Incremental CDC. These images show empty/demo states and do not imply production credentials, data sync or QA sign-off.
 
 ## Safe materialization
 
@@ -242,6 +272,18 @@ Read [.env.example](.env.example) and the individual release instructions before
 
 A PASS from GitHub CI is **not** a PASS from the user's Windows computer. Local Codex QA must report actual test outcomes, logs, row-level mismatches, performance measurements and unresolved bugs; **BLOCKED** is not equivalent to **PASS**.
 
+## Roadmap
+
+The **[Master Roadmap & Status](docs/MASTER_ROADMAP_AND_STATUS.md)** is the actively maintained plan; the **[Project Handoff](docs/PROJECT_HANDOFF_LATEST.md)** records the latest known GitHub commit, test evidence, caveats and next actions. The steps are ordered by operational safety, not by UI appearance:
+
+1. **Finish V3.2B** — approved IdP/JWKS, Vault policies, workspace grant provisioning and recoverable rotation workflows.
+2. **Finish V3.2C / V3.3** — controlled driver-level Test Connection and revision-bound active multi-instance execution.
+3. **V3.4** — multi-workspace synthetic E2E, restarts, retries, least-privilege acceptance.
+4. **V4.0 / V4.1** — persistent heterogeneous pipeline execution linked to React Flow, trusted DQ evidence and guarded publish/rollback.
+5. **V4.2 and later** — efficient incremental/CDC at millions-of-rows scale, scheduling, monitoring and performance benchmarking.
+
+Until those gates pass, **do not activate experimental credential paths against real ERP/production resources**.
+
 ## Project milestones
 
 | Release | Delivered capability |
@@ -254,7 +296,7 @@ A PASS from GitHub CI is **not** a PASS from the user's Windows computer. Local 
 | v1.2 | One-click Auto Build View dependencies |
 | **v1.3** | **Versioned CDC-style Incremental staging & cursor rollback** |
 
-**Next acceptance gate:** local synthetic E2E + bug fixing → source-consistent Epicor TEST E2E → correctness and performance benchmark. Future development candidates include business-grade Data Quality contracts, observability, efficient partition-level Incremental, RBAC and release-level publishing.
+**Next acceptance gate:** isolated local synthetic E2E + bug fixing → reviewed Epicor TEST SELECT-only acceptance → actual driver/IdP/Vault security and operational safety gates → correctness/7M+ performance benchmark. Pure-Go security/RBAC and DQ contract primitives exist, but a live multi-tenant pipeline service does not.
 
 See the complete [implementation roadmap](implementation/roadmap.md) and [v1.3 release notes](implementation/release-status-v13.md).
 
@@ -267,13 +309,16 @@ See the complete [implementation roadmap](implementation/roadmap.md) and [v1.3 r
 | Transform / dbt | [Transform Studio](implementation/transform-studio-v08.md) · [dbt worker](implementation/dbt-worker-v09.md) · [Lineage](implementation/lineage-v10.md) |
 | Releases | [Safe Table](implementation/safe-table-v11.md) · [Auto Build](implementation/auto-build-v12.md) · [Safe Incremental](implementation/safe-incremental-v13.md) |
 | QA / Operations | [Codex local acceptance](CODEX_LOCAL_QA.md) · [Benchmark rules](testing/benchmark.md) · [Security](operations/security-deployment.md) |
+| Latest state | [Project handoff](docs/PROJECT_HANDOFF_LATEST.md) · [Master roadmap](docs/MASTER_ROADMAP_AND_STATUS.md) · [Visual QA gallery](qa-evidence/ui-console-20261017/README.md) |
+| Security and pipelines | [Scoped grants](docs/connections-v32b5b-grants.md) · [Vault rotation journal](docs/connections-v32b5c-rotation-journal.md) · [Network admission](docs/connections-v32c1-egress-admission.md) · [Binding snapshots](docs/connections-v33a-binding-plans.md) · [Typed pipeline](docs/unified-v40a-synthetic-executor.md) · [DQ contracts](docs/quality-v41a-contracts.md) |
 | Historical notes | [Original engineering README (v0.1–v1.3)](implementation/README-engineering-archive.md) |
 
 ## Safety and project status
 
 - Epicor is a **SELECT-only source**, including `SRVERPTEST` / `ERPDBTEST`; no schema changes, triggers or direct writeback are permitted.
 - Destructive fault tests belong exclusively to **QA-owned disposable containers, databases and volumes**.
-- Complete source-to-target *exactly-once*, native physical DELETE CDC, multi-model atomic publish, production RBAC and enterprise-scale performance remain **unverified or out of scope**.
+- Complete source-to-target *exactly-once*, native physical DELETE CDC, active multi-connection routing, multi-model atomic publish, production RBAC, end-to-end heterogeneous canvas execution and enterprise-scale performance remain **unverified or unfinished**.
+- Screenshots are a **dated synthetic QA visual record**, not a promise that today's page layouts are identical or live backends are authorized.
 - No `LICENSE` file is currently present. Do not assume the repository is licensed for unrestricted redistribution until a license is chosen.
 
 ---
@@ -284,6 +329,6 @@ See the complete [implementation roadmap](implementation/roadmap.md) and [v1.3 r
 
 *Developed in milestones. Verified by evidence. Not by marketing claims.*
 
-[Top ↑](#dataflow-engine) · [Local QA](CODEX_LOCAL_QA.md) · [Roadmap](implementation/roadmap.md)
+[Top ↑](#dataflow-engine) · [Local QA](CODEX_LOCAL_QA.md) · [Roadmap](docs/MASTER_ROADMAP_AND_STATUS.md)
 
 </div>
