@@ -1,5 +1,7 @@
 # CORE-RUN-6B-1 — real dbt worker SIGKILL after durable lease claim
 
+**Hosted QA PASS**: PR [#102](https://github.com/dinhvansh/dataflow-engine/pull/102), exact-head [#39140812671](https://github.com/dinhvansh/dataflow-engine/actions/runs/39140812671), `1 passed in 42.25s`, archived artifact `core-run6b-worker-fencing-evidence`. All exact-head CI workflows PASS. Owner-local/prod acceptance separate.
+
 This covers a **real worker process SIGKILL after PostgreSQL claim but before dbt CLI execution**, with replay, new fence token, stale-owner rejection, and one successful execution. It does **not** claim interruption halfway through a ClickHouse SQL query, nor concurrent publish races or all negative DQ paths. Those remain separate CORE-RUN-6B acceptance gates.
 
 Run only on a fresh disposable owner-verified QA stack: `bash deploy/local-qa/up.sh` then `DATAFLOW_LIVE_QA_OPT_IN=true DATAFLOW_CORE_6B_OPT_IN=true bash deploy/local-qa/run-core-6b.sh`.
