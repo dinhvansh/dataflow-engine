@@ -1,10 +1,20 @@
 # DataFlow Engine — Master Roadmap, Status & Acceptance Gates
 
-**Snapshot: 2026-10-18.** Verified GitHub `main@5766ce7bf6651979fc9be0eab855f999c08ee87e` after PR #96. CORE-RUN-1..4 have REAL disposable hosted-service E2E evidence; local operator browser QA + 7m scale remain pending. Production NO-GO; recheck live GitHub.
+**Snapshot: 2026-10-18.** CORE-RUN-1..5 merged; `main@1d95271914ba20fa459f251dcb34099727a2c4aa` after PR #98. Actual hosted disposable operator-browser→Go API→SQL Server/PG/CH/dbt E2E PASS. Owner-local operational demo, process/network failure injection and 7m measured scale pending. Production NO-GO; recheck live GitHub.
 
 Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Original phased plan: [implementation/roadmap.md](../implementation/roadmap.md). Historical release evidence: [release-status-v13.md](../implementation/release-status-v13.md) and other `implementation/release-status-v*.md` files.
 
 **Full V3.2B/V3.2C release acceptance matrix:** [CONNECTIONS_RELEASE_ACCEPTANCE.md](CONNECTIONS_RELEASE_ACCEPTANCE.md) — identity, Vault, TLS, writer-freeze, scoped Test Connection, infra/audit controls. All production gates remain NO-GO.
+
+## VERIFIED NEW MILESTONE — CORE-RUN-5 (merged PR #98, 2026-10-18)
+
+**REAL browser-to-backend disposable GitHub-hosted E2E PASSED; owner-local and production acceptance are separate.**
+- [PR #98](https://github.com/dinhvansh/dataflow-engine/pull/98) merged into main at `1d95271914ba20fa459f251dcb34099727a2c4aa`, exact PR head `bb69664d3e04f0f821cb64e0ee97c1171b8e8acd`.
+- Actual GitHub runner built & started disposable SQL Server 2022 (`DataFlowFixtureQA`, SELECT-only `qa_erp_reader`), PostgreSQL 16, ClickHouse 25.3 `scratch`, real Go API, React/Web reverse proxy, and dbt worker. Browser Playwright made **nonmock HTTP** requests via Pipelines → saved A→B→C models → core Run → DQ → versioned Publish. It checked source 10,000 `Erp.PartTran` rows against ClickHouse source-derived aggregate (10,000 events), PostgreSQL durable checkpoint generation 1, UUID-based Run re-inspection after browser refresh, **second incremental run 0 new rows**, checkpoint generation 2, second publication/backup, then operator-confirmed **physical UUID rollback** restoring the first target, without rewinding source checkpoint.
+- [REAL Operator E2E #39131614227](https://github.com/dinhvansh/dataflow-engine/actions/runs/39131614227) **PASS** (`test_core_run5_full_live_browser`, `1 passed in 79.97s`), evidence artifact `core-run5-live-operator-evidence` contains redacted JSON, screenshot and trace (GitHub retention 14 days). On **same exact head**: [CI #39131614168](https://github.com/dinhvansh/dataflow-engine/actions/runs/39131614168), [SQL Server QA #39131614185](https://github.com/dinhvansh/dataflow-engine/actions/runs/39131614185), [Browser Mock #39131614156](https://github.com/dinhvansh/dataflow-engine/actions/runs/39131614156), [QA Contract #39131614175](https://github.com/dinhvansh/dataflow-engine/actions/runs/39131614175) **all PASS**.
+- New opt-in scripts: `deploy/local-qa/run-core-operator.sh`, isolated Compose `api/web/dbt-worker`, real `qa/browser/test_core_live.py`, workflow `core-run5-live-e2e.yml`; see [runbook](CORE_RUN5_QA_RUNBOOK.md).
+- **Hard limits:** this was a GitHub-hosted **disposable** integration, **not** an operator-provisioned owner-local lab and NOT a production ERP connection, hardware performance certificate, genuine process SIGKILL/network fault-injection proof, 7m benchmark or IdP/Vault/TLS/security sign-off. Separate legacy SQL DAG Canvas Run is still not the same unified Core Run. Production NO-GO. Funding/demo sign-off requires owner-accessible, repeatable deployment and acceptance evidence beyond hosted CI.
+- **NEXT CORE-RUN-6:** real worker/process SIGKILL and network transport interruption in the approved disposable stack, verify durable fencing/retry, lost cursor/duplicates, negative DQ, target immutability and rollback under concurrency. Then CORE-RUN-7 measured 7m+ scale with approved hardware, then Canvas unified backend runtime CORE-RUN-8. NEVER prematurely call core complete.
 
 ## CORE FIRST — mandatory development priority (2026-10-18)
 
@@ -35,7 +45,7 @@ Every milestone requires actual nonmock integration tests and exact-HEAD CI; do 
 4. Verify real workspace IdP/Vault/TLS/allowlisted egress/tenant isolation and production operations independently. No real ERP credentials or DML/DDL, no production GO.
 5. Only then evaluate fundraising demo readiness; production release requires separate security approval. **No UI cosmetics ahead of the remaining functional gates.**
 
-**Immediate next engineering task after this frontend PR:** QA browser-to-backend reproducible walkthrough, real fault injection and real 7m-scale performance on owned disposable hardware. Update this roadmap/handoff with actual measured artifacts; never silently mark pending as complete.
+**Immediate next engineering task after CORE-RUN-5:** Real disposable worker/process termination and network fault injection (CORE-RUN-6), owner-accessible reproducible operator walkthrough, then measured 7m+ benchmark on approved hardware (CORE-RUN-7). Update this roadmap/handoff with actual measured artifacts; never silently mark pending as complete.
 
 ## 1. Product direction
 

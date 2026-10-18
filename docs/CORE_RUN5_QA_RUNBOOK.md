@@ -1,4 +1,6 @@
-# CORE-RUN-5 — operator-to-real-services QA (NOT YET ACCEPTED)
+# CORE-RUN-5 — REAL disposable browser E2E PASS (2026-10-18)
+
+**Evidence:** [PR #98](https://github.com/dinhvansh/dataflow-engine/pull/98) merged main `1d952719`; exact PR-head `bb69664d`. [GitHub-hosted Real Operator E2E run #39131614227](https://github.com/dinhvansh/dataflow-engine/actions/runs/39131614227) **PASS**, `1 passed in 79.97s`. Browser used actual Web, Go API, SQL Server 10,000-row fixture, PostgreSQL, ClickHouse and real dbt; asserted persisted job/run state, incremental 0 new rows on run two, and exact UUID rollback. Retained 14-day artifact: `core-run5-live-operator-evidence` (JSON, screenshot, Playwright trace). This is **CI-hosted actual integration**, not an operator-local machine sign-off. The separate production acceptance remains NO-GO.
 
 The opt-in runner launches an **actual** Go API and compiled React console alongside the
 existing disposable SQL Server 2022, PostgreSQL 16, ClickHouse 25.3 and real dbt worker.
@@ -41,6 +43,6 @@ a separately reviewed cleanup. Never point the runner to SRVERPTEST/ERPDBTEST.
 - API-to-SQL Server transport `TrustServerCertificate=true` is allowed **only** for this
   owner-verified loopback disposable SQL Server fixture, not a live/production connection.
 - Existing SQL DAG Canvas Run is still separate from this real core operator panel.
-- GH-hosted SQL QA real four-service integration is independent evidence, not an external
-  browser operator walkthrough. Live operator run and release security remain **OPEN**.
+- Real GitHub-hosted **browser** QA is now proven, alongside separate four-service SQL QA.
+  Independently owner-run local/corporate-operator sign-off and release security remain **OPEN**.
 - This runner is neither worker/process SIGKILL proof nor a 7m-row performance test.
