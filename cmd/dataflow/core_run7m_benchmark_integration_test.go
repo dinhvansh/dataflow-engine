@@ -71,10 +71,38 @@ func TestCoreRun7mRealManagedBenchmarkIntegration(t *testing.T){
  var gen int64
  if e=svc.pg.QueryRow(ctx,"SELECT generation FROM sync_checkpoints WHERE stream_id=$1::uuid",
   id).Scan(&gen);e!=nil||gen!=1{t.Fatalf("7m checkpoint not committed: %d %v",gen,e)}
+ // Run the same real SQL Server source again and prove incremental no-op
+ // without re-reading or appending the 7m rows. This is measured separately.
+ code2,queued2:=coreHTTP(t,app.URL,"POST","/api/v1/managed/runs",
+  map[string]any{"stream_id":id})
+ run2,_:=queued2["run_id"].(string)
+ if code2!=202||!validUUID.MatchString(run2){t.Fatalf("incremental replay enqueue: %d %+v",code2,queued2)}
+ attempt2,e:=worker.svc.claimManagedRun(ctx,run2)
+ if e!=nil{t.Fatal(e)}
+ replayStart:=time.Now()
+ worker.svc.runClaimedManaged(ctx,attempt2)
+ replaySeconds:=time.Since(replayStart).Seconds()
+ _,replayed:=coreHTTP(t,app.URL,"GET","/api/v1/managed/runs?id="+run2,nil)
+ if replayed["status"]!="succeeded"||replayed["rows_written"]!=float64(0){
+  t.Fatalf("second incremental MUST write zero rows: %+v",replayed)
+ }
+ if e=svc.pg.QueryRow(ctx,"SELECT generation FROM sync_checkpoints WHERE stream_id=$1::uuid",
+  id).Scan(&gen);e!=nil||gen!=2{
+  t.Fatalf("no-op replay must advance checkpoint generation to 2: %d %v",gen,e)
+ }
+ countOriginal,e:=rawDest.CountRunRows(ctx,attempt.OwnerID)
+ if e!=nil||countOriginal!=7000000{
+  t.Fatalf("original 7m ingestion changed after replay: %d %v",countOriginal,e)
+ }
+ countReplay,e:=rawDest.CountRunRows(ctx,attempt2.OwnerID)
+ if e!=nil||countReplay!=0{
+  t.Fatalf("replay created duplicate raw rows: %d %v",countReplay,e)
+ }
  var memory runtime.MemStats;runtime.ReadMemStats(&memory)
  rps:=float64(persisted)/elapsed.Seconds()
  t.Logf("QA_REAL_7M_BENCH_PASS source=SQLServer2022_readonly destination=ClickHouse25.3 checkpoint=PG16 rows=%d batches=%v elapsed_seconds=%.3f rows_per_second=%.2f go_heap_alloc_bytes=%d",
   persisted,result["batches_written"],elapsed.Seconds(),rps,memory.Alloc)
+ t.Logf("QA_REAL_7M_INCREMENTAL_REPLAY_PASS rows_written=0 checkpoint_generation=%d replay_elapsed_seconds=%.3f original_rows_unchanged=%d",gen,replaySeconds,countOriginal)
  t.Log(fmt.Sprintf("Benchmark is not production-certified; save runner hardware and Docker peak RAM/CPU evidence with this log"))
 }
 type serverWorkerHolder struct{svc *server}

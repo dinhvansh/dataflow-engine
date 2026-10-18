@@ -58,9 +58,42 @@ trap stop_monitor EXIT
 echo "RUNNING actual SELECT-only SQL Server 7m → Go queue → ClickHouse raw → PostgreSQL checkpoint"
 go test ./cmd/dataflow -run '^TestCoreRun7mRealManagedBenchmarkIntegration$' \
  -count=1 -timeout=40m -v | tee "$out/actual_benchmark.log"
-grep -q 'QA_REAL_7M_BENCH_PASS' "$out/actual_benchmark.log" || {
+grep -q 'QA_REAL_7M_BENCH_PASS' "$out/actual_benchmark.log" && grep -q 'QA_REAL_7M_INCREMENTAL_REPLAY_PASS' "$out/actual_benchmark.log" || {
  echo "Benchmark was skipped or failed; cannot claim 7m PASS" >&2; exit 1;
 }
 stop_monitor
 trap - EXIT
+# Create a machine-readable evidence summary ONLY after both actual marker lines.
+# Derive values from the captured log, never from assumed benchmark rates.
+python3 - "$out" <<'PY'
+import json, pathlib, re, subprocess, sys, datetime, platform
+d=pathlib.Path(sys.argv[1])
+s=(d/"actual_benchmark.log").read_text()
+first=re.search(r'QA_REAL_7M_BENCH_PASS[^\n]*rows=(\d+)[^\n]*elapsed_seconds=([\d.]+)[^\n]*rows_per_second=([\d.]+)[^\n]*go_heap_alloc_bytes=(\d+)',s)
+second=re.search(r'QA_REAL_7M_INCREMENTAL_REPLAY_PASS[^\n]*rows_written=(\d+)[^\n]*checkpoint_generation=(\d+)[^\n]*replay_elapsed_seconds=([\d.]+)[^\n]*original_rows_unchanged=(\d+)',s)
+if not first or not second: raise SystemExit("refusing incomplete/unmeasured benchmark results")
+rows,elapsed,rps,heap=first.groups()
+newrows,gen,seconds,preserved=second.groups()
+if (int(rows),int(newrows),int(gen),int(preserved)) != (7000000,0,2,7000000):
+ raise SystemExit("invariant mismatch: cannot claim benchmark success")
+stats=d/"docker_stats.csv"
+if not stats.exists() or len(stats.read_text().splitlines())<2:
+ raise SystemExit("Docker resource measurements missing")
+result={
+ "gate":"CORE-RUN-7","acceptance":"REAL OWNER-QA HARDWARE RESULT; NOT PRODUCTION CERTIFICATION",
+ "source":"DataFlowFixtureQA.Erp.PartTranScale7M SELECT-only",
+ "destination":"ClickHouse scratch.dataflow_raw_events","state":"PostgreSQL checkpoint",
+ "timestamp_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+ "hostname":platform.node(),"kernel":platform.release(),"architecture":platform.machine(),
+ "source_rows":int(rows),"initial_elapsed_seconds":float(elapsed),
+ "initial_rows_per_second":float(rps),"go_heap_alloc_bytes_at_end":int(heap),
+ "incremental_replay_rows_written":int(newrows),"replay_elapsed_seconds":float(seconds),
+ "checkpoint_generation":int(gen),"original_rows_remain":int(preserved),
+ "resource_samples":len(stats.read_text().splitlines())-1,
+ "evidence_files":["seed_result.log","actual_benchmark.log","docker_stats.csv"],
+ "caveats":["hosted CI is not a 7m benchmark","no production data/ERP writes","not a full 7m DQ/dbt mart materialization"]
+}
+(d/"benchmark-result.json").write_text(json.dumps(result,indent=2)+"\n")
+print(json.dumps({"gate":result["gate"],"status":"measured QA PASS","rows":int(rows),"rows_per_second":float(rps),"replay_rows":int(newrows),"evidence_dir":str(d)}))
+PY
 echo "Exact measured 7m rows/s and Docker resource data (NO synthetic/claimed results): $out"
