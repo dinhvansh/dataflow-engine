@@ -6,6 +6,14 @@ Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Origi
 
 **Full V3.2B/V3.2C release acceptance matrix:** [CONNECTIONS_RELEASE_ACCEPTANCE.md](CONNECTIONS_RELEASE_ACCEPTANCE.md) — identity, Vault, TLS, writer-freeze, scoped Test Connection, infra/audit controls. All production gates remain NO-GO.
 
+## CORE FIRST — mandatory development priority (2026-10-18)
+
+**User decision: COMPLETELY FINISH THE CORE ENGINE BEFORE UI POLISH OR NEW NON-CORE FEATURES.** Canonical definition, acceptance gates, prohibited shortcuts and execution order: **[CORE_FIRST_ENGINE_GATE.md](CORE_FIRST_ENGINE_GATE.md)**. This overrides earlier P0/P1 presentation priorities where they conflict.
+
+**Immediate critical path:** safe minimal isolated test connection + active binding → **real** SQL Server SELECT-only ingestion to ClickHouse → checkpoint/incremental/table materialization → dbt auto-dependencies A→B→C → durable API/Canvas execution with retry/resume/idempotency → DQ/publish/rollback → full disposable-service E2E/failure injection and measured 7m+ performance. Only then invest in major UI/dashboard redesign and peripheral features; QA-blocking minimal UI is allowed.
+
+Every milestone requires actual nonmock integration tests and exact-HEAD CI; do not mistake partial mock foundations, merged PR count or QA-only driver tests for complete core. Real Vault/IdP/production operator approvals remain **separate production NO-GO blockers**; do not use them as an excuse to defer safely isolated core tests or pretend they are available.
+
 ## 1. Product direction
 
 **Vision:** DataFlow is a developer-oriented, visual ETL/ELT and orchestration workbench: discover sources → ingest → build ClickHouse raw/ODS → transform visually/SQL → dbt/model dependencies → data quality → controlled publish → monitor, investigate and recover.
@@ -65,7 +73,10 @@ Stack: Go API/workers; SQL Server source **SELECT-only**; ClickHouse for disposa
 
 **Do not treat the unchecked headings in the historical implementation roadmap as an up-to-date project completion matrix.** Its Phase 0–5 list is an initial plan; release-status notes and the actual source/CI are newer evidence.
 
-## 3. Execution order (recommended, not silently approved for production)
+## 3. Execution order (CORE FIRST mandatory; NOT production approval)
+
+**Priority override:** the CORE FIRST policy above governs feature selection. Existing P0 security tasks should proceed only when needed to unblock a safe core E2E test or independently approved production security work; do not defer ingestion, incremental, durable execution, DQ and real integration in favor of another UI or isolated-only security showcase. Core completion is the required milestone before UI expansion.
+
 
 ### P0 — Connection Manager to real multi-instance lab operation
 
