@@ -125,15 +125,15 @@ def assert_environment():
     assert CH_PASSWORD and READER_PASSWORD, "QA credentials must be supplied securely"
     assert_loopback(API)
     assert_loopback(BASE)
-    for container in ("mssql", "postgres", "clickhouse", "api", "web", "dbt-worker"):
-        owned("dataflow-localqa-" + container) if container in ("mssql", "postgres", "clickhouse") else None
+    for service in ("mssql", "postgres", "clickhouse"):
+        owned("dataflow-localqa-" + service)
     # Compose doesn't give API/Web/worker explicit container_name; query by
     # project/service and verify labels, without relying on generated names.
     for service in ("api", "web", "dbt-worker"):
         cid = shell(
             "docker", "compose", "--project-name", "dataflow-localqa",
             "--env-file", ".env.qa.local", "-f", "deploy/local-qa/compose.qa.yml",
-            "ps", "-q", service,
+            "--profile", "operator", "ps", "-q", service,
         )
         assert cid, f"Missing running {service}"
         owned(cid)
