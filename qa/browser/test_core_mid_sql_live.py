@@ -86,8 +86,19 @@ def test_dbt_table_actual_sql_sigkill_rebuild_and_publish():
                f"WHERE id='{job}'")
             current=observed.split("|")
             if current[0] in ("failed","ready"):
+                safe_log=f.pg("SELECT right(coalesce(log_tail,''),1300) "
+                       f"FROM table_runs WHERE id='{job}'")
+                # Worker redacts its dbt DB password; defensively suppress
+                # every disposable credential before placing diagnostics in CI.
+                for key in ("CLICKHOUSE_ADMIN_PASSWORD","CLICKHOUSE_READER_PASSWORD",
+                            "CLICKHOUSE_WRITER_PASSWORD","QA_READER_PASSWORD",
+                            "QA_SEED_PASSWORD","MSSQL_SA_PASSWORD","POSTGRES_PASSWORD"):
+                    secret=os.environ.get(key,"")
+                    if secret:
+                        safe_log=safe_log.replace(secret,"[REDACTED]")
                 diagnostic={"dbt_table_state":current[0],"attempts":current[1],
                   "error_message":current[2] if len(current)>2 else "",
+                  "dbt_log_tail_redacted":safe_log[-1100:],
                   "system_process_count":n}
                 (OUT/"mid-sql-diagnostic.json").write_text(
                     json.dumps(diagnostic,indent=2)+"\\n")
