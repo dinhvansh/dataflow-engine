@@ -1,0 +1,34 @@
+# DataFlow Engine — CORE FIRST development gate
+
+**Owner-approved priority, effective 2026-10-18:** **Finish and verify the backend/core execution engine before expanding the product UI, dashboard polish, extra features or speculative integrations.** This rule takes precedence over any earlier roadmap order when that order prioritizes UI/productization before reliable execution. Reconfirm future work against this document and the canonical handoff.
+
+## What "complete core" actually means
+
+The core is NOT considered complete just because functions compile, a synthetic unit test passes or a React Flow diagram looks good. The minimal working path must be executable end to end in **identity-verified disposable infrastructure**:
+
+1. **Connection and authorization foundation for core testing.** Trusted source/destination configuration; isolated QA driver handshake and SELECT-only source permissions; no plaintext credentials in API/logs; workspace isolation; bound, auditable, revocable connection choices. Real Vault/IdP/TLS enrollment and full production rollout are a *separate* security acceptance track and must not be falsely claimed done.
+2. **Reliable data ingestion.** Actual approved QA SQL Server SELECT-only -> ClickHouse raw/ODS; bounded batches/backpressure; durable offsets/watermarks; snapshot and incremental support where applicable; source schema drift detection; restart/resume without silent loss or duplicate processing.
+3. **Working materialization and dependency execution.** Table and incremental materialization (not just preview); auto-build graph dependencies A -> B -> C; deterministic execution order and prevention of downstream runs after upstream errors; dbt transforms against an isolated real ClickHouse.
+4. **Durable workflow state.** End-to-end pipeline orchestration triggered by an operator action/API (canvas Run later uses this same core), persistent run/task state, retries, cancellation, crash recovery, concurrency locking, idempotency, safe re-runs, clear transitions and observable failure reasons.
+5. **Data quality and controlled publish.** Actual validation on materialized records, deterministic pass/fail, quality gate before making a mart/result available, reproducible provenance and a safe failed-run rollback/recovery path.
+6. **Performance and correctness evidence.** Benchmarks that record setup, workload, throughput, memory and completion time; include the previously proposed 7m+ row-scale incremental case when the isolated fixture/hardware is available. Never invent performance evidence or claim production-certified throughput from mocks.
+
+## Non-negotiable completion gates
+
+- **E2E on real disposable services:** Run a source-read -> raw/ODS -> dependency graph -> incremental/materialization -> DQ -> publish flow and verify data counts/checksums/lineage with actual SQL Server + ClickHouse + PostgreSQL + dbt fixtures. No live Epicor data mutation or unauthorized source connection.
+- **Failure injection:** At minimum test disconnect/timeouts, schema changes, duplicate and out-of-order batches, retry after worker termination, stale cursor/revision, concurrent execution, DQ failure and unauthorized access. Prove that recovery is safe and no result is published on failure.
+- **CI per exact PR commit:** Go tests/race/vet/build, disposable SQL Server SELECT-only QA, PG/ClickHouse/dbt integration and frontend build all PASS before merge; verify post-merge main and update both handoff/roadmap. Test fails -> fix, do not bypass.
+- **Evidence-based DONE:** Mark a core milestone complete only when implementation, nonmock integration tests, a reproducible test command/evidence, limitations and acceptance checks are recorded. Maintain explicit distinction among mock PASS, isolated E2E PASS, real-environment pending and production NO-GO.
+- **Source protection:** Real ERP SQL Server is **SELECT-only**. Never INSERT/UPDATE/DELETE/DDL on ERP, and never use real credentials or alter non-disposable databases just to make tests pass.
+
+## Implementation order from now
+
+**Core execution critical path:** safe test connection/bound identities (only what core requires) -> usable active connection binding -> source ingestion + checkpoint/restart -> incremental table + auto-build dependencies -> durable run from API/Canvas with the same backend state machine -> DQ gate/publish/rollback -> integration/failure/7m+ performance acceptance.
+
+An incomplete IdP/Vault *production* security deployment remains a release blocker, but should not justify postponing isolated, safe core E2E implementation. External ACL/key-custody/writer-freeze approvals cannot be simulated into production acceptance.
+
+**UI freeze by default:** no additional cosmetic styling, dashboard variations, color/branding refinements, animations, extra visualizations or new unrelated modules while core gates are unmet. Minimal UI needed to configure/trigger/inspect core tests is allowed; do not rebuild existing APIs or change functioning business logic for presentation. Improve UI after core E2E is green, except fixes for severe usability defects blocking QA.
+
+## Next-session instruction
+
+Before starting, inspect live GitHub main/PRs/CI and both canonical docs. **Choose the next unverified core acceptance gate**, implement it with tests and real disposable fixtures, merge only on exact-head CI PASS, update the docs and repeat. Do not treat a list of merged partial foundations as a completed core or production release.
