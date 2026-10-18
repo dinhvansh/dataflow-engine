@@ -1,8 +1,6 @@
 package connectionsecurity
 
 import (
-	"context"
-	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/rsa"
@@ -102,7 +100,6 @@ func TestManageBootstrapSignedEnvelopeFailClosed(t *testing.T){
 	if _,err=NewIsolatedManageBootstrap(SecureCatalog{},b.verifier,pubs,true);!errors.Is(err,ErrUnavailable){
 		t.Fatal("missing isolated control database accepted")
 	}
-	_ = context.Background()
 }
 
 func TestManageBootstrapMessageRequiresBothDistinctOperators(t *testing.T) {
@@ -125,6 +122,5 @@ func TestManageBootstrapMessageRequiresBothDistinctOperators(t *testing.T) {
 	}
 	// Signing payload is purpose-bound and cannot be confused with RS256 JWT.
 	jwtHash:=sha256.Sum256([]byte(token))
-	_ = crypto.SHA256
 	if jwtHash==h {t.Fatal("unexpected collision")}
 }
