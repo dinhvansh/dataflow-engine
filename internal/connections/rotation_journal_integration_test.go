@@ -37,7 +37,7 @@ func TestRotationJournalIntegration(t *testing.T){
 	defer cancel()
 	pg,err:=pgxpool.New(ctx,dsn);if err!=nil{t.Fatal(err)}
 	defer pg.Close()
-	for _,file:=range []string{"018_connection_security_metadata.sql","020_connection_rotation_journal.sql"}{
+	for _,file:=range []string{"018_connection_security_metadata.sql","020_connection_rotation_journal.sql","022_connection_rotation_inspection_audit.sql"}{
 		src,err:=os.ReadFile(filepath.Join("..","..","migrations","postgres",file))
 		if err!=nil{t.Fatal(err)}
 		for i:=0;i<2;i++{
