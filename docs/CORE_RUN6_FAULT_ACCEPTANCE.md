@@ -21,10 +21,10 @@ actual API container, confirms PostgreSQL state survives, restarts it and
 verifies that same Run completes dbt A→B→C, DQ and physical ClickHouse publish.
 
 It then **disconnects ClickHouse from the QA network before enqueueing** a
-separate durable run; demands a failed terminal job, unchanged cursor,
+separate durable run reading a fresh synthetic 200-row SQL Server table; demands a failed terminal job, unchanged cursor,
 unduplicated source raw data and untouched published target UUID. The
 container is reconnected in \`finally\`. A deliberate new operator Run must
-succeed, transfer zero incremental rows, create a new published physical
+succeed, transfer all 200 fresh rows, create a new published physical
 version and allow UUID-safe rollback without rewinding cursor.
 
 Evidence: \`qa-results/core-run6/fault-result.json\`, uploaded as the

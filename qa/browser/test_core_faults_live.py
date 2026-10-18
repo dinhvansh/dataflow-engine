@@ -173,7 +173,7 @@ def test_core_run6_sigkill_and_network_failure_recovery():
     assert result["rows_verified"] == 2
     assert fixture.ch(f"SELECT sum(events),count() FROM scratch.{fixture.TARGET} FORMAT TSV") == "10200\t2"
     assert fixture.pg("SELECT rows_written FROM managed_runs "
-        f"WHERE id='{result['managed_run_id']}'") == "0"
+        f"WHERE id='{result['managed_run_id']}'") == "200"
     assert uuid() and uuid() != original
     code, rollback = fixture.api("/api/v1/core/actions", "POST",
         {"run_id": recovery_id, "action": "rollback", "confirm": "ROLLBACK"})
