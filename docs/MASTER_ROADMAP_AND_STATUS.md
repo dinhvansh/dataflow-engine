@@ -1,10 +1,17 @@
 # DataFlow Engine — Master Roadmap, Status & Acceptance Gates
 
-**Snapshot: 2026-10-18.** CORE-RUN-1..5 + CORE-RUN-6A merged; `main@44e63afcefc4c485b8a1475f990b22a85aa560cd` after PR #100. Hosted disposable operator E2E and API SIGKILL/ClickHouse network fault recovery PASS. Mid-dbt worker crash/lease race matrix (6B), owner-local demo, and 7m measurement OPEN. Production NO-GO; recheck live GitHub.
+**Snapshot: 2026-10-18.** main@6e372ab88cbf196270a942185fe1835b6a1d84da after #102/#103. Hosted real worker post-claim SIGKILL/fencing PASSED; 7m benchmark code/contract merged with **no measured 7m hardware run**. Mid-SQL process fault, concurrent publish, negative DQ, owner-local demo and production remain OPEN.
 
 Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Original phased plan: [implementation/roadmap.md](../implementation/roadmap.md). Historical release evidence: [release-status-v13.md](../implementation/release-status-v13.md) and other `implementation/release-status-v*.md` files.
 
 **Full V3.2B/V3.2C release acceptance matrix:** [CONNECTIONS_RELEASE_ACCEPTANCE.md](CONNECTIONS_RELEASE_ACCEPTANCE.md) — identity, Vault, TLS, writer-freeze, scoped Test Connection, infra/audit controls. All production gates remain NO-GO.
+
+## CORE-RUN-6B-1 + CORE-RUN-7 progress (verified 2026-10-18)
+
+- **CORE-RUN-6B-1 MERGED [#102](https://github.com/dinhvansh/dataflow-engine/pull/102)** at `main@6e372ab88cbf196270a942185fe1835b6a1d84da`; exact-head `e19c50ccced42de8d659ef115cf973dc6f966e78`. [Real dbt-worker SIGKILL/fencing job #39140812671](https://github.com/dinhvansh/dataflow-engine/actions/runs/39140812671) **PASS** (`1 passed in 42.25s`), artifact `core-run6b-worker-fencing-evidence`. Real worker process killed after PostgreSQL job claim **before dbt CLI SQL execution**; after disposable-only lease expiry, new owner/fence reclaims; old fence UPDATE affects 0 rows; actual dbt executes and published aggregate remains 10,000. Same-head Go CI, SQL Server read-only QA, CORE-RUN-5 E2E, CORE-RUN-6A E2E, QA contract and Browser QA **all PASS**.
+- **CORE-RUN-7 HARNESS MERGED [#103](https://github.com/dinhvansh/dataflow-engine/pull/103)** at `main@a0c413f91db7b0e850ac23b11aed23f1a13f1a38`, exact-head `f733bc037d7464838c0983155513522a6b177aec`. General CI / SELECT-only fixture / CORE-RUN-5 and 6A regressions / contract **PASS**. Supports owner-approved SQL Server QA 7,000,000-row seeded source → actual ClickHouse 7m count + PG cursor → second incremental run **0 new rows** and generation 2, zero duplicate attempt events, measured time/throughput/RAM/CPU/IO evidence in `benchmark-result.json`. See [CORE-RUN-7 runbook](CORE_RUN7_BENCHMARK_ACCEPTANCE.md).
+- **CRITICAL LIMIT:** The **7m hardware benchmark has NOT RUN** in this session; current CI validates implementation/contract only, not measured performance. Must run `DATAFLOW_QA_ALLOW_7M=YES_I_ACCEPT_DISPOSABLE_QA_SEEDING bash deploy/local-qa/run-core-7m.sh` on an approved disposable owner machine with >=16GiB free and record artifact. No real ERP data alteration.
+- **CORE-RUN-6B STILL OPEN:** actual SIGKILL of worker/child **during active dbt SQL**, real concurrent publish/fencing race and end-to-end negative DQ no-publish proof. 6B-1 post-claim pre-SQL fault does not satisfy these. **CORE-RUN-7 STILL OPEN:** 7m execution and measured evidence, optionally 7m dbt/DQ under approved resources. **CORE-RUN-8:** unify Canvas with durable core; owner-operated repeatable demo remains OPEN. Production IdP/Vault/TLS/security NO-GO, fundraising/demo NO-GO until owner-visible repeatability.
 
 ## VERIFIED CORE-RUN-6A — real fault recovery, hosted disposable QA (2026-10-18)
 
