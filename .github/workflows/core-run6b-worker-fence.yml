@@ -1,0 +1,44 @@
+name: Core Run 6B Real Worker SIGKILL and Fence QA
+on:
+  pull_request:
+    paths:
+      - "cmd/dataflow-dbt-worker/**"
+      - "qa/browser/test_core_worker_crash_live.py"
+      - "deploy/local-qa/**"
+      - ".github/workflows/core-run6b-worker-fence.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: core-run6b-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  worker-sigkill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      DATAFLOW_QA_MIN_FREE_BYTES: "4294967296"
+      DATAFLOW_LIVE_QA_OPT_IN: "true"
+      DATAFLOW_CORE_6B_OPT_IN: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pin test dependencies
+        run: |
+          python -m pip install 'pytest==8.4.2' 'playwright==1.56.0'
+          python -m py_compile qa/browser/test_core_worker_crash_live.py
+          bash -n deploy/local-qa/run-core-6b.sh
+      - name: Start disposable, labeled SQL Server, PG and ClickHouse
+        run: bash deploy/local-qa/up.sh
+      - name: Real dbt worker SIGKILL and fenced lease replay
+        run: bash deploy/local-qa/run-core-6b.sh
+      - name: Upload worker crash evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-run6b-worker-fencing-evidence
+          path: qa-results/core-run6b/
+          retention-days: 14
+          if-no-files-found: warn
