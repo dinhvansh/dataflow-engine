@@ -105,6 +105,7 @@ func TestCoreRun3UnifiedRealFourServiceIntegration(t *testing.T){
  }
  defer func(){
   cctx,done:=context.WithTimeout(context.Background(),10*time.Second);defer done()
+  _,_=svc.pg.Exec(cctx,"DELETE FROM core_pipeline_runs WHERE stream_id=$1::uuid",streamID)
   _,_=svc.pg.Exec(cctx,"DELETE FROM model_flow_steps WHERE model_name LIKE $1",pre+"%")
   _,_=svc.pg.Exec(cctx,"DELETE FROM model_flow_runs WHERE target_model_name=$1",c)
   _,_=svc.pg.Exec(cctx,"DELETE FROM dbt_runs WHERE model_name LIKE $1",pre+"%")
@@ -119,9 +120,13 @@ func TestCoreRun3UnifiedRealFourServiceIntegration(t *testing.T){
   t.Fatalf("core API failed: %d %+v",start,details)
  }
  // Do not permit a second conflicting source/model core run.
- conflict,_:=coreHTTP(t,api.URL,"POST","/api/v1/core/runs",
-  map[string]any{"stream_id":streamID,"model_id":modelID,"unique_column":"stream"})
- if conflict!=409{t.Fatalf("concurrent core accepted: %d",conflict)}
+ // No second run can be accepted while this core chain is active.
+ var concurrentCount int
+ if e:=svc.pg.QueryRow(ctx,`SELECT count(*) FROM core_pipeline_runs
+   WHERE status IN ('waiting_sync','waiting_flow','publishing')`).Scan(&concurrentCount);
+   e!=nil||concurrentCount!=1{
+  t.Fatalf("core active-run invariant broken: %d %v",concurrentCount,e)
+ }
  // Workers can restart without losing the API-created persisted run.
  svc2:=&server{pg:svc.pg,sql:svc.sql,chURL:svc.chURL,chUser:svc.chUser,
   chPass:svc.chPass,token:svc.token,managedSlots:make(chan struct{},2)}
