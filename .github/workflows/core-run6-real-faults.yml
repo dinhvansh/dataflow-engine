@@ -1,0 +1,43 @@
+name: Core Run 6 REAL Fault Recovery (disposable)
+on:
+  pull_request:
+    paths:
+      - "qa/browser/test_core_faults_live.py"
+      - "deploy/local-qa/**"
+      - ".github/workflows/core-run6-real-faults.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: core-run6-real-faults-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  real-faults:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      DATAFLOW_QA_MIN_FREE_BYTES: "4294967296"
+      DATAFLOW_LIVE_QA_OPT_IN: "true"
+      DATAFLOW_CORE_FAULT_OPT_IN: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pin Python QA dependencies and verify scripts
+        run: |
+          python -m pip install 'pytest==8.4.2' 'playwright==1.56.0'
+          python -m py_compile qa/browser/test_core_faults_live.py
+          bash -n deploy/local-qa/run-core-faults.sh
+      - name: Start owned, isolated SQL Server / PG / ClickHouse
+        run: bash deploy/local-qa/up.sh
+      - name: Real SIGKILL and network fault recovery with durable engine assertions
+        run: bash deploy/local-qa/run-core-faults.sh
+      - name: Upload nonsecret run evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-run6-real-fault-evidence
+          path: qa-results/core-run6/
+          if-no-files-found: warn
+          retention-days: 14
