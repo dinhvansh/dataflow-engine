@@ -9,18 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-var safeBindingID = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]{0,63}package connectionsecurity
-
-import (
-	"context"
-	"errors"
-	"regexp"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
-)
-
-)
+var safeBindingID = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]{0,63}$`)
 
 // BindingPlans persists immutable, non-executable connection-plan snapshots.
 // A PLAN is never a credential, live connection, Test Connection, or execution
