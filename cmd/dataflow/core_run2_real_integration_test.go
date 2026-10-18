@@ -138,7 +138,7 @@ func TestCoreRun2RealCrashRetryCheckpointIntegration(t *testing.T){
  retried,err:=recovered.claimManagedRun(ctx,retryRun)
  if err!=nil||retried.Attempts!=2||retried.OwnerID==interrupted.OwnerID||
   retried.Fence<=interrupted.Fence{t.Fatalf("retry lease invalid %+v %v",retried,err)}
- if err=recovered.finishManagedSuccess(ctx,interrupted,upper,engine.Stats{});
+ if err=recovered.finishManagedSuccess(ctx,interrupted,interrupted.Lower,engine.Stats{});
   !errors.Is(err,pgstate.ErrLeaseLost){t.Fatalf("stale retried worker advanced cursor: %v",err)}
  recovered.runClaimedManaged(ctx,retried)
  _,out=coreHTTP(t,app.URL,"GET","/api/v1/managed/runs?id="+retryRun,nil)
