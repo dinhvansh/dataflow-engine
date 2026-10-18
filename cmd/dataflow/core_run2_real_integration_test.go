@@ -76,8 +76,6 @@ func TestCoreRun2RealCrashRetryCheckpointIntegration(t *testing.T){
   `UPDATE sync_checkpoints SET lease_expires_at=clock_timestamp()-interval '1 second'
     WHERE stream_id=$1::uuid AND lease_owner=$2::uuid`,
  }{
-  var tag any
-  _=tag
   if strings.Contains(statement,"managed_runs"){
    _,err=svc.pg.Exec(ctx,statement,first.RunID,first.OwnerID)
   }else{
