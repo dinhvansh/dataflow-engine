@@ -165,6 +165,19 @@ jobs:
         run: |
           set -euo pipefail
           go test ./cmd/dataflow -run '^TestCoreRun3UnifiedRealFourServiceIntegration$' -count=1 -timeout=7m -v
+      - name: CORE-RUN-4 real external publish crash-window / rollback / stale model acceptance
+        shell: bash
+        env:
+          DATAFLOW_INTEGRATION_PG_ISOLATED: "true"
+          DATAFLOW_INTEGRATION_POSTGRES_DSN: "postgres://dataflow_test_ci:ci-pg-scope-password@127.0.0.1:5434/dataflow_test_ci?sslmode=disable"
+          DATAFLOW_INTEGRATION_CH_ISOLATED: "true"
+          DATAFLOW_INTEGRATION_CH_URL: "http://127.0.0.1:18123"
+          DATAFLOW_INTEGRATION_CH_USER: "default"
+          DATAFLOW_INTEGRATION_CH_PASSWORD: "qa-disposable-clickhouse-password"
+          DATAFLOW_INTEGRATION_DBT_BIN: "dbt"
+        run: |
+          set -euo pipefail
+          go test ./cmd/dataflow -run '^TestCoreRun4FaultRollbackFourServiceIntegration$' -count=1 -timeout=8m -v
       - name: Failure diagnostics (disposable SQL Server only)
         if: failure()
         shell: bash
