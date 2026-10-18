@@ -1,10 +1,16 @@
 # DataFlow Engine — Master Roadmap, Status & Acceptance Gates
 
-**Snapshot: 2026-10-18.** main@6e372ab88cbf196270a942185fe1835b6a1d84da after #102/#103. Hosted real worker post-claim SIGKILL/fencing PASSED; 7m benchmark code/contract merged with **no measured 7m hardware run**. Mid-SQL process fault, concurrent publish, negative DQ, owner-local demo and production remain OPEN.
+**Snapshot: 2026-10-18.** main@702c824af64e44c8ac47a0bb3b45a88b5f542272. Real hosted CORE-RUN-6B-1 post-claim dbt SIGKILL/fencing and 6B-2 concurrent Core API/negative DQ no-publish accepted. 6B true mid-active-SQL crash + physical publish race OPEN. CORE-RUN-7 harness merged; measured 7m owner hardware run OPEN. Funding/operator repeatability & Production NO-GO.
 
 Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Original phased plan: [implementation/roadmap.md](../implementation/roadmap.md). Historical release evidence: [release-status-v13.md](../implementation/release-status-v13.md) and other `implementation/release-status-v*.md` files.
 
 **Full V3.2B/V3.2C release acceptance matrix:** [CONNECTIONS_RELEASE_ACCEPTANCE.md](CONNECTIONS_RELEASE_ACCEPTANCE.md) — identity, Vault, TLS, writer-freeze, scoped Test Connection, infra/audit controls. All production gates remain NO-GO.
+
+## VERIFIED CORE-RUN-6B-2 — concurrent real API & negative DQ (2026-10-18)
+
+- **[PR #105](https://github.com/dinhvansh/dataflow-engine/pull/105) MERGED** at `main@702c824af64e44c8ac47a0bb3b45a88b5f542272` (exact PR head `445dba310f7c9247399c7f9f6b19bd306fc34949`).
+- [Real concurrent/DQ GitHub Action #39141532710](https://github.com/dinhvansh/dataflow-engine/actions/runs/39141532710) **PASS** (`1 passed in 90.62s`), archived 14-day `core-run6b-concurrent-dq-evidence` JSON artifact. 6 genuine simultaneous POSTs → exactly 1 accepted 202, 5 conflicts 409; accepted incremental Run wrote 0 duplicate source rows; negative Visual model created zero-result actual dbt View, DQ rejected flow, no ClickHouse target created or physical UUID mutation of existing successful output. All **8/8 exact-head workflows PASS** including #102 worker SIGKILL and #100 network fault regression.
+- CORE-RUN-6B now includes **6B-1** real dbt worker SIGKILL **after lease claim but before dbt CLI** (#102), and **6B-2** live concurrent API/DQ no-publish (#105). **NOT proven**: SIGKILL in the middle of *active dbt SQL execution*, simultaneous ClickHouse physical DDL publish/exchange race under two workers, or owner-local operation. Do not label complete 6B until outstanding crash/race matrix passes. CORE-RUN-7 7,000,000-row benchmark **STILL NOT EXECUTED** on owner-approved hardware despite #103 runner/CI PASS. CORE-RUN-8 unified Canvas, owner-visible funding demo, real Vault/IdP/TLS and production release remain OPEN.
 
 ## CORE-RUN-6B-1 + CORE-RUN-7 progress (verified 2026-10-18)
 

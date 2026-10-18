@@ -1,6 +1,6 @@
 # CORE-RUN-6B-2 — negative DQ and concurrent API integration
 
-**Status PENDING until exact PR-head live GitHub Actions PASS**.
+**Hosted isolated QA PASS (2026-10-18):** [PR #105](https://github.com/dinhvansh/dataflow-engine/pull/105) merged, exact-head [REAL E2E #39141532710](https://github.com/dinhvansh/dataflow-engine/actions/runs/39141532710) `1 passed in 90.62s` with `core-run6b-concurrent-dq-evidence` artifact; 8/8 same-head workflows PASS. Owner-local and production gates separate.
 
 Real isolated Docker SQL Server QA (SELECT-only 10,000 fixture rows) → Go API → ClickHouse raw → PostgreSQL durable state → real dbt and DQ → versioned publish. After a valid successful first run, six synchronized HTTP POSTs to Core Run must yield exactly one 202 and five 409 responses; the accepted real job must finish with zero new incremental data and no duplicate rows.
 
