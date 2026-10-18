@@ -10,3 +10,5 @@ DATAFLOW_LIVE_QA_OPT_IN=true DATAFLOW_CORE_MID_SQL_OPT_IN=true bash deploy/local
 ```
 
 Never touch production ERP, original SQL Server remains read-only. CI must PASS all Go/browser/SQL read-only regressions + live mid-query fault before merge. A real ClickHouse publication race with **two simultaneously running Go workers** is covered by independent goroutines and PG client transactions in integration; inter-service worker/REST conflicts remain subject to full-stack lab retesting. CORE-RUN-7 owner-machine 7m measurement, CORE-RUN-8 unified Canvas, enterprise security and production release remain OPEN.
+
+**Process monitor permissions:** disposable ClickHouse QA admin has explicit `SHOW PROCESSLIST` to observe writer queries running under a separate worker user; this privilege is **not** extended to real ERP/production. A failed/early-completed dbt job emits `mid-sql-diagnostic.json`, not a fake PASS.

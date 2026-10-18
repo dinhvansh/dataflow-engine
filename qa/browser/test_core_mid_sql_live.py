@@ -81,6 +81,17 @@ def test_dbt_table_actual_sql_sigkill_rebuild_and_publish():
             n=f.ch("SELECT count() FROM system.processes WHERE "
                    "position(query,'sleepEachRow')>0 "
                    "AND position(query,'system.processes')=0 FORMAT TSV")
+            observed=f.pg("SELECT state||'|'||attempt_count||'|'||"
+               "coalesce(left(error_message,180),'') FROM table_runs "
+               f"WHERE id='{job}'")
+            current=observed.split("|")
+            if current[0] in ("failed","ready"):
+                diagnostic={"dbt_table_state":current[0],"attempts":current[1],
+                  "error_message":current[2] if len(current)>2 else "",
+                  "system_process_count":n}
+                (OUT/"mid-sql-diagnostic.json").write_text(
+                    json.dumps(diagnostic,indent=2)+"\\n")
+                pytest.fail("dbt job terminated before active SQL was seen: "+str(diagnostic))
             return n.isdigit() and int(n)>0
         wait(running,"actual active synthetic SQL executing in ClickHouse",95)
         assert physical(target)==original
