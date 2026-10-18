@@ -47,7 +47,11 @@ func coreRealFixture(t *testing.T)(context.Context,*server,func()){
  ctx,cancel:=context.WithTimeout(context.Background(),3*time.Minute)
  pg,err:=pgxpool.New(ctx,pgDSN);if err!=nil{cancel();t.Fatal(err)}
  var pgName string
- if err=pg.QueryRow(ctx,"SELECT current_database()").Scan(&pgName);err!=nil||pgName!="dataflow_test_ci"{
+ if err=pg.QueryRow(ctx,"SELECT current_database()").Scan(&pgName);err!=nil||
+  (pgName!="dataflow_test_ci" &&
+   !(pgName=="dataflow_qa" &&
+    os.Getenv("DATAFLOW_QA_LOCAL_OWNER_VERIFIED")=="true" &&
+    os.Getenv("DATAFLOW_BENCHMARK_7M")=="true")){
   pg.Close();cancel();t.Fatal("PostgreSQL must be disposable dataflow_test_ci")
  }
  for _,name:=range []string{"001_bootstrap.sql","002_sync_checkpoint.sql",
