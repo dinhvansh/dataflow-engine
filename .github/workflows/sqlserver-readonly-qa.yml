@@ -92,6 +92,36 @@ jobs:
         run: |
           set -euo pipefail
           go test ./internal/connections -run '^TestScopedSQLServerSessionIntegration$' -count=1 -timeout=4m -v
+      - name: Start REAL disposable ClickHouse scratch for end-to-end core QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name df-qa-e2e-clickhouse \
+            --memory=1792m --cpus=1 \
+            -p 127.0.0.1:18123:8123 \
+            -e CLICKHOUSE_DB=scratch \
+            -e CLICKHOUSE_USER=default \
+            -e CLICKHOUSE_PASSWORD=qa-disposable-clickhouse-password \
+            clickhouse/clickhouse-server:25.3
+          ready=0
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 2 -u default:qa-disposable-clickhouse-password http://127.0.0.1:18123/ping >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          test "$ready" -eq 1
+      - name: Real SQL Server SELECT-only → bounded engine → ClickHouse DQ and publish E2E
+        shell: bash
+        env:
+          DATAFLOW_INTEGRATION_CH_URL: "http://127.0.0.1:18123"
+          DATAFLOW_INTEGRATION_CH_USER: "default"
+          DATAFLOW_INTEGRATION_CH_PASSWORD: "qa-disposable-clickhouse-password"
+          DATAFLOW_INTEGRATION_CH_ISOLATED: "true"
+        run: |
+          set -euo pipefail
+          go test ./internal/engine -run '^TestRealSQLServerToClickHousePublishIntegration$' -count=1 -timeout=4m -v
       - name: Failure diagnostics (disposable SQL Server only)
         if: failure()
         shell: bash
