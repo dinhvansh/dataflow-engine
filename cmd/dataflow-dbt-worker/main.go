@@ -52,8 +52,29 @@ func finish(ctx context.Context,pg *pgxpool.Pool,c claim,result dbtworker.Outcom
  if tag.RowsAffected()!=1{return errors.New("dbt worker lost lease; result not persisted")}
  return nil
 }
+// Never expose this clock override to a non-disposable worker.
+func qaClaimDelay()(time.Duration,error){
+ raw:=os.Getenv("DATAFLOW_QA_DBT_CLAIM_HOLD_SECONDS")
+ if raw==""{return 0,nil}
+ if os.Getenv("DATAFLOW_ALLOW_TEST_LOAD")!="true"||
+    os.Getenv("DATAFLOW_ENABLE_DBT_TEST")!="true"||
+    os.Getenv("DATAFLOW_TEST_TARGET_DATABASE")!="scratch"{
+  return 0,errors.New("QA hold requires isolated dbt scratch worker")
+ }
+ n,e:=strconv.Atoi(raw)
+ if e!=nil||n<1||n>30{return 0,errors.New("QA hold must be 1..30 seconds")}
+ return time.Duration(n)*time.Second,nil
+}
 func executeClaim(ctx context.Context,pg *pgxpool.Pool,c claim,config dbtworker.Config){
  runCtx,cancel:=context.WithTimeout(ctx,5*time.Minute);defer cancel()
+ // Fault gate ONLY. Holds a genuinely leased dbt job before process execution,
+ // allowing reproducible process SIGKILL without altering production behavior.
+ if delay,err:=qaClaimDelay();err!=nil{
+  log.Printf("dbt QA claim hold rejected: %v",err);return
+ }else if delay>0{
+  log.Printf("QA dbt claimed job %s: hold before execute",c.ID)
+  select{case <-runCtx.Done():return;case <-time.After(delay):}
+ }
  result,err:=dbtworker.Execute(runCtx,dbtworker.Plan{Name:c.Name,Target:c.Target,SQL:c.SQL},config)
  if ctx.Err()!=nil{return}
  saveCtx,stop:=context.WithTimeout(context.Background(),10*time.Second);defer stop()
