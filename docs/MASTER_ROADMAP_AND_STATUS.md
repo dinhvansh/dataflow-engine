@@ -1,6 +1,6 @@
 # DataFlow Engine — Master Roadmap, Status & Acceptance Gates
 
-**Snapshot: 2026-10-18.** Checked against public `main@2c5b82d1c3304e1b9dad22903e6d2a1100797b18` after PR #65 merged, before this docs update. This is a planning/status report, not proof of production deployment. Live GitHub always wins.
+**Snapshot: 2026-10-18.** Verified public `main@1084e4cdc970b8b67dc61386dc62c6c2b6b6f836` after #71 merged, before this docs update. This remains planning/status evidence, **not** proof of deployed production operations; verify live GitHub state.
 
 Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Original phased plan: [implementation/roadmap.md](../implementation/roadmap.md). Historical release evidence: [release-status-v13.md](../implementation/release-status-v13.md) and other `implementation/release-status-v*.md` files.
 
@@ -42,6 +42,11 @@ Stack: Go API/workers; SQL Server source **SELECT-only**; ClickHouse for disposa
 | Connection Manager V3.2B-5B | **Merged #63**: server-only workspace VIEW/USE/TEST grant/revoke, locked MANAGE authorization, idempotent transitions, append-only migration 019 grant audit; isolated PostgreSQL and synthetic JWT QA | No trusted IdP directory or live grant UI/API, MANAGE bootstrap out of scope |
 | Connection Manager V3.2B-5C | **Merged #64**: durable migration 020 PREPARED/APPLIED/NEEDS_REVIEW journal, version-pinned fake vault proof, CAS metadata + immutable evidence, failure-injection/retry/revocation test | No actual external Vault CAS orchestration or operator reconciliation/compensation, credentials remain inactive |
 | Connection Manager V3.2B-5D | **Merged #65**: isolated opt-in direct TLS 1.3 listener, private key/PEM validation, expiration and startup gate for secure read-only JWT route | TLS/cert provisioning and renewal not deployed, no production ingress/IdP/credential operations |
+| V3.2C-1 Endpoint Admission | **Merged #67**: offline exact host/port CIDR and all-DNS-answer policy, rebinding-resistant pinned IP plan, SSRF-deny synthetic QA | No actual driver network/credentials or authenticated TEST API |
+| V3.2C-2A TCP Reachability | **Merged #71**: bounded mock TCP probe on pre-admitted addresses; timeout/attempt and redaction checks | No SQL Server/ClickHouse authentication handshake, API, TLS driver adapter or live network permission |
+| V3.3-1 Binding Plans | **Merged #70**: migration 021 immutable inactive workspace-scoped pipeline node to profile UUID/revision/role, composite FK, USE/revocation/stale checks | No ACTIVE connection, job-runtime routing, multi-instance E2E or legacy env-slot migration |
+| V4.0-1 Typed Runtime Proof | **Merged #68**: pure-Go SOURCE/SYNC/TRANSFORM/QUALITY/PUBLISH DAG with snapshot hash, fork/join, skip/cancel QA | No persistent heterogeneous orchestration, API/canvas live dispatch or connector adapters |
+| V4.1-1 Quality Contracts | **Merged #69**: six sanitized fail-closed metrics/schema release checks, synthetic QA confirms DQ failure blocks Publish | No real read-only metric extraction, evidence persistence, production release gate or rollback |
 | Operations / UI | **Developer Preview**: run lists/status/errors and Signalroom Enterprise Light/Dark workspace | RBAC, alerts/SLOs, retention, long-run operations, role-tailored workflows |
 | Airbyte replacement / performance | **Not accepted**: controlled comparison was proposed | Verified benchmark, migration playbook, parity checks, rollback and go/no-go |
 | Epicor real acceptance | **Pending formal acceptance** despite synthetic QA evidence | Source SELECT-only proof, snapshot correctness, 7m-row/large-table test, reconcile, recovery |
@@ -64,12 +69,14 @@ Stack: Go API/workers; SQL Server source **SELECT-only**; ClickHouse for disposa
 - **Exit:** metadata + vault + permission layer proven on synthetic credentials; **no network connection yet**.
 
 **V3.2C · Bounded Test Connection**
+- **Partially implemented:** V3.2C-1 offline SSRF admission (#67 CI 39081261076 PASS), V3.2C-2A bounded pinned mock TCP probe (#71 CI 39082542614 PASS). These DO NOT dial a real DB or prove credentials; driver-specific TLS/SQL read-only/ClickHouse scratch-only handshake, trusted TEST role/audit, rate limits and approved network egress remain pending.
 - Add per-connection server-side TEST action with authorization, timeout, TLS/cert policy, DNS and IP-range controls, SSRF/redirect defense, rate limits, audit.
 - SQL Server role only SELECT/schema reads. ClickHouse target only isolated scratch capabilities; no real ERP writes.
 - UI displays bounded status, latency and sanitized reason; never credentials or raw driver errors.
 - **Exit:** synthetic SQL Server + ClickHouse connect/fail/time-out/unreachable cases pass; unauthorized and internal-network probes blocked. A configured slot is not automatically “Connected”.
 
 **V3.3 · Immutable binding into job and pipeline**
+- **Partially implemented:** V3.3-1 immutable, **non-executable** binding plans (#70 CI 39082504022 PASS) with revision freeze, DB composite tenant FK and fresh USE authorization. Runtime-safe ACTIVE state/dispatch and multi-instance routing NOT BUILT.
 - Bind saved Sync Jobs, SQL Jobs and Pipeline nodes to stable connection IDs + revisions. Keep backward compatibility/migration from environment-level single connection.
 - Freeze binding snapshot at run time. Version/effective-state checks, authority at execution, safe migration/rollback, audit.
 - **Exit:** two independent synthetic sources/targets demonstrate correct routing; invalid/revoked connection stops execution; zero cross-connection leakage.
@@ -82,12 +89,14 @@ Stack: Go API/workers; SQL Server source **SELECT-only**; ClickHouse for disposa
 ### P1 — Unified ETL/ELT workflow (the earlier core product plan)
 
 **V4.0 · End-to-end heterogeneous pipeline orchestration**
+- **Partially implemented:** V4.0-1 typed mixed-step synthetic executor (#68 CI 39081765997 PASS), fork/join and downstream skip on failure, immutable plan digest; NO wired canvas/API/queue/workers/live connectors.
 - Evolve from SQL-Job-only DAG to a **mixed node type canvas**: Source/Sync → ClickHouse raw/ODS → Transform/dbt → DQ → Publish → optional notification.
 - Existing safe backend runtimes and PostgreSQL leasing must be reused; do not fake a pipeline by merely drawing nodes.
 - Dependencies A→B→C, frozen run snapshots and observable lifecycle, retry/cancel/recovery; accurate blocked/skipped downstream semantics.
 - **Exit:** one click executes a synthetic approved full flow from source through published target, with injected failure and zero unintended downstream run.
 
 **V4.1 · Data Quality & release contracts**
+- **Partially implemented:** V4.1-1 pure-Go six-check synthetic metric contracts (#69 CI 39082039171 PASS) with QUALITY→PUBLISH fail-closed demonstration; needs trusted read-only metrics extractors, durable evidence and real publish/rollback gates.
 - Explicit schema drift checks, nullable/unique/row-count/freshness and cross-table reconciliations (configurable threshold/owner), pre/post materialization checks.
 - Gate Publish when any mandatory DQ fails, capture evidence, preserve old version, expose safe rollback.
 - Business-level contracts and lineage impact. Do not claim quality from count-only checks.
@@ -129,9 +138,9 @@ Stack: Go API/workers; SQL Server source **SELECT-only**; ClickHouse for disposa
 
 ## 6. Immediate next session
 
-1. Confirm current `main`, PRs #63–#65 merged, latest GitHub main CI and PR #25 screenshot-gallery still open; report divergence before edits.
-2. V3.2B-1..4 plus 5A–5D are merged as synthetic/lab-only code, **not deployed to users**. Real IdP/JWKS, Vault token/policy, HTTPS cert lifecycle, trusted MANAGE grant bootstrap, protected API and operator-assisted rotation recovery remain unresolved.
-3. Proceed to **V3.2B-5E** only with explicitly verified IdP/Vault trust policies and an audit-safe operator reconciliation path. Do not activate credential writes or arbitrary Test Connection; V3.2C SSRF/network allowlist and source SELECT-only verification still block actual data-source dialing.
+1. Verify live GitHub main, PRs #67–#71 merged, any later Actions/PRs, conflicts and CI exact head before new branches; PR #25 screenshot gallery is independent.
+2. V3.2B security remains IN PROGRESS: approved real IdP/JWKS key rotation, workspace MANAGE bootstrap, Vault credentials/policies, HTTPS cert lifecycle and operational journal reconciliation have not been deployed. Nothing must allow unreviewed credentials or ERP writes.
+3. Continue V3.2B-5E trusted provisioning and V3.2C-2B real driver TEST (pinned/TLS, TEST scope, audit, egress), then V3.3 active connection binding, V3.4 cross-instance QA, V4.0 durable mixed-step API/canvas, V4.1 trusted DQ evidence/publish/rollback, V4.2 efficient 7m+ incremental. Existing #67–#71 are synthetic foundations only.
 4. Update this file and handoff once milestones actually merge.
 
-**Canonical restart instruction:** “Đọc `docs/PROJECT_HANDOFF_LATEST.md` và `docs/MASTER_ROADMAP_AND_STATUS.md` trong https://github.com/dinhvansh/dataflow-engine; kiểm tra GitHub main/PR/Actions mới nhất; tiếp tục V3.2B-5E thực tế IdP/Vault/TLS trusted provisioning và an toàn operator recovery; không bật credentials/Test Connection, không chạm ERP ghi dữ liệu.”
+**Canonical restart instruction:** “Đọc cả `docs/PROJECT_HANDOFF_LATEST.md` và `docs/MASTER_ROADMAP_AND_STATUS.md` trong https://github.com/dinhvansh/dataflow-engine từ live main; kiểm tra GitHub HEAD/PR/Actions. PR #67–#71 đã merge synthetic V3.2C network guard/probe, V3.3 inactive binding, V4.0 typed DAG, V4.1 DQ contracts. **Không giả định đã xong live Test Connection, multi-instance hoặc full pipeline**. Tiếp tục real IdP/Vault security gates, driver TEST, active bindings, persistent full pipeline, real DQ publish, incremental benchmark theo roadmap. ERP SELECT-only, không làm DML/DDL nguồn và không claim production ready.”
