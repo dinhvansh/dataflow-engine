@@ -1,5 +1,5 @@
 import {useEffect,useState} from "react";
-import {Activity,Database,Play,RefreshCw,RotateCcw,ShieldAlert} from "lucide-react";
+import {Database,Play,RefreshCw,RotateCcw,ShieldAlert} from "lucide-react";
 import {Button} from "./ui/button";
 import {ConfirmActionDialog} from "./ui/confirm-action-dialog";
 import {corePipelineApi,managedApi,type CorePipelineRun,type ManagedStream} from "../lib/api";
