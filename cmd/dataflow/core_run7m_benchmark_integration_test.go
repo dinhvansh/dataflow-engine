@@ -32,8 +32,8 @@ func TestCoreRun7mRealManagedBenchmarkIntegration(t *testing.T){
  api:=http.NewServeMux()
  api.HandleFunc("/api/v1/managed/streams",svc.streamAPI)
  api.HandleFunc("/api/v1/managed/runs",svc.managedRunAPI)
- server:=httptest.NewServer(api);defer server.Close()
- status,response:=coreHTTP(t,server.URL,"POST","/api/v1/managed/streams",
+ app:=httptest.NewServer(api);defer app.Close()
+ status,response:=coreHTTP(t,app.URL,"POST","/api/v1/managed/streams",
   map[string]any{
    "source_schema":"Erp","source_table":"PartTranScale7M",
    "target_database":"scratch","target_table":"dataflow_raw_events",
@@ -48,7 +48,7 @@ func TestCoreRun7mRealManagedBenchmarkIntegration(t *testing.T){
   _,_=svc.pg.Exec(c,"DELETE FROM sync_checkpoints WHERE stream_id=$1::uuid",id)
   _,_=svc.pg.Exec(c,"DELETE FROM sync_streams WHERE id=$1::uuid",id)
  }()
- code,queued:=coreHTTP(t,server.URL,"POST","/api/v1/managed/runs",
+ code,queued:=coreHTTP(t,app.URL,"POST","/api/v1/managed/runs",
   map[string]any{"stream_id":id})
  runID,_:=queued["run_id"].(string)
  if code!=202||!validUUID.MatchString(runID){t.Fatalf("7m queue refused: %+v",queued)}
@@ -60,7 +60,7 @@ func TestCoreRun7mRealManagedBenchmarkIntegration(t *testing.T){
  begin:=time.Now()
  worker.svc.runClaimedManaged(ctx,attempt)
  elapsed:=time.Since(begin)
- _,result:=coreHTTP(t,server.URL,"GET","/api/v1/managed/runs?id="+runID,nil)
+ _,result:=coreHTTP(t,app.URL,"GET","/api/v1/managed/runs?id="+runID,nil)
  if result["status"]!="succeeded"||result["rows_written"]!=float64(7000000){
   t.Fatalf("7m actual QA sync not complete: %+v",result)
  }
