@@ -75,9 +75,9 @@ func(s *server)corePlan(ctx context.Context,tx pgx.Tx,targetID string)(corePlan,
 
 func(s *server)checkCoreSchema(ctx context.Context)error{
  if !corePipelineEnabled(){return nil}
- rows,err:=s.pg.Query(ctx,`SELECT id,managed_run_id,flow_id,stage_uuid,old_uuid
+ rows,err:=s.pg.Query(ctx,`SELECT id,managed_run_id,flow_id,stage_uuid,old_uuid,rolled_back_at
  FROM core_pipeline_runs LIMIT 0`)
- if err!=nil{return fmt.Errorf("CORE-RUN-3 requires migration 028: %w",err)}
+ if err!=nil{return fmt.Errorf("CORE-RUN-3 requires migrations 028 and 029: %w",err)}
  rows.Close();return rows.Err()
 }
 func(s *server)coreRunsAPI(w http.ResponseWriter,r *http.Request){

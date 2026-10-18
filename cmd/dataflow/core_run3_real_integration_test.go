@@ -23,7 +23,10 @@ import (
 // checks real source-derived values and publishes a physical immutable
 // ClickHouse target. Reconcile calls below simulate independent poll ticks,
 // with a NEW server/worker object after the sync boundary.
-func TestCoreRun3UnifiedRealFourServiceIntegration(t *testing.T){
+func TestCoreRun3UnifiedRealFourServiceIntegration(t *testing.T){realCoreIntegration(t,false)}
+func TestCoreRun4FaultRollbackFourServiceIntegration(t *testing.T){realCoreIntegration(t,true)}
+
+func realCoreIntegration(t *testing.T,withFaults bool){
  if os.Getenv("DATAFLOW_INTEGRATION_DBT_BIN")==""{
   t.Skip("real dbt executable is required on SQL Server+PG+ClickHouse QA runner")
  }
@@ -36,6 +39,7 @@ func TestCoreRun3UnifiedRealFourServiceIntegration(t *testing.T){
  for _,name:=range []string{
   "010_transform_models.sql","011_dbt_runs.sql",
   "013_auto_build_flows.sql","028_core_pipeline_runs.sql",
+  "029_core_pipeline_rollback.sql",
  }{
   content,e:=os.ReadFile(filepath.Join("..","..","migrations","postgres",name))
   if e!=nil{t.Fatal(e)}
@@ -49,6 +53,7 @@ func TestCoreRun3UnifiedRealFourServiceIntegration(t *testing.T){
  mux:=http.NewServeMux()
  mux.HandleFunc("/api/v1/managed/streams",svc.streamAPI)
  mux.HandleFunc("/api/v1/core/runs",svc.coreRunsAPI)
+ mux.HandleFunc("/api/v1/core/actions",svc.coreActionAPI)
  api:=httptest.NewServer(mux);defer api.Close()
  status,stream:=coreHTTP(t,api.URL,"POST","/api/v1/managed/streams",streamRaw)
  streamID,_:=stream["id"].(string)
@@ -192,4 +197,119 @@ func TestCoreRun3UnifiedRealFourServiceIntegration(t *testing.T){
  after,e:=cl.UUID(ctx,targetName)
  if e!=nil||after!=before{t.Fatal("repeated core poll published a new table")}
  t.Logf("CORE-RUN-3 REAL PASS: authenticated operator core POST → PG managed 10000 SQL Server rows → ClickHouse raw → PG dbt A→B→C (real dbt) → DQ 3 steps → UUID stage → atomic publish → GET succeeded / 10000 events; immutable target unchanged on reconcile")
+ if !withFaults{return}
+ // CORE-RUN-4: a second real operator Run produces a different physical
+ // table version. After the external EXCHANGE has succeeded we intentionally
+ // abandon the PG terminal transition and restart the coordinator.
+ code,secondResponse:=coreHTTP(t,api.URL,"POST","/api/v1/core/runs",
+  map[string]any{"stream_id":streamID,"model_id":modelID,"unique_column":"stream"})
+ secondRun,_:=secondResponse["run_id"].(string)
+ secondManaged,_:=secondResponse["managed_run_id"].(string)
+ if code!=202||!validUUID.MatchString(secondRun)||!validUUID.MatchString(secondManaged){
+  t.Fatalf("second core run not queued: %d %+v",code,secondResponse)
+ }
+ nextClaim,e:=svc2.claimManagedRun(ctx,secondManaged);if e!=nil{t.Fatal(e)}
+ svc2.runClaimedManaged(ctx,nextClaim)
+ var zeroRows int64
+ if e=svc.pg.QueryRow(ctx,`SELECT rows_written FROM managed_runs
+   WHERE id=$1::uuid AND status='succeeded'`,secondManaged).Scan(&zeroRows);
+   e!=nil||zeroRows!=0{
+  t.Fatalf("incremental second run should transfer zero new source rows: %d %v",zeroRows,e)
+ }
+ if e=svc2.reconcileOneCore(ctx);e!=nil{t.Fatal(e)}
+ var flowTwo string
+ if e=svc.pg.QueryRow(ctx,`SELECT flow_id::text FROM core_pipeline_runs
+  WHERE id=$1::uuid`,secondRun).Scan(&flowTwo);e!=nil{t.Fatal(e)}
+ for _,name:=range []string{a,b,c}{
+  if e=svc2.reconcileOneFlow(ctx);e!=nil{t.Fatal(e)}
+  var child,sqlText,target string
+  e=svc.pg.QueryRow(ctx,`SELECT r.id::text,r.compiled_sql,r.target_relation
+   FROM dbt_runs r JOIN model_flow_steps st ON r.id=st.dbt_run_id
+   WHERE st.flow_id=$1::uuid AND st.model_name=$2`,
+   flowTwo,name).Scan(&child,&sqlText,&target)
+  if e!=nil{t.Fatal(e)}
+  result,runErr:=dbtworker.Execute(ctx,dbtworker.Plan{
+   Name:name,SQL:sqlText,Target:target,
+  },conf)
+  if runErr!=nil{t.Fatalf("CORE4 REAL second dbt %s: %v (%s)",name,runErr,result.Log)}
+  if _,e=svc.pg.Exec(ctx,`UPDATE dbt_runs SET status='succeeded',
+   run_results=$2::jsonb,finished_at=clock_timestamp() WHERE id=$1::uuid`,
+   child,string(result.Results));e!=nil{t.Fatal(e)}
+  if e=svc2.reconcileOneFlow(ctx);e!=nil{t.Fatalf("second flow DQ %s: %v",name,e)}
+ }
+ if e=svc2.reconcileOneCore(ctx);e!=nil{t.Fatal(e)} // flow -> publishing
+ if e=svc2.reconcileOneCore(ctx);e!=nil{t.Fatal(e)} // durable UUID journal
+ var stageTwo,stageUUID,oldUUID,statusBefore string
+ e=svc.pg.QueryRow(ctx,`SELECT stage_name,stage_uuid,old_uuid,status
+   FROM core_pipeline_runs WHERE id=$1::uuid`,secondRun).
+  Scan(&stageTwo,&stageUUID,&oldUUID,&statusBefore)
+ if e!=nil||statusBefore!="publishing"||oldUUID!=before||stageUUID==""{
+  t.Fatalf("unsafe pre-publication journal: %s %s %s %s error=%v",
+   stageTwo,stageUUID,oldUUID,statusBefore,e)
+ }
+ publication:=safetable.Publication{Target:targetName,Stage:stageTwo,
+  StageUUID:stageUUID,OldUUID:oldUUID}
+ if e=cl.Publish(ctx,publication);e!=nil{t.Fatalf("real uncertain external publish: %v",e)}
+ publishedUUID,e:=cl.UUID(ctx,targetName)
+ if e!=nil||publishedUUID!=stageUUID{t.Fatal("external publish not actually committed")}
+ // A brand NEW worker object sees PG still at 'publishing' and safely
+ // replays the already completed ClickHouse EXCHANGE without double-swap.
+ recoveredCore:=&server{pg:svc.pg,sql:svc.sql,chURL:svc.chURL,chUser:svc.chUser,
+  chPass:svc.chPass,token:svc.token}
+ if e=recoveredCore.reconcileOneCore(ctx);e!=nil{
+  t.Fatalf("publication crash-window replay failed: %v",e)
+ }
+ _,state:=coreHTTP(t,api.URL,"GET","/api/v1/core/runs?id="+secondRun,nil)
+ if state["status"]!="succeeded"||state["rows_verified"]!=float64(1){
+  t.Fatalf("replayed publication not acknowledged: %+v",state)
+ }
+ afterReplay,e:=cl.UUID(ctx,targetName)
+ if e!=nil||afterReplay!=publishedUUID{t.Fatal("unsafe double-exchange after crash recovery")}
+ // Explicit rollback requires an existing physical backup and operator
+ // confirmation; only test ClickHouse scratch is modified, never source SQL.
+ actionCode,rolled:=coreHTTP(t,api.URL,"POST","/api/v1/core/actions",
+  map[string]string{"run_id":secondRun,"action":"rollback","confirm":"ROLLBACK"})
+ if actionCode!=200||rolled["status"]!="rolled_back"{
+  t.Fatalf("operator rollback failed: %d %+v",actionCode,rolled)
+ }
+ rolledUUID,e:=cl.UUID(ctx,targetName)
+ if e!=nil||rolledUUID!=before{t.Fatal("rollback did not restore precise prior physical table")}
+ actionCode,rolled=coreHTTP(t,api.URL,"POST","/api/v1/core/actions",
+  map[string]string{"run_id":secondRun,"action":"rollback","confirm":"ROLLBACK"})
+ if actionCode!=200||rolled["status"]!="rolled_back"{
+  t.Fatalf("idempotent rollback replay failed: %d %+v",actionCode,rolled)
+ }
+ rolledUUID,e=cl.UUID(ctx,targetName)
+ if e!=nil||rolledUUID!=before{t.Fatal("repeated rollback double-swapped target")}
+ // Negative test: mutate only saved PostgreSQL model metadata after a
+ // third API enqueue. The source SQL is still SELECT-only and a complete
+ // managed sync does not permit stale model execution or new publication.
+ failCode,failedArgs:=coreHTTP(t,api.URL,"POST","/api/v1/core/runs",
+  map[string]any{"stream_id":streamID,"model_id":modelID,"unique_column":"stream"})
+ failedID,_:=failedArgs["run_id"].(string)
+ childID,_:=failedArgs["managed_run_id"].(string)
+ if failCode!=202||!validUUID.MatchString(failedID){t.Fatal("third core run rejected")}
+ claimThree,e:=svc2.claimManagedRun(ctx,childID);if e!=nil{t.Fatal(e)}
+ svc2.runClaimedManaged(ctx,claimThree)
+ var compiledOriginal string
+ if e=svc.pg.QueryRow(ctx,"SELECT compiled_sql FROM transform_models WHERE name=$1",b).
+  Scan(&compiledOriginal);e!=nil{t.Fatal(e)}
+ if _,e=svc.pg.Exec(ctx,`UPDATE transform_models SET compiled_sql='SELECT 123 AS tampered'
+  WHERE name=$1`,b);e!=nil{t.Fatal(e)}
+ if e=svc2.reconcileOneCore(ctx);e!=nil{t.Fatal(e)}
+ _,failure:=coreHTTP(t,api.URL,"GET","/api/v1/core/runs?id="+failedID,nil)
+ if failure["status"]!="failed"||failure["model_flow_id"]!=""{
+  t.Fatalf("model drift permitted a new dbt chain: %+v",failure)
+ }
+ if _,e=svc.pg.Exec(ctx,`UPDATE transform_models SET compiled_sql=$2 WHERE name=$1`,
+  b,compiledOriginal);e!=nil{t.Fatal(e)}
+ finalUUID,e:=cl.UUID(ctx,targetName)
+ if e!=nil||finalUUID!=before{t.Fatal("failed model drift modified published result")}
+ _,_=cl.Query(ctx,"DROP TABLE IF EXISTS scratch."+stageTwo)
+ var checkpointGen int64
+ if e=svc.pg.QueryRow(ctx,`SELECT generation FROM sync_checkpoints WHERE stream_id=$1::uuid`,
+   streamID).Scan(&checkpointGen);e!=nil||checkpointGen!=3{
+  t.Fatalf("rollback altered incremental cursor: generation=%d, err=%v",checkpointGen,e)
+ }
+ t.Logf("CORE-RUN-4 REAL PASS: 10000-row repeat real dbt E2E → external ClickHouse publish crash window → new worker replay preserves UUID → explicit rollback restores old UUID → rollback retry idempotent → model SQL drift blocks new flow/publish → 3 committed SQL-only checkpoints preserved")
 }
