@@ -46,7 +46,7 @@ function StatusBadge({available}:{available:boolean}){
 function Metric({label,value,detail,icon:Icon}:{label:string;value:number;detail:string;icon:typeof Database}){
  return <Card className="hub-metric"><CardHeader className="pb-2"><CardDescription className="flex items-center gap-2"><Icon size={15}/>{label}</CardDescription><CardTitle className="text-2xl tabular-nums">{value.toString().padStart(2,"0")}</CardTitle></CardHeader><CardContent className="muted text-xs">{detail}</CardContent></Card>;
 }
-export function ConnectorHub({token,onTokenChange}:{token:string;onTokenChange:(value:string)=>void}){
+export function ConnectorHub({token,onTokenChange,sessionRole}:{token:string;onTokenChange:(value:string)=>void;sessionRole?:"operator"|"admin"|null}){
  const[tab,setTab]=useState<"sources"|"destinations"|"routes">("sources");
  const[query,setQuery]=useState("");
  const[filter,setFilter]=useState<"all"|Capability>("all");
