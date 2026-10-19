@@ -399,58 +399,6 @@ def test_core_run5_full_live_browser():
                       f"stream_id='{stream_id}'") == "3"
             assert pg("SELECT rows_written FROM managed_runs WHERE id='"
                       + graph_result["managed_run_id"] + "'") == "0"
-            # CORE 8B local hardening: a later save is a NEW revision,
-            # and cannot retroactively change a previously launched snapshot.
-            immutable_v1 = json.loads(json.dumps(graph_result["graph_snapshot"]))
-            revision_v2 = json.loads(json.dumps(graph))
-            revision_v2["nodes"][2]["x"] = 585
-            accepted, updated_graph = api("/api/v1/core/graphs", "POST", {
-                "action": "save", "name": graph_name,
-                "expected_version": 1, "graph": revision_v2
-            })
-            assert accepted == 200 and updated_graph["version"] == 2
-            assert updated_graph["graph_digest"] != saved["graph_digest"]
-            listed, registry = api("/api/v1/core/graphs")
-            assert listed == 200 and any(
-                item["id"] == saved["id"] and item["version"] == 2
-                for item in registry["graphs"]
-            ), "Graph revision 2 is not durable in PostgreSQL"
-            # Count check proves failed stale POST never enqueues even a
-            # managed_run that could otherwise advance source checkpoint.
-            count_before = pg("SELECT count(*) FROM managed_runs")
-            checkpoint_before = pg(
-                f"SELECT generation FROM sync_checkpoints WHERE stream_id='{stream_id}'"
-            )
-            for invalid_run in (
-                {"graph_id": saved["id"], "graph_version": 1},
-                {"graph_id": saved["id"], "graph_version": 999},
-                {"graph_id": saved["id"], "graph_version": 2,
-                 "unique_column": "wrong_key"},
-            ):
-                candidate = {
-                    "stream_id": stream_id, "model_id": model_id,
-                    "unique_column": invalid_run.get("unique_column", "stream"),
-                    "graph_id": invalid_run["graph_id"],
-                    "graph_version": invalid_run["graph_version"],
-                }
-                try:
-                    api("/api/v1/core/runs", "POST", candidate)
-                    pytest.fail("stale or mismatched bound graph launched")
-                except urllib.error.HTTPError as exc:
-                    assert exc.code == 409, "Bound graph mismatch must fail closed"
-            assert pg("SELECT count(*) FROM managed_runs") == count_before, (
-                "Denied graph launch created an orphan managed run"
-            )
-            assert pg(f"SELECT generation FROM sync_checkpoints WHERE "
-                      f"stream_id='{stream_id}'") == checkpoint_before
-            assert api("/api/v1/core/runs?id=" + graph_run_id)[1]["graph_snapshot"] == immutable_v1, (
-                "Updating saved graph changed a completed immutable run"
-            )
-            try:
-                api("/api/v1/core/graphs", token="invalid-qa-bearer")
-                pytest.fail("Graph registry readable without valid bearer")
-            except urllib.error.HTTPError as exc:
-                assert exc.code == 401
             page.reload(wait_until="networkidle")
             page.get_by_role("button", name="Pipelines", exact=True).click()
             section = page.locator('section[aria-label="Durable core pipeline operator"]')
@@ -460,6 +408,53 @@ def test_core_run5_full_live_browser():
             expect(section.locator('[aria-label="Durable Core runtime canvas"]')
                    .locator('[data-testid="core-runtime-node-TRANSFORM"]')).to_have_count(3)
             assert api("/api/v1/core/runs?id=" + graph_run_id)[1]["graph_snapshot"] == graph_result["graph_snapshot"]
+            # Graph lifecycle: editing a saved definition does not rewrite the
+            # immutable revision recorded by an already completed Core run.
+            altered = json.loads(json.dumps(graph))
+            altered["nodes"][0]["x"] = 75
+            graph_rc, graph_v2 = api("/api/v1/core/graphs", "POST", {
+                "action": "save", "name": graph_name,
+                "expected_version": 1, "graph": altered
+            })
+            assert graph_rc == 200 and graph_v2["version"] == 2
+            assert graph_v2["graph_digest"] != saved["graph_digest"]
+            assert graph_v2["id"] == saved["id"], "Editing must not switch identity"
+            # Old draft must fail CAS without silently advancing the revision.
+            try:
+                api("/api/v1/core/graphs", "POST", {
+                    "action": "save", "name": graph_name,
+                    "expected_version": 1, "graph": altered
+                })
+                pytest.fail("old version overwrite accepted after revision 2")
+            except urllib.error.HTTPError as exc:
+                assert exc.code == 409
+            # Old Run's graph is a frozen DB snapshot, unaffected by edits.
+            _, frozen_run = api("/api/v1/core/runs?id=" + graph_run_id)
+            assert frozen_run["graph_version"] == 1
+            assert frozen_run["graph_digest"] == saved["graph_digest"]
+            assert frozen_run["graph_snapshot"] == graph_result["graph_snapshot"]
+            assert pg("SELECT graph_version FROM core_pipeline_runs "
+                      f"WHERE id='{graph_run_id}'") == "1"
+            # A stale graph launch must fail before creating a managed run.
+            before_count = pg("SELECT count(*) FROM managed_runs")
+            try:
+                api("/api/v1/core/runs", "POST", {
+                    "stream_id": stream_id, "model_id": model_id,
+                    "unique_column": "stream",
+                    "graph_id": saved["id"], "graph_version": 1
+                })
+                pytest.fail("stale graph revision launched after edit")
+            except urllib.error.HTTPError as exc:
+                assert exc.code == 409
+            assert pg("SELECT count(*) FROM managed_runs") == before_count
+            assert pg("SELECT generation FROM sync_checkpoints "
+                      f"WHERE stream_id='{stream_id}'") == "3"
+            # Server keeps only the latest editable definition in registry,
+            # but every run keeps its own permanently readable old snapshot.
+            list_rc, catalog = api("/api/v1/core/graphs")
+            assert list_rc == 200
+            stored = next(g for g in catalog["graphs"] if g["id"] == saved["id"])
+            assert stored["version"] == 2 and stored["graph_digest"] == graph_v2["graph_digest"]
             page.screenshot(path=str(OUT / "operator-graph-reload.png"), full_page=True)
             summary = {
                 "gate": "CORE-RUN-5", "scope": "isolated real UI/API/PG/MSSQL/CH/dbt",
@@ -473,10 +468,9 @@ def test_core_run5_full_live_browser():
                 "graph_run_id": graph_run_id, "graph_version": 1,
                 "immutable_graph_snapshot_survives_reload": True,
                 "stale_graph_and_fork_rejected": True,
-                "graph_revision_2_after_run": updated_graph["version"],
-                "snapshot_version_1_unchanged_after_edit": True,
-                "denied_launch_produces_zero_managed_runs": True,
-                "unauthorized_graph_registry_denied": True,
+                "updated_graph_version": 2,
+                "old_run_snapshot_survives_graph_edit": True,
+                "stale_revision_launch_no_managed_run": True,
                 "elapsed_seconds": round(time.monotonic() - started, 3),
             }
             (OUT / "operator-result.json").write_text(

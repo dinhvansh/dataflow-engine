@@ -1,0 +1,27 @@
+name: Core final Codex Local QA evidence contract
+on:
+  pull_request:
+    paths:
+      - "qa/local-acceptance/CORE_ONE_PASS_QA.md"
+      - "qa/local-acceptance/verify_core_final_evidence.py"
+      - "qa/local-acceptance/test_core_final_evidence.py"
+      - "qa/browser/test_core_live.py"
+      - "qa/local-acceptance/CODEX_LOCAL_ONE_PASS_PROMPT.md"
+      - ".github/workflows/core-final-qa-contract.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Static evidence acceptance without heavy Docker or 7m
+        run: |
+          python -m py_compile qa/local-acceptance/verify_core_final_evidence.py qa/local-acceptance/test_core_final_evidence.py
+          python -m unittest discover -s qa/local-acceptance -p test_core_final_evidence.py -v
+          python qa/local-acceptance/verify_core_final_evidence.py --contract
+          python -m py_compile qa/browser/test_core_live.py

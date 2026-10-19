@@ -1,10 +1,18 @@
 # DataFlow Engine — Master Roadmap, Status & Acceptance Gates
 
-**Snapshot: 2026-10-19.** `main@1b31a4dbaf297b128542100c7aa3e319715cffdd`. CORE-RUN-8A and 8B real hosted browser QA PASS; persisted user-editable typed Core graph and backend exact-revision immutable launch done (linear only). CORE-RUN-7 measured 7m hardware benchmark deferred/BLOCKED; owner demo and production security NO-GO.
+**Snapshot: 2026-10-19.** `main@7a0965c806dcd7928771e7b1129bc75f9493c241`. Core 8B frozen graph lifecycle regression PASS [#116](https://github.com/dinhvansh/dataflow-engine/pull/116); one-shot Codex Local CORE acceptance package ready, owner-local execution NOT RUN. 7m benchmark deferred/BLOCKED due disk; parallel/conditional routing and production security remain OPEN.
 
 Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Original phased plan: [implementation/roadmap.md](../implementation/roadmap.md). Historical release evidence: [release-status-v13.md](../implementation/release-status-v13.md) and other `implementation/release-status-v*.md` files.
 
 **Full V3.2B/V3.2C release acceptance matrix:** [CONNECTIONS_RELEASE_ACCEPTANCE.md](CONNECTIONS_RELEASE_ACCEPTANCE.md) — identity, Vault, TLS, writer-freeze, scoped Test Connection, infra/audit controls. All production gates remain NO-GO.
+
+## CORE final consolidated Codex Local QA package — ready to run later (2026-10-19)
+
+- [PR #116](https://github.com/dinhvansh/dataflow-engine/pull/116) **MERGED**, main after merge `7a0965c806dcd7928771e7b1129bc75f9493c241`, source head `22b6220e32f07a493c6f94bad71471ee044f6f9e`. **6/6 exact-head workflows PASS**, including [real CORE-RUN-8B E2E #39189139185](https://github.com/dinhvansh/dataflow-engine/actions/runs/39189139185) (`1 passed in 122.20s`), Go/Web CI, mock Browser UI, SQL Server read-only QA, static contract and new QA evidence verifier contract. This is **GitHub-hosted**, not owner-laptop acceptance.
+- Critical new CORE-RUN-8B lifecycle regression: update graph version **1 → 2** with changed XYFlow position, refuse stale version-1 CAS update and stale bound version-1 Core Run launch, prove **zero new managed runs / checkpoint unchanged**, and prove earlier successful Run retains **immutable frozen graph version 1, digest and snapshot** after browser reload.
+- **One-step Codex Local handoff:** read [CODEX_LOCAL_ONE_PASS_PROMPT.md](../qa/local-acceptance/CODEX_LOCAL_ONE_PASS_PROMPT.md) and [CORE_ONE_PASS_QA.md](../qa/local-acceptance/CORE_ONE_PASS_QA.md); it covers Go/Web/Browser, real saved linear graph/durable source→A→B→C→DQ→publish/replay/rollback, worker/API fault, CH outage, negative DQ/concurrency, mid-active SQL SIGKILL, security/read-only and evidence. Run all phases in **one Codex Local task**, with fresh **explicitly authorized labeled disposable QA** for each live test. Strict stop/block on resources or unrelated volumes.
+- [verify_core_final_evidence.py](../qa/local-acceptance/verify_core_final_evidence.py) is a read-only evidence gate; final local report `qa-results/<UTC-RUN-ID>/02_TEST_MATRIX.csv` and `HANDOFF_TO_CHATGPT.md` must contain actual results and logs. Static verifier CI PASS **does not mean Codex Local suite was executed**.
+- Owner explicitly postponed CORE-RUN-7 real 7,000,000-row hardware benchmark due insufficient Codex Cloud disk; mark **NOT RUN/DEFERRED**, never PASS or reduce guards. Parallel/IF-ELSE, enterprise production IdP/Vault/TLS and fundraising owner-operated demonstration remain separate OPEN/NO-GO. Real ERP never written.
 
 ## CORE-RUN-8B accepted — persisted editable mixed-node Canvas (2026-10-19)
 
