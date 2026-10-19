@@ -77,7 +77,7 @@ export function ConnectorHub({token,onTokenChange,sessionRole}:{token:string;onT
    </div>
   </section>
   <ConfiguredConnections token={token} onTokenChange={onTokenChange}/>
-  <ConnectionDraftRegistry token={token}/>
+  {sessionRole!=="operator"&&<ConnectionDraftRegistry token={token} sessionAdmin={sessionRole==="admin"}/>}
   {sessionRole!=="operator"&&<RuntimeConnectionManager token={token} sessionAdmin={sessionRole==="admin"}/>}
   <section className="hub-workspace space-y-4">
    <div className="hub-tabs flex flex-wrap gap-1 rounded-lg border p-1" role="tablist" aria-label="Connector catalog sections">
