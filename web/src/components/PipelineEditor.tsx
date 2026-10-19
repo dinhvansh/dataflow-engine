@@ -158,9 +158,9 @@ export function PipelineEditor({token,onTokenChange,theme,onOpenOperations}:Prop
      <p className="muted mt-1 max-w-3xl text-sm">Design and validate the SQL Job DAG, save it to the PostgreSQL-backed registry, then explicitly run an enabled TEST pipeline and inspect real backend outcomes. No automatic execution or scheduling.</p></div>
     <span className="df-pipeline-stat">DESIGN / SAVE / TEST RUN</span>
    </div>
-   <label className="block max-w-lg space-y-1"><span className="muted text-xs">API token (memory only)</span>
+   {token!=="session"&&<label className="block max-w-lg space-y-1"><span className="muted text-xs">API token (memory only)</span>
     <input aria-label="Pipeline API token" className="field" type="password" autoComplete="off" value={token} onChange={event=>updateToken(event.target.value)}/>
-   </label>
+   </label>}
    {jobError&&<p role="alert" className="df-text-error text-xs">Could not load SQL Jobs: {jobError}</p>}
    {parsed.plan?<VisualPipelineCanvas plan={parsed.plan} jobs={jobs} onChange={updatePlan} onReloadJobs={()=>{void loadJobs();}} loadingJobs={busyJobs} canLoadJobs={Boolean(token)} onRunCanvas={()=>{void requestRunCanvas();}} canRunCanvas={canRunCanvas} runBusy={busyRunCanvas} runHint={runHint}/>:
     <div className="rounded border df-border-warning df-bg-warning-soft p-4 text-sm df-text-warning" role="alert"><AlertTriangle size={16} className="mr-2 inline"/>Canvas paused: {parsed.issue}</div>}
