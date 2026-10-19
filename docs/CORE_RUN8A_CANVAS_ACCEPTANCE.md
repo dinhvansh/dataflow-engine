@@ -1,6 +1,6 @@
 # CORE-RUN-8A — Server-owned Core Canvas observer
 
-**Status: pending real browser/API/SQL Server/PG/ClickHouse/dbt CI**. Part 1 of Core/Canvas convergence; not a new mixed-step editing backend.
+**Status: HOSTED disposable four-service QA PASS (2026-10-19):** [PR #112](https://github.com/dinhvansh/dataflow-engine/pull/112) merged. [Real Playwright #39182223134](https://github.com/dinhvansh/dataflow-engine/actions/runs/39182223134) `1 passed in 83.39s`; all 6/6 exact-head workflows PASS. This is the read-only Core Canvas observer, not mixed editable heterogeneous execution. Part 1 of Core/Canvas convergence; not a new mixed-step editing backend.
 
 The existing SQL Job DAG editor remains unchanged and intentionally distinct. The Core Pipeline operator now displays a read-only `@xyflow/react` runtime DAG: Source → managed incremental Sync → PostgreSQL **immutable** dbt model-flow steps → DQ → atomic Publish.
 
