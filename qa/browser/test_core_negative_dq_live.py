@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 import test_core_live as f
+from qa_environment import evidence_environment
 
 pytestmark=pytest.mark.skipif(
  os.getenv("DATAFLOW_LIVE_QA_OPT_IN")!="true" or
@@ -102,7 +103,7 @@ def test_real_concurrent_core_requests_and_failed_dq_never_publish():
              f"WHERE flow_id='{rejected['model_flow_id']}' "
              "AND step_index>0 AND dbt_run_id IS NOT NULL")=="0"
  (OUT/"negative-dq-concurrency.json").write_text(json.dumps({
-  "gate":"CORE-RUN-6B-2","environment":"owned GitHub disposable four-service QA",
+  "gate":"CORE-RUN-6B-2","environment":evidence_environment(),
   "concurrent_http_posts":6,"accepted":1,"conflicts":5,
   "completed_second_run":second,
   "second_run_rows_written":0,"source_rows":10000,

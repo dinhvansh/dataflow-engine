@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 import test_core_live as fixture
+from qa_environment import evidence_environment
 
 pytestmark = pytest.mark.skipif(
     os.getenv("DATAFLOW_LIVE_QA_OPT_IN") != "true" or
@@ -184,7 +185,7 @@ def test_core_run6_sigkill_and_network_failure_recovery():
     assert uuid() == original and cursor(stream_id) == 1 and cursor(outage_stream) == 1
     events.append("explicit new run ingested real 200 source rows; UUID rollback preserved both committed cursors")
     (OUT / "fault-result.json").write_text(json.dumps({
-        "gate":"CORE-RUN-6", "scope":"hosted disposable QA only",
+        "gate":"CORE-RUN-6", "scope":evidence_environment(),
         "source":"DataFlowFixtureQA.Erp.PartTran SELECT-only",
         "source_rows":10000, "outage_source_rows":200, "first_run":first_id, "outage_run":second_id,
         "operator_resubmission_run":recovery_id, "cursor_generations":{"PartTran":[1,1],"Part":[0,1]},
