@@ -8,8 +8,7 @@ import (
  "context"
  "crypto/rand"
  "crypto/sha256"
- "crypto/subtle"
- "encoding/base64"
+  "encoding/base64"
  "encoding/json"
  "io"
  "net/http"
@@ -143,9 +142,8 @@ func(s *server)sessionMiddleware(next http.Handler)http.Handler{
   clone:=r.Clone(context.WithValue(r.Context(),sessionKey{},role))
   clone.Header=r.Header.Clone()
   clone.Header.Set("Authorization","Bearer "+s.token)
+  clone.Header.Del("X-DataFlow-Connection-Admin")
   if role==administratorRole {clone.Header.Set("X-DataFlow-Connection-Admin",os.Getenv("DATAFLOW_CONNECTION_ADMIN_TOKEN"))}
   next.ServeHTTP(w,clone)
  })
 }
-// Assert compile-time context usage and ensure comparisons retain fixed-time semantics.
-var _ = subtle.ConstantTimeCompare
