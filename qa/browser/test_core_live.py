@@ -251,7 +251,8 @@ def test_core_run5_full_live_browser():
         context.tracing.start(screenshots=True, snapshots=True)
         page = context.new_page()
         try:
-            page.goto(BASE, wait_until="networkidle")
+            page.goto(BASE, wait_until="domcontentloaded")
+            page.get_by_role("button", name="Pipelines", exact=True).wait_for(state="visible", timeout=30000)
             section = operator(page, stream_id, model_id)
             first_id, first = execute_ui_run(page, section)
             assert first["has_backup"] is False
