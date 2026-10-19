@@ -455,6 +455,12 @@ def test_core_run5_full_live_browser():
             assert list_rc == 200
             stored = next(g for g in catalog["graphs"] if g["id"] == saved["id"])
             assert stored["version"] == 2 and stored["graph_digest"] == graph_v2["graph_digest"]
+            # Real authorization regression: persisted graph registry is private.
+            try:
+                api("/api/v1/core/graphs", token="invalid-qa-bearer")
+                pytest.fail("Graph registry exposed without a valid bearer token")
+            except urllib.error.HTTPError as exc:
+                assert exc.code == 401
             page.screenshot(path=str(OUT / "operator-graph-reload.png"), full_page=True)
             summary = {
                 "gate": "CORE-RUN-5", "scope": "isolated real UI/API/PG/MSSQL/CH/dbt",
@@ -471,6 +477,7 @@ def test_core_run5_full_live_browser():
                 "updated_graph_version": 2,
                 "old_run_snapshot_survives_graph_edit": True,
                 "stale_revision_launch_no_managed_run": True,
+                "unauthorized_graph_registry_denied": True,
                 "elapsed_seconds": round(time.monotonic() - started, 3),
             }
             (OUT / "operator-result.json").write_text(

@@ -48,3 +48,7 @@ The script **stops at first FAIL** and leaves containers/volumes untouched for r
 - CORE-RUN-7 **7 million rows**: user explicitly deferred it; `run-core-7m.sh` must not be invoked by this runner. No 16 GB RAM requirement is imposed by this suite.
 - Owner-local signoff and live hardware/8GB workload: OPEN until Codex Local executes and supplies evidence.
 - Production IdP/Vault/TLS, CDC source physical deletes, parallel/IF-ELSE and external resources: out of scope, **NO-GO**.
+
+## One executable owner-local technical gate
+
+The `run-core8b-one-shot.sh` command runs Go race/unit/vet/build, TypeScript build and mock Browser (reported separately), then a **fresh verified disposable QA fixture per live scenario**. The real Core-8B Playwright test now rejects unauthenticated graph catalog access with HTTP 401 in addition to saved-graph version/cursor/frozen snapshot checks. Every live PASS requires fresh structured JSON evidence; stale artifacts cannot be reused to claim success. After the live stages, the runner writes `02_TEST_MATRIX.csv` and calls the repository's existing `verify_core_final_evidence.py --report` gate. An empty/missing stage is NOT_RUN, not PASS. Full local execution remains PENDING until the owner authorizes resetting the **labeled disposable** QA volume set.

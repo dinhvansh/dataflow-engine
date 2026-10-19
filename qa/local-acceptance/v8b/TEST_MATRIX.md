@@ -23,3 +23,7 @@
 The runnable subset is recorded by `matrix.tsv`; the larger acceptance catalog from v1.3 stays in `qa/local-acceptance/TEST_CASE_CATALOG.md` and MUST NOT be silently marked passed. If a runner case includes several assertions, link its Playwright/PG/CH artifacts for each P0 subcase rather than treating shell exit alone as proof.
 
 Bug severity P0/P1 blocks completion. Codex should preserve full original failure, fix on separate branch, add a regression and re-run from fresh disposable QA. For an unsupported local dependency label it `BLOCKED` with exact reason, not `PASS` or silent skip.
+
+| UI-MOCK | P1 | Isolated mock UI pytest | PASS is reported separately, never proof of real Go/PG/SQL Server interaction |
+| VERIFY-EVIDENCE | P0 | Fresh real JSON per live test, canonical 02_TEST_MATRIX and external verifier | `verify_core_final_evidence.py --report` exit 0; no NOT_RUN mandatory cases |
+| API-401 | P0 | Unauthenticated GET /api/v1/core/graphs | HTTP 401 in real Core-8B browser/API E2E |
