@@ -267,7 +267,7 @@ def test_core_run5_full_live_browser():
             assert pg("SELECT generation FROM sync_checkpoints WHERE "
                       f"stream_id='{stream_id}'") == "1"
             # A page refresh cannot synthesize previous local React state.
-            page.reload(wait_until="networkidle")
+            page.reload(wait_until="domcontentloaded")
             page.get_by_role("button", name="Pipelines", exact=True).click()
             section = page.locator('section[aria-label="Durable core pipeline operator"]')
             section.get_by_label("Core API bearer token").fill(TOKEN)
@@ -400,7 +400,7 @@ def test_core_run5_full_live_browser():
                       f"stream_id='{stream_id}'") == "3"
             assert pg("SELECT rows_written FROM managed_runs WHERE id='"
                       + graph_result["managed_run_id"] + "'") == "0"
-            page.reload(wait_until="networkidle")
+            page.reload(wait_until="domcontentloaded")
             page.get_by_role("button", name="Pipelines", exact=True).click()
             section = page.locator('section[aria-label="Durable core pipeline operator"]')
             section.get_by_label("Core API bearer token").fill(TOKEN)
