@@ -107,6 +107,35 @@ export const connectionDefinitionsApi={
    body:JSON.stringify(draft)}))
 };
 
+export type CoreGraphNode={
+ id:string;type:"SOURCE"|"SYNC"|"TRANSFORM"|"QUALITY"|"PUBLISH";
+ requires:string[];stream_id?:string;model_id?:string;unique_column?:string;
+ x?:number;y?:number;
+};
+export type CoreGraphDefinition={nodes:CoreGraphNode[]};
+export type SavedCoreGraph={
+ id:string;name:string;version:number;graph:CoreGraphDefinition;
+ graph_digest:string;plan_digest:string;
+ stream_id:string;model_id:string;unique_column:string;
+};
+export type ValidatedCoreGraph={
+ valid:true;digest:string;model_plan_digest:string;
+ stream_id:string;model_id:string;unique_column:string;
+};
+export const coreGraphApi={
+ list:(token:string)=>getSource<{graphs:SavedCoreGraph[]}>("/api/v1/core/graphs",token),
+ validate:(name:string,graph:CoreGraphDefinition,token:string)=>
+  parse<ValidatedCoreGraph>(fetch("/api/v1/core/graphs",{
+   method:"POST",headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},
+   body:JSON.stringify({action:"validate",name,graph,expected_version:0})
+  })),
+ save:(name:string,graph:CoreGraphDefinition,expected_version:number,token:string)=>
+  parse<SavedCoreGraph>(fetch("/api/v1/core/graphs",{
+   method:"POST",headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},
+   body:JSON.stringify({action:"save",name,graph,expected_version})
+  }))
+};
+
 export type CoreStepObservation={index:number;model_name:string;status:string;rows_verified:number;error:string};
 export type CorePipelineRun={
  run_id:string;status:"waiting_sync"|"waiting_flow"|"publishing"|"succeeded"|"failed"|"rolled_back";
@@ -114,13 +143,15 @@ export type CorePipelineRun={
  managed_run_id:string;managed_status?:string;model_flow_id?:string;
  model_flow_status?:string;rows_verified?:number;stage?:string;target?:string;
  error?:string;has_backup?:boolean;dependency_order?:string[];steps?:CoreStepObservation[];
+ graph_id?:string;graph_version?:number;graph_digest?:string;
+ graph_snapshot?:CoreGraphDefinition|null;
 };
 export const corePipelineApi={
- start:(stream_id:string,model_id:string,unique_column:string,token:string)=>
+ start:(stream_id:string,model_id:string,unique_column:string,token:string,graph?:SavedCoreGraph)=>
   parse<CorePipelineRun>(fetch("/api/v1/core/runs",{
    method:"POST",
    headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},
-   body:JSON.stringify({stream_id,model_id,unique_column})
+   body:JSON.stringify({stream_id,model_id,unique_column,...(graph?{graph_id:graph.id,graph_version:graph.version}:{})})
   })),
  status:(run_id:string,token:string)=>
   getSource<CorePipelineRun>(`/api/v1/core/runs?id=${encodeURIComponent(run_id)}`,token),

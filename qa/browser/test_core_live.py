@@ -314,7 +314,101 @@ def test_core_run5_full_live_browser():
             assert ch(f"SELECT stream,events FROM scratch.{TARGET} FORMAT TSV") == (
                 f"{stream_id}\t10000"
             )
-            page.screenshot(path=str(OUT / "operator-rollback.png"), full_page=True)
+            # CORE-RUN-8B: save a real typed graph, then launch its exact
+            # immutable revision from the new React Flow operator surface.
+            models_code, model_rows = api("/api/v1/transform/models")
+            assert models_code == 200
+            names = {item["name"]: item["id"] for item in model_rows["models"]}
+            graph = {"nodes": [
+                {"id": "source", "type": "SOURCE", "stream_id": stream_id,
+                 "requires": [], "x": 40, "y": 50},
+                {"id": "sync", "type": "SYNC", "requires": ["source"], "x": 290, "y": 50},
+                {"id": "transform_a", "type": "TRANSFORM", "model_id": names[A],
+                 "requires": ["sync"], "x": 540, "y": 50},
+                {"id": "transform_b", "type": "TRANSFORM", "model_id": names[B],
+                 "requires": ["transform_a"], "x": 790, "y": 50},
+                {"id": "transform_c", "type": "TRANSFORM", "model_id": names[C],
+                 "requires": ["transform_b"], "x": 1040, "y": 50},
+                {"id": "quality", "type": "QUALITY", "unique_column": "stream",
+                 "requires": ["transform_c"], "x": 1290, "y": 50},
+                {"id": "publish", "type": "PUBLISH",
+                 "requires": ["quality"], "x": 1540, "y": 50}
+            ]}
+            graph_name = "qa_core_" + SUFFIX
+            checked, verified = api("/api/v1/core/graphs", "POST", {
+                "action": "validate", "name": graph_name,
+                "expected_version": 0, "graph": graph
+            })
+            assert checked == 200 and verified["valid"]
+            saved_code, saved = api("/api/v1/core/graphs", "POST", {
+                "action": "save", "name": graph_name,
+                "expected_version": 0, "graph": graph
+            })
+            assert saved_code == 200 and saved["version"] == 1
+            assert saved["graph_digest"] == verified["digest"]
+            invalid_graph = json.loads(json.dumps(graph))
+            invalid_graph["nodes"][5]["requires"] = ["sync"]
+            try:
+                api("/api/v1/core/graphs", "POST", {
+                    "action": "validate", "name": graph_name,
+                    "expected_version": 0, "graph": invalid_graph
+                })
+                pytest.fail("forked graph was accepted")
+            except urllib.error.HTTPError as exc:
+                assert exc.code == 422, "Graph forks must fail closed"
+            try:
+                api("/api/v1/core/graphs", "POST", {
+                    "action": "save", "name": graph_name,
+                    "expected_version": 0, "graph": graph
+                })
+                pytest.fail("stale graph revision silently overwrote saved graph")
+            except urllib.error.HTTPError as exc:
+                assert exc.code == 409
+            try:
+                api("/api/v1/core/runs", "POST", {
+                    "stream_id": stream_id, "model_id": model_id,
+                    "unique_column": "stream", "graph_id": saved["id"],
+                    "graph_version": 2
+                })
+                pytest.fail("stale saved graph version started a real run")
+            except urllib.error.HTTPError as exc:
+                assert exc.code == 409
+            editor = section.locator('[aria-label="Editable mixed Core Canvas"]')
+            expect(editor).to_be_visible()
+            editor.get_by_role("button", name="Load graphs").click()
+            editor.get_by_label("Saved Core graphs").select_option(saved["id"])
+            expect(editor.get_by_text("Persisted graph: " + graph_name, exact=False)).to_be_visible()
+            editor.get_by_role("button", name="Run saved graph").click()
+            page.get_by_role("button", name="Start saved Core graph").click()
+            third_input = section.get_by_label("Core run UUID")
+            expect(third_input).not_to_have_value(second_id, timeout=25000)
+            expect(third_input).to_have_value(re.compile(r"^[a-f0-9-]{36}$"), timeout=25000)
+            graph_run_id = third_input.input_value()
+            expect(section.locator('[aria-label="Observed real core pipeline run"]')
+                   .locator('[role="status"]')).to_have_text("succeeded", timeout=240000)
+            _, graph_result = api("/api/v1/core/runs?id=" + graph_run_id)
+            assert graph_result["graph_id"] == saved["id"]
+            assert graph_result["graph_version"] == 1
+            assert graph_result["graph_digest"] == saved["graph_digest"]
+            assert [n["type"] for n in graph_result["graph_snapshot"]["nodes"]] == [
+                "SOURCE", "SYNC", "TRANSFORM", "TRANSFORM", "TRANSFORM",
+                "QUALITY", "PUBLISH"
+            ]
+            assert [step["model_name"] for step in graph_result["steps"]] == [A, B, C]
+            assert pg("SELECT generation FROM sync_checkpoints WHERE "
+                      f"stream_id='{stream_id}'") == "3"
+            assert pg("SELECT rows_written FROM managed_runs WHERE id='"
+                      + graph_result["managed_run_id"] + "'") == "0"
+            page.reload(wait_until="networkidle")
+            page.get_by_role("button", name="Pipelines", exact=True).click()
+            section = page.locator('section[aria-label="Durable core pipeline operator"]')
+            section.get_by_label("Core API bearer token").fill(TOKEN)
+            section.get_by_label("Core run UUID").fill(graph_run_id)
+            section.get_by_role("button", name="Inspect backend state").click()
+            expect(section.locator('[aria-label="Durable Core runtime canvas"]')
+                   .locator('[data-testid="core-runtime-node-TRANSFORM"]')).to_have_count(3)
+            assert api("/api/v1/core/runs?id=" + graph_run_id)[1]["graph_snapshot"] == graph_result["graph_snapshot"]
+            page.screenshot(path=str(OUT / "operator-graph-reload.png"), full_page=True)
             summary = {
                 "gate": "CORE-RUN-5", "scope": "isolated real UI/API/PG/MSSQL/CH/dbt",
                 "source": "DataFlowFixtureQA.Erp.PartTran",
@@ -324,6 +418,9 @@ def test_core_run5_full_live_browser():
                 "managed_status": second["managed_status"],
                 "checkpoint_generation": 2,
                 "rollback_target_uuid_matches_first": True,
+                "graph_run_id": graph_run_id, "graph_version": 1,
+                "immutable_graph_snapshot_survives_reload": True,
+                "stale_graph_and_fork_rejected": True,
                 "elapsed_seconds": round(time.monotonic() - started, 3),
             }
             (OUT / "operator-result.json").write_text(

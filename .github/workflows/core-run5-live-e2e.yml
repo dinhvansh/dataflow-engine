@@ -8,6 +8,9 @@ on:
       - "web/src/components/CorePipelineRunner.tsx"
       - "web/src/lib/api.ts"
       - "cmd/dataflow/core_runs.go"
+      - "web/src/components/CoreMixedGraphEditor.tsx"
+      - "cmd/dataflow/core_graphs.go"
+      - "migrations/postgres/030_core_pipeline_graphs.sql"
       - ".github/workflows/core-run5-live-e2e.yml"
   workflow_dispatch:
 permissions:

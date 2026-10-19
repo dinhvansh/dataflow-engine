@@ -222,6 +222,7 @@ func main() {
 	mux.HandleFunc("/api/v1/bootstrap/history", svc.history)
 	mux.HandleFunc("/api/v1/managed/streams", svc.streamAPI)
 	mux.HandleFunc("/api/v1/managed/runs", svc.managedRunAPI)
+	mux.HandleFunc("/api/v1/core/graphs", svc.coreGraphsAPI)
 	mux.HandleFunc("/api/v1/core/runs", svc.coreRunsAPI)
 	mux.HandleFunc("/api/v1/core/actions", svc.coreActionAPI)
 	mux.HandleFunc("/api/v1/managed/schedules", svc.scheduleAPI)

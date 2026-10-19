@@ -2,16 +2,17 @@ import {useEffect,useState} from "react";
 import {Database,Play,RefreshCw,RotateCcw,ShieldAlert} from "lucide-react";
 import {Button} from "./ui/button";
 import {ConfirmActionDialog} from "./ui/confirm-action-dialog";
-import {corePipelineApi,managedApi,type CorePipelineRun,type ManagedStream} from "../lib/api";
+import {corePipelineApi,managedApi,type CorePipelineRun,type ManagedStream,type SavedCoreGraph} from "../lib/api";
 import {transformApi,type SavedTransform} from "../lib/transformApi";
 import {CoreRuntimeCanvas} from "./CoreRuntimeCanvas";
+import {CoreMixedGraphEditor} from "./CoreMixedGraphEditor";
 
 // Minimal operator surface for the *real* server-owned CORE-RUN pipeline.
 // This is intentionally separate from the older in-process SQL DAG Canvas
 // executor. The UI NEVER manufactures a successful status or triggers
 // constituent workers directly.
 const terminal=new Set(["succeeded","failed","rolled_back"]);
-type Confirm="run"|"rollback"|null;
+type Confirm="run"|"graph_run"|"rollback"|null;
 type Props={token:string;onTokenChange:(next:string)=>void};
 export function CorePipelineRunner({token,onTokenChange}:Props){
  const[streams,setStreams]=useState<ManagedStream[]>([]);
@@ -26,6 +27,7 @@ export function CorePipelineRunner({token,onTokenChange}:Props){
  const[error,setError]=useState("");
  const[pollError,setPollError]=useState("");
  const[confirm,setConfirm]=useState<Confirm>(null);
+ const[pendingGraph,setPendingGraph]=useState<SavedCoreGraph|null>(null);
  const[lastPlan,setLastPlan]=useState<string[]>([]);
 
  const eligibleModels=models.filter(m=>m.model.mode==="visual"&&
@@ -58,11 +60,13 @@ export function CorePipelineRunner({token,onTokenChange}:Props){
   }catch(e){setError("Could not inspect core run: "+String(e))}
   finally{setRefreshing(false)}
  };
- const start=async()=>{
-  if(!actionable||!selectedModel||!selectedStream)return;
+ const start=async(graph?:SavedCoreGraph)=>{
+  if(graph&&!token)return;
+  if(!graph&&(!actionable||!selectedModel||!selectedStream))return;
   setBusy(true);setError("");setPollError("");setRun(null);setLastPlan([]);
   try{
-   const response=await corePipelineApi.start(selectedStream.id,selectedModel.id,uniqueColumn,token);
+   const response=await corePipelineApi.start(graph?.stream_id??selectedStream!.id,
+     graph?.model_id??selectedModel!.id,graph?.unique_column??uniqueColumn,token,graph);
    setRunID(response.run_id);setLastPlan(response.dependency_order??[]);
    // GET is the authoritative state including linked child run status.
    const observed=await corePipelineApi.status(response.run_id,token);
@@ -83,7 +87,7 @@ export function CorePipelineRunner({token,onTokenChange}:Props){
  useEffect(()=>{
   // Drop previously observed run on token replacement; do not show a status
   // fetched under another operator's credentials.
-  setRun(null);setRunID("");setLastPlan([]);setPollError("");setConfirm(null);
+  setRun(null);setRunID("");setLastPlan([]);setPollError("");setConfirm(null);setPendingGraph(null);
  },[token]);
  useEffect(()=>{
   if(!token||!run||terminal.has(run.status))return;
@@ -110,7 +114,7 @@ export function CorePipelineRunner({token,onTokenChange}:Props){
   </div>
   <p className="flex items-start gap-2 rounded border df-border-warning df-bg-warning-soft p-3 text-xs df-text-warning">
    <ShieldAlert size={17} className="shrink-0"/>
-   This Core runtime graph observes the real durable pipeline; the editable SQL DAG above still uses a separate legacy executor. Backend CORE QA flags and migrations 028/029 are required. Full mixed-node Canvas editing and production cutover are not yet supported. No production cutover, live ERP writes or verified 7M throughput.
+   This Core runtime graph observes the real durable pipeline; the editable SQL DAG above still uses a separate legacy executor. Backend CORE QA flags and migrations 028/029/030 are required. The mixed Canvas below persists strictly linear typed flows and launches immutable graph revisions; fork/join and production cutover are not yet supported. No production cutover, live ERP writes or verified 7M throughput.
   </p>
   <label className="block max-w-xl space-y-1"><span className="muted text-xs">API bearer token (memory only)</span>
    <input aria-label="Core API bearer token" className="field" type="password" autoComplete="off"
@@ -136,6 +140,9 @@ export function CorePipelineRunner({token,onTokenChange}:Props){
      value={uniqueColumn} onChange={e=>setUniqueColumn(e.target.value)} placeholder="stream"/>
    </label>
   </div>
+  <CoreMixedGraphEditor token={token} streams={eligibleStreams} models={eligibleModels}
+   active={busy||!!run&&!terminal.has(run.status)}
+   onRun={graph=>{setPendingGraph(graph);setConfirm("graph_run")}}/>
   <CoreRuntimeCanvas run={run}
    sourceLabel={run?
     (eligibleStreams.find(s=>s.id===run.stream_id)
@@ -183,6 +190,13 @@ export function CorePipelineRunner({token,onTokenChange}:Props){
    message="This creates a durable PostgreSQL run, reads only the approved SQL Server source and publishes to ClickHouse scratch after dbt and DQ succeed. Requires the isolated QA environment."
    confirmLabel="Start CORE Run" onCancel={()=>setConfirm(null)}
    onConfirm={()=>{setConfirm(null);void start()}}/>}
+  {confirm==="graph_run"&&pendingGraph&&<ConfirmActionDialog
+   title="Run saved immutable Core graph in disposable QA?"
+   target={pendingGraph.name+" · revision "+pendingGraph.version}
+   targetLabel="Saved PostgreSQL graph · exact server revision"
+   message="Creates a durable Core Run bound to this exact saved graph, its dbt dependency digest and immutable snapshot. Refuses stale revisions or changed saved models. Reads ERP-like QA source SELECT-only and publishes to ClickHouse scratch only after quality checks."
+   confirmLabel="Start saved Core graph" onCancel={()=>{setConfirm(null);setPendingGraph(null)}}
+   onConfirm={()=>{const graph=pendingGraph;setConfirm(null);setPendingGraph(null);void start(graph)}}/>}
   {confirm==="rollback"&&run&&<ConfirmActionDialog
    title="Restore previous scratch table version?"
    target={run.target??run.run_id}
