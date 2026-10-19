@@ -58,3 +58,7 @@ The `run-core8b-one-shot.sh` command runs Go race/unit/vet/build, TypeScript bui
 - The one-shot runner logs `STATIC-RESET-NEGATIVE` and `STATIC-EVIDENCE-CONTRACT` with independent PASS/FAIL results in `matrix.tsv` and `HANDOFF_TO_CHATGPT.md`. Neither stage launches/stops Docker workloads.
 - **Explicit owner consent is still mandatory** before the script can reset even disposable QA volumes. Providing the Codex task prompt does **not** authorize deleting previously created containers or stored work. Codex must first show the owner the proposed disposable project reset scope; if approval is withheld, report BLOCKED.
 - A green GitHub static contract test does not prove this runner has already executed on the owner's 8GB computer. Deferred 7m remains NOT RUN; production NO-GO.
+
+## Real Canvas GUI editing gate (added after one-shot package review)
+
+The canonical `qa/browser/test_core_live.py` E2E **also exercises the React Flow editor controls** after browser reload: load saved graph, add a deliberately invalid extra TRANSFORM, observe a server-rejected Validate, remove that transform, click the QUALITY node, change the DQ key, Validate then Save revision 2 in the GUI. It checks the PostgreSQL registry's changed DQ binding, immutable old Run revision 1, and a screenshot `operator-editor-revision.png`. This ensures green API-only graph tests cannot stand in for editing UX. It is part of the existing one-shot `CORE-8B-E2E` stage; no separate runner, fixture or hardware-heavy test is required.

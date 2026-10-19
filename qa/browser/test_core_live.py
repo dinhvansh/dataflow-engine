@@ -408,17 +408,55 @@ def test_core_run5_full_live_browser():
             expect(section.locator('[aria-label="Durable Core runtime canvas"]')
                    .locator('[data-testid="core-runtime-node-TRANSFORM"]')).to_have_count(3)
             assert api("/api/v1/core/runs?id=" + graph_run_id)[1]["graph_snapshot"] == graph_result["graph_snapshot"]
-            # Graph lifecycle: editing a saved definition does not rewrite the
-            # immutable revision recorded by an already completed Core run.
-            altered = json.loads(json.dumps(graph))
-            altered["nodes"][0]["x"] = 75
-            graph_rc, graph_v2 = api("/api/v1/core/graphs", "POST", {
-                "action": "save", "name": graph_name,
-                "expected_version": 1, "graph": altered
-            })
-            assert graph_rc == 200 and graph_v2["version"] == 2
+            # GUI acceptance, not just API acceptance: after a complete
+            # browser reload, exercise the actual editor controls against
+            # this real PG-backed graph. Adding an unrelated dbt step must
+            # fail server validation, removing it repairs the linear chain.
+            section.get_by_role(
+                "button", name="Load saved streams and models"
+            ).click()
+            editor = section.locator('[aria-label="Editable mixed Core Canvas"]')
+            editor.get_by_role("button", name="Load graphs").click()
+            editor.get_by_label("Saved Core graphs").select_option(saved["id"])
+            expect(editor.get_by_text(
+                "Persisted graph: " + graph_name, exact=False
+            )).to_be_visible()
+            editor.get_by_label("Palette Core transform model").select_option(names[A])
+            editor.get_by_role("button", name="Add transform").click()
+            expect(editor.get_by_role("button", name="Remove transform")).to_be_visible()
+            expect(editor.get_by_role("button", name="Run saved graph")).to_be_disabled()
+            editor.get_by_role("button", name="Validate").click()
+            expect(editor.locator('[role="alert"]')).to_contain_text(
+                "Core graph rejected", timeout=15000
+            )
+            editor.get_by_role("button", name="Remove transform").click()
+            editor.locator('.react-flow__node[data-id="quality"]').click()
+            unique_key = editor.get_by_label("Core graph DQ key")
+            expect(unique_key).to_have_value("stream")
+            unique_key.fill("events")
+            expect(editor.get_by_role("button", name="Run saved graph")).to_be_disabled()
+            editor.get_by_role("button", name="Validate").click()
+            expect(editor.locator('[role="status"]').filter(
+                has_text="Server validated graph digest"
+            )).to_be_visible(timeout=15000)
+            editor.get_by_role("button", name="Save Core graph").click()
+            expect(editor.get_by_text(
+                "Persisted graph: " + graph_name + " · rev 2"
+            )).to_be_visible(timeout=15000)
+            page.screenshot(path=str(OUT / "operator-editor-revision.png"),
+                            full_page=True)
+            # Graph lifecycle: the actual UI edit must preserve the frozen
+            # snapshot of the earlier completed graph-bound Core Run.
+            graph_rc, registry_v2 = api("/api/v1/core/graphs")
+            assert graph_rc == 200
+            graph_v2 = next(x for x in registry_v2["graphs"]
+                            if x["id"] == saved["id"])
+            assert graph_v2["version"] == 2
             assert graph_v2["graph_digest"] != saved["graph_digest"]
             assert graph_v2["id"] == saved["id"], "Editing must not switch identity"
+            assert next(n for n in graph_v2["graph"]["nodes"]
+                        if n["type"] == "QUALITY")["unique_column"] == "events"
+            altered = graph_v2["graph"]
             # Old draft must fail CAS without silently advancing the revision.
             try:
                 api("/api/v1/core/graphs", "POST", {
@@ -478,6 +516,7 @@ def test_core_run5_full_live_browser():
                 "old_run_snapshot_survives_graph_edit": True,
                 "stale_revision_launch_no_managed_run": True,
                 "unauthorized_graph_registry_denied": True,
+                "interactive_editor_controls_qa": True,
                 "elapsed_seconds": round(time.monotonic() - started, 3),
             }
             (OUT / "operator-result.json").write_text(

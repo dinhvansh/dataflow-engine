@@ -29,3 +29,5 @@ Bug severity P0/P1 blocks completion. Codex should preserve full original failur
 | UI-MOCK | P1 | Isolated mock UI pytest | PASS is reported separately, never proof of real Go/PG/SQL Server interaction |
 | VERIFY-EVIDENCE | P0 | Fresh real JSON per live test, canonical 02_TEST_MATRIX and external verifier | `verify_core_final_evidence.py --report` exit 0; no NOT_RUN mandatory cases |
 | API-401 | P0 | Unauthenticated GET /api/v1/core/graphs | HTTP 401 in real Core-8B browser/API E2E |
+
+| CORE-8B-E2E | P0 | Real editor after page reload: add an invalid transform → backend Validate rejects → remove it → change DQ key → Validate + Save revision 2 using UI | Saved revision 2 is persisted in PostgreSQL, actual quality binding updated, old run's graph snapshot unchanged; screenshots and real API proof; no false green from API-only graph edits |
