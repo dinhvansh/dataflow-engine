@@ -116,10 +116,10 @@ export function CorePipelineRunner({token,onTokenChange}:Props){
    <ShieldAlert size={17} className="shrink-0"/>
    This Core runtime graph observes the real durable pipeline; the editable SQL DAG above still uses a separate legacy executor. Backend CORE QA flags and migrations 028/029/030 are required. The mixed Canvas below persists strictly linear typed flows and launches immutable graph revisions; fork/join and production cutover are not yet supported. No production cutover, live ERP writes or verified 7M throughput.
   </p>
-  <label className="block max-w-xl space-y-1"><span className="muted text-xs">API bearer token (memory only)</span>
+  {token!=="session"&&<label className="block max-w-xl space-y-1"><span className="muted text-xs">API bearer token (memory only)</span>
    <input aria-label="Core API bearer token" className="field" type="password" autoComplete="off"
     value={token} onChange={e=>onTokenChange(e.target.value)} placeholder="Enter TEST API token"/>
-  </label>
+  </label>}
   <Button type="button" size="sm" variant="outline" disabled={!token||busy} onClick={()=>{void load()}}>
    <RefreshCw size={15}/>{busy?"Loading…":"Load saved streams and models"}
   </Button>
