@@ -67,7 +67,7 @@ export function IncrementalStudio({token,onTokenChange}:{token:string;onTokenCha
    </div>
   </div>
   <div className="section grid gap-4 md:grid-cols-2">
-   <label className="space-y-1"><span className="muted text-xs">API bearer token</span><input type="password" className="field" value={token} onChange={e=>onTokenChange(e.target.value)} autoComplete="off"/></label>
+   {token!=="session"&&<label className="space-y-1"><span className="muted text-xs">API bearer token</span><input type="password" className="field" value={token} onChange={e=>onTokenChange(e.target.value)} autoComplete="off"/></label>}
    <label className="space-y-1"><span className="muted text-xs">Khóa duy nhất</span><input className="field" value={key} onChange={e=>setKey(e.target.value)} placeholder="InvoiceNum"/></label>
    <label className="space-y-1"><span className="muted text-xs">Target (bảng vật lý hiện có trong scratch)</span><input className="field font-mono" value={target} onChange={e=>setTarget(e.target.value)}/></label>
    <label className="space-y-1"><span className="muted text-xs">Delta / CDC table trong scratch</span><input className="field font-mono" value={delta} onChange={e=>setDelta(e.target.value)}/></label>
