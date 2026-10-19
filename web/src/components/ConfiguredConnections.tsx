@@ -34,14 +34,7 @@ export function ConfiguredConnections({token,onTokenChange}:{token:string;onToke
    </div>
    <span className="df-pipeline-stat">INVENTORY ONLY</span>
   </div>
-  <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end">
-   <label className="w-full max-w-md space-y-1"><span className="muted text-xs">API bearer token · memory only</span>
-    <input aria-label="Connection API token" type="password" autoComplete="off" className="field" value={token} onChange={event=>changeToken(event.target.value)}/>
-   </label>
-   <Button type="button" variant="outline" disabled={!token||loading} onClick={()=>{void refresh();}} aria-label="Refresh configured connections">
-    <RefreshCw size={15}/>{loading?"Loading…":"Load inventory"}
-   </Button>
-  </div>
+  <div className="flex flex-wrap items-center gap-3"><p className="muted text-xs">Uses the shared in-memory Lab API token from the header.</p><Button type="button" variant="outline" disabled={!token||loading} onClick={()=>{void refresh();}} aria-label="Refresh configured connections"><RefreshCw size={15}/>{loading?"Loading…":"Load inventory"}</Button></div>
   {!token&&<p className="muted text-xs" role="status">Enter an API token to read server-managed connections.</p>}
   {error&&<p role="alert" className="rounded border df-border-error df-bg-error-soft p-3 text-xs df-text-error">{error}</p>}
   {items&&<div className="grid gap-3 md:grid-cols-3">
