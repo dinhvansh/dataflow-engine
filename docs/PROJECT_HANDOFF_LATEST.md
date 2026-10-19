@@ -1,6 +1,12 @@
 # DataFlow Engine — Latest Chat Handoff
 
-**Snapshot:** 2026-10-19 · `main@d6f6a1cc8ec74561b566379a8bb463f70ff43d09`, merged one-shot Codex Local QA [#117](https://github.com/dinhvansh/dataflow-engine/pull/117), **9/9 exact-head hosted CI PASS** including real Core 8B browser 123.37s, 6A/6B fault checks. Safe executable one-pass runner and formal evidence reporter prepared; **owner-local test NOT EXECUTED**. CORE-RUN-7 actual 7m benchmark owner-deferred, Production NO-GO.
+**Snapshot:** 2026-10-19 · verified `main@95ee8617d526aa6ebbed4fb21bd59bbde0f921ed` after merged #117–#120. Hosted CI/real Core-8B E2E PASS; **one-shot owner-local QA package prepared but NOT executed**. More strict pre-test negative Docker/evidence checks proposed in dedicated QA change; only consider them merged after exact-head CI PASS. CORE-RUN-7 7m benchmark owner-deferred, production NO-GO. Recheck live main/PR/Actions.
+
+## CURRENT QA WORK ORDER / OWNER-LOCAL NOT EXECUTED (2026-10-19)
+
+- **Latest merged safety fix:** [PR #120](https://github.com/dinhvansh/dataflow-engine/pull/120), `main@95ee8617d526aa6ebbed4fb21bd59bbde0f921ed`, strengthened reset guard to reject *extra* unexpected project-labeled Docker volumes and networks with stubbed-Docker negative tests. No unknown project may be reset.
+- Codex Local should use [one-shot guide](../qa/local-acceptance/v8b/README.md), [matrix](../qa/local-acceptance/v8b/TEST_MATRIX.md), [single prompt](../qa/local-acceptance/v8b/CODEX_PROMPT.md) and `deploy/local-qa/run-core8b-one-shot.sh` after **explicit approval for resetting only owned disposable QA volumes**. Prepare/QA test package is not a hardware local PASS.
+- The enhanced runner includes standalone `STATIC-RESET-NEGATIVE` and `STATIC-EVIDENCE-CONTRACT` stages before any real disposable Docker reset. Never relax disk or ERP read-only safety guards. Keep Core 7m deferred.
 
 ## CORE 8B ONE-SHOT OWNER QA PACKAGE — ready for Codex Local, not locally executed (2026-10-19)
 
