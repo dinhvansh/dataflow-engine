@@ -6,6 +6,7 @@ on:
       - "qa/local-acceptance/verify_core_final_evidence.py"
       - "qa/local-acceptance/test_core_final_evidence.py"
       - "qa/browser/test_core_live.py"
+      - "qa/local-acceptance/CODEX_LOCAL_ONE_PASS_PROMPT.md"
       - ".github/workflows/core-final-qa-contract.yml"
   workflow_dispatch:
 permissions:
