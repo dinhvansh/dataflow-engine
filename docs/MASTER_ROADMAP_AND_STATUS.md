@@ -1,10 +1,18 @@
 # DataFlow Engine — Master Roadmap, Status & Acceptance Gates
 
-**Snapshot: 2026-10-18.** `main@d016c236e3cb40774d177460464b5f3361c37f4a` after #107, CORE-RUN-6B real mid-SQL SIGKILL and concurrent physical publish race PASS (all 8 exact-head workflows). 7m benchmark harness merged but actual 7m host/hardware measurement OPEN. Owner-visible demo, CORE-RUN-8 Canvas and production NO-GO.
+**Snapshot: 2026-10-19.** `main@6e5ea5496e43f916efb2897674d0dc2a62556114` after #112. CORE-RUN-8A read-only durable Core Canvas + browser reload and PG step evidence 6/6 CI PASS. 8B persisted editable heterogeneous graph still OPEN. 7m benchmark has safety-blocked Cloud attempts, hardware measurements deferred. Production and owner-local funding-demo gates remain NO-GO.
 
 Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Original phased plan: [implementation/roadmap.md](../implementation/roadmap.md). Historical release evidence: [release-status-v13.md](../implementation/release-status-v13.md) and other `implementation/release-status-v*.md` files.
 
 **Full V3.2B/V3.2C release acceptance matrix:** [CONNECTIONS_RELEASE_ACCEPTANCE.md](CONNECTIONS_RELEASE_ACCEPTANCE.md) — identity, Vault, TLS, writer-freeze, scoped Test Connection, infra/audit controls. All production gates remain NO-GO.
+
+## CORE-RUN-8A ACCEPTED — persisted Core steps in React Flow Canvas (2026-10-19)
+
+- **[PR #112](https://github.com/dinhvansh/dataflow-engine/pull/112) merged** into `main@6e5ea5496e43f916efb2897674d0dc2a62556114`, exact PR head `833f8b21a7b70c5374e45d3f48ae7ed8a09e9736`. **All 6/6 exact-head workflows PASS**: [real operator browser E2E #39182223134](https://github.com/dinhvansh/dataflow-engine/actions/runs/39182223134) (`1 passed in 83.39s`), [Go/Web CI #39182223216](https://github.com/dinhvansh/dataflow-engine/actions/runs/39182223216), [SQL Server SELECT-only QA #39182223135](https://github.com/dinhvansh/dataflow-engine/actions/runs/39182223135), [mid-SQL worker crash regression #39182223056](https://github.com/dinhvansh/dataflow-engine/actions/runs/39182223056), Browser UI QA and contract PASS.
+- `GET /api/v1/core/runs?id=...` now reads PostgreSQL `model_flow_steps` in immutable index order, exposing actual model statuses, verified rows, errors, `dependency_order`, stored source stream and target model. The **read-only Core runtime React Flow Canvas** shows SOURCE → managed SYNC → real persisted A→B→C dbt steps → QUALITY → PUBLISH. No fake client progress; `snapshot pending` is displayed until durable child flow exists.
+- **Real Playwright** exercised selected scratch stream/model → confirmed Core POST → SQL Server QA 10k source events → ClickHouse raw → durable PG dbt A→B→C & DQ → published physical target → full browser reload → inspect same UUID and all 3 persisted successful dbt steps graphically → 0-row incremental second Core Run → safe UUID rollback. Legacy editable SQL DAG Canvas is **unchanged**; a saved SQL DAG is NOT misrepresented as the durable Core runtime.
+- **CORE-RUN-8A is a validated OBSERVER, not complete CORE-RUN-8.** **NEXT CORE-RUN-8B:** persisted user-editable mixed-step Canvas with server-side validation and immutable saved graph/bindings; only then attach controls to launch that snapshot via durable runtime. Existing backend enforces linear managed source + dbt chain; parallel heterogeneous execution must not be claimed without implementation and QA.
+- **CORE-RUN-7 actual 7,000,000-row hardware benchmark remains BLOCKED/unmeasured** following Codex Cloud 16GiB free-disk guard after Docker stack; user intentionally deferred this heavy test while core product work continues. Never lower disk safety guard just to mark PASS. Owner-local operator demonstration, Vault/IdP/TLS and production GO remain independent OPEN gates. ERP SELECT-only.
 
 ## ACCEPTED CORE-RUN-6B — real SQL-in-flight crash + physical publish race (2026-10-18)
 
@@ -74,7 +82,7 @@ Every milestone requires actual nonmock integration tests and exact-HEAD CI; do 
 4. Verify real workspace IdP/Vault/TLS/allowlisted egress/tenant isolation and production operations independently. No real ERP credentials or DML/DDL, no production GO.
 5. Only then evaluate fundraising demo readiness; production release requires separate security approval. **No UI cosmetics ahead of the remaining functional gates.**
 
-**Immediate next engineering task after CORE-RUN-6B hosted PASS:** execute measured CORE-RUN-7 7m+ first ingest and zero-row replay on approved owner hardware, archive throughput/RAM/CPU/IO evidence, then owner-accessible operator walkthrough and CORE-RUN-8 unified Canvas. Update this roadmap/handoff with actual measured artifacts; never silently mark pending as complete.
+**NEXT (owner priority 2026-10-19):** CORE-RUN-8B persisted editable mixed-node Canvas and validated durable Core binding after 8A's successful observer; defer CORE-RUN-7 measured 7m+ first ingest/zero-row replay until adequate owner-approved disk hardware exists. Do not waive disk safety. Archive real performance evidence when resumed, then owner-visible operator walkthrough. Only merged CI-confirmed product milestones count. Update this roadmap/handoff with actual measured artifacts; never silently mark pending as complete.
 
 ## 1. Product direction
 
