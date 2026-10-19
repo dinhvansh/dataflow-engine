@@ -87,7 +87,8 @@ export type ConfiguredConnection={
  supports_test_connection:boolean;
 };
 export const connectionApi={
- list:(token:string)=>getSource<{connections:ConfiguredConnection[]}>("/api/v1/connections",token)
+ list:(token:string)=>getSource<{connections:ConfiguredConnection[]}>("/api/v1/connections",token),
+ testConfigured:(id:string,token:string)=>parse<{id:string;passed:boolean;environment:string;tested_at:string}>(fetch("/api/v1/connections/test-configured",{method:"POST",headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({id})}))
 };
 
 export type DraftConnection={
