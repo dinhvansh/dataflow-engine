@@ -105,3 +105,25 @@ This is **not FAIL** because the application workload never ran. It is **BLOCKED
 ## Recommendation
 
 Provision a larger disposable runner or expand the current workspace/Docker filesystem, then rerun from the start. Do not close issue #109 and do not mark CORE-RUN-7 PASS from CI-contract tests or this blocked preflight.
+
+## Owner-requested cleanup and retry — 2026-10-19
+
+The runner was cleaned and preflighted a second time. Cleanup was limited to five already-pushed PR 39/40 QA worktrees, reproducible browser/package/build caches, and Docker objects explicitly owned by project `dataflow-localqa`. Free storage increased to **21,393,698,816 bytes**, so the 16 GiB guard passed before stack startup.
+
+A new disposable SQL Server, PostgreSQL and ClickHouse stack was then started. PostgreSQL's first start exposed a cloud-checkout permission issue (`/docker-entrypoint-initdb.d/: Permission denied`) because the isolated worktree directories were mode `0700`. Read/traverse permission was granted only to the worktree and PostgreSQL migration bind path; recreating the disposable PostgreSQL container and volume produced a healthy service. No product source was changed.
+
+After all three databases were healthy:
+
+```text
+Filesystem total: 33,770,192,896 bytes
+Free:             15,904,768,000 bytes
+Required free:    17,179,869,184 bytes
+Shortfall:         1,275,101,184 bytes
+
+QA disk guard: workspace has 15904768000 bytes free; requires at least 17179869184
+exit 1
+```
+
+The explicit 7m runner was therefore not invoked: no 7m seed, initial ingestion, second incremental, throughput sample or duplicate/checkpoint measurement exists. The newly created disposable containers and named volumes were removed, restoring **21,393,678,336 bytes free**. Base images were retained for reproducibility. No ERP endpoint was contacted and no database outside `dataflow-localqa` was touched.
+
+**Final verdict remains BLOCKED.** The 32 GB filesystem plus Docker `vfs` copies cannot hold the healthy database stack while preserving the runner's mandatory 16 GiB safety reserve. A larger disposable runner is required; lowering the guard would invalidate issue #109 acceptance.
