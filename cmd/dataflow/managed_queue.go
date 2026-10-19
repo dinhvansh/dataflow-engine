@@ -256,11 +256,15 @@ func(s *server)runClaimedManaged(parent context.Context,c managedClaim){
  }
  var managedClient *http.Client
  if err==nil{managedClient,err=managedWriteHTTPClient()}
+ activeDB,activeURL,activeUser,activePass:=s.sql,s.chURL,s.chUser,s.chPass
+ closeDynamic:=func(){}
+ if err==nil{activeDB,activeURL,activeUser,activePass,closeDynamic,err=s.runtimeForManagedStream(ctx,c.StreamID)}
+ defer closeDynamic()
  if err==nil{
-  reader:=&sqlserver.RowVersionReader{DB:s.sql,Schema:cfg.SourceSchema,Table:cfg.SourceTable,
+  reader:=&sqlserver.RowVersionReader{DB:activeDB,Schema:cfg.SourceSchema,Table:cfg.SourceTable,
    BatchSize:cfg.BatchSize,Lower:c.Lower}
-  dest:=&clickhouse.Writer{Endpoint:s.chURL,Database:cfg.TargetDatabase,Table:cfg.TargetTable,
-   Username:s.chUser,Password:s.chPass,Client:managedClient}
+  dest:=&clickhouse.Writer{Endpoint:activeURL,Database:cfg.TargetDatabase,Table:cfg.TargetTable,
+   Username:activeUser,Password:activePass,Client:managedClient}
   writer:=&clickhouse.EventWriter{Destination:dest,StreamID:c.StreamID,RunID:c.OwnerID}
   stats,err=engine.Run(ctx,engine.Config{Workers:cfg.Workers,QueueCapacity:cfg.QueueCapacity},reader,writer)
   if err==nil{err=ctx.Err()}
