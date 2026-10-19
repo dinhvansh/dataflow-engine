@@ -102,7 +102,7 @@ func approvedRuntimeEndpoint(driver,host string,port int)bool{
 func validRuntimeProfile(p createRuntimeConnection)bool{
  if len(strings.TrimSpace(p.Name))<1||len(p.Name)>80||
   len(p.Username)<1||len(p.Username)>128||len(p.Password)<1||len(p.Password)>2048||
-  strings.ContainsAny(p.Name,"\\r\\n\\x00")||strings.ContainsAny(p.Username,"\\r\\n\\x00")||
+  strings.ContainsAny(p.Name,"\r\n\x00")||strings.ContainsAny(p.Username,"\r\n\x00")||
   !approvedRuntimeEndpoint(p.Driver,p.Host,p.Port){return false}
  if p.Driver=="sqlserver"{return p.Database=="DataFlowFixtureQA" && p.Username=="qa_erp_reader"}
  return p.Driver=="clickhouse" && p.Database=="scratch"
