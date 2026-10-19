@@ -1,5 +1,7 @@
 # Gói bàn giao Codex Local — CORE final QA và v1.3 (lịch sử)
 
+**Gói one-shot runnable mới:** [v8b/README.md](v8b/README.md), [TEST_MATRIX](v8b/TEST_MATRIX.md), [Codex prompt](v8b/CODEX_PROMPT.md), và `deploy/local-qa/run-core8b-one-shot.sh`. Gói này bổ sung runner tự ghi report và verifier; **chưa chạy trên máy owner**. Giữ bộ kiểm chứng chính `verify_core_final_evidence.py` và các test 8B đã PASS trên GitHub.
+
 ## Nhiệm vụ Core hiện tại: một lượt test cuối
 
 Dùng **qa/local-acceptance/CODEX_LOCAL_ONE_PASS_PROMPT.md** làm prompt mới nhất. Đọc **CORE_ONE_PASS_QA.md** để chạy tất cả các bài CORE-8B + regression + fault trên QA disposable được xác minh. Sau khi Codex tạo báo cáo, kiểm chứng bằng **verify_core_final_evidence.py --report qa-results/<UTC-RUN-ID>**. Không chạy benchmark 7 triệu dòng trong đợt này. Không tự reset volume nếu chưa xác nhận dữ liệu QA có thể xóa; nếu thiếu tài nguyên thì BLOCKED.

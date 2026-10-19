@@ -1,0 +1,54 @@
+name: CORE 8B Local QA Pack Contract (NO hardware E2E)
+on:
+  pull_request:
+    paths:
+      - "deploy/local-qa/run-core8b-one-shot.sh"
+      - "deploy/local-qa/reset-owned-qa.sh"
+      - "deploy/local-qa/verify-reset-scope.sh"
+      - "qa/local-acceptance/v8b/**"
+      - "qa/local-acceptance/README_FIRST.md"
+      - ".github/workflows/core8b-local-qa-contract.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safety-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell and Python syntax
+        run: |
+          bash -n deploy/local-qa/run-core8b-one-shot.sh
+          bash -n deploy/local-qa/reset-owned-qa.sh
+          bash -n deploy/local-qa/verify-reset-scope.sh
+          grep -q 'dataflow-localqa-net' deploy/local-qa/verify-reset-scope.sh
+          grep -q 'name: dataflow-localqa-net' deploy/local-qa/compose.qa.yml
+          python3 -m py_compile qa/local-acceptance/v8b/report.py
+      - name: Refuse unapproved local execution even without Docker
+        run: |
+          set +e
+          env -u DATAFLOW_QA_ONE_SHOT_OPT_IN bash deploy/local-qa/run-core8b-one-shot.sh >/tmp/qa-refusal 2>&1
+          code=$?
+          set -e
+          test "$code" -eq 2
+          grep -q 'BLOCKED' /tmp/qa-refusal
+          grep -q 'CORE-RUN-7' qa/local-acceptance/v8b/README.md
+          test -f qa/local-acceptance/v8b/TEST_MATRIX.md
+          test -f qa/local-acceptance/v8b/CODEX_PROMPT.md
+      - name: Verify NOT RUN evidence cannot be silently marked PASS
+        run: |
+          d=$(mktemp -d)
+          mkdir -p "$d/logs"
+          echo deadbeef >"$d/git-sha.txt"
+          printf 'case\tstatus\tseconds\tlog\n' >"$d/matrix.tsv"
+          printf 'STATIC-GO\nCORE-8B-E2E\n' >"$d/case-catalog.txt"
+          python3 qa/local-acceptance/v8b/report.py "$d" 2
+          python3 - "$d/result.json" <<'PY'
+          import json,sys
+          x=json.load(open(sys.argv[1]))
+          assert x["verdict"]!="PASS-LOCAL-CORE8B"
+          assert x["counts"]["NOT_RUN"]==2
+          assert x["seven_million_benchmark"]=="NOT RUN BY DESIGN"
+          assert ( __import__("pathlib").Path(sys.argv[1]).parent / "02_TEST_MATRIX.csv" ).exists()
+          PY
