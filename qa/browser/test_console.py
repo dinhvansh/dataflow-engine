@@ -63,6 +63,11 @@ def ui(browser, request):
         body = json.loads(req.post_data) if req.post_data else {}
         state["calls"].append({"method": method, "path": path, "body": body})
         result = None
+        if path == "/api/v1/auth/session":
+            # Legacy browser tests intentionally run without a configured
+            # local session provider. Session-mode regressions test auth separately.
+            route.fulfill(status=404, body="session mode disabled")
+            return
         if path == "/api/v1/connections/definitions":
             can_write = req.headers.get("x-dataflow-connection-admin", "") == "synthetic-admin-token"
             if method == "POST":
