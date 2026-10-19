@@ -5,8 +5,8 @@ import {Button} from "./ui/button";
 
 // Draft records are disconnected metadata; this editor cannot configure a host,
 // capture database credentials, bind jobs or trigger a network connection.
-export function ConnectionDraftRegistry({token}:{token:string}){
- const[adminToken,setAdminToken]=useState("");
+export function ConnectionDraftRegistry({token,sessionAdmin=false}:{token:string;sessionAdmin?:boolean}){
+ const[adminToken,setAdminToken]=useState(sessionAdmin?"session":"");
  const[name,setName]=useState("");
  const[driver,setDriver]=useState<"sqlserver"|"clickhouse">("sqlserver");
  const[definitions,setDefinitions]=useState<DraftConnection[]|null>(null);
@@ -18,7 +18,7 @@ export function ConnectionDraftRegistry({token}:{token:string}){
  useEffect(()=>{
   requestSerial.current++;
   setDefinitions(null);setWriteEnabled(false);
-  setAdminToken("");setError("");setNotice("");setBusy(false);
+  setAdminToken(sessionAdmin?"session":"");setError("");setNotice("");setBusy(false);
  },[token]);
  const reload=async()=>{
   if(!token||busy)return;
@@ -69,11 +69,11 @@ export function ConnectionDraftRegistry({token}:{token:string}){
    <span className="df-pipeline-stat">LAB METADATA · DRAFT ONLY</span>
   </div>
   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-   <label className="space-y-1"><span className="muted text-xs">Connection admin token · separate elevated permission, memory only</span>
+   {!sessionAdmin&&<label className="space-y-1"><span className="muted text-xs">Connection admin token · separate elevated permission, memory only</span>
     <input className="field" aria-label="Connection registry admin token" autoComplete="off" type="password" value={adminToken}
      onChange={event=>{requestSerial.current++;setAdminToken(event.target.value);setDefinitions(null);setWriteEnabled(false);setError("");setNotice("");setBusy(false);}}/>
    </label>
-   <Button type="button" size="sm" variant="outline" disabled={!token||busy} onClick={()=>{void reload();}}><RefreshCw size={15}/>Load drafts</Button>
+  } <Button type="button" size="sm" variant="outline" disabled={!token||busy} onClick={()=>{void reload();}}><RefreshCw size={15}/>Load drafts</Button>
   </div>
   {definitions&&<div className="space-y-3">
    <div className="flex flex-wrap items-end gap-3">
