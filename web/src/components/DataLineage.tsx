@@ -96,7 +96,7 @@ export function DataLineage({token,onTokenChange}:{token:string;onTokenChange:(t
    <Button variant="outline" disabled={loading||!token} onClick={refresh}><RefreshCw size={16}/>Refresh Graph</Button>
   </div>
   <div className="section grid items-end gap-3 md:grid-cols-[1fr_1fr]">
-   <label className="space-y-1"><span className="muted text-xs">API bearer token</span><input type="password" autoComplete="off" value={token} className="field" onChange={e=>onTokenChange(e.target.value)}/></label>
+   {token!=="session"&&<label className="space-y-1"><span className="muted text-xs">API bearer token</span><input type="password" autoComplete="off" value={token} className="field" onChange={e=>onTokenChange(e.target.value)}/></label>}
    <label className="space-y-1"><span className="muted text-xs">Tìm model hoặc bảng nguồn</span><div className="relative"><Search className="absolute left-3 top-3 df-text-neutral" size={15}/><input className="field pl-9" value={filter} onChange={e=>setFilter(e.target.value)} placeholder="vd: revenue, part, inventory"/></div></label>
   </div>
   <div className="flex items-start gap-2 rounded-lg border df-border-accent df-bg-accent-soft p-3 text-xs df-text-accent"><ShieldCheck size={17} className="shrink-0"/>Graph được suy ra từ model Visual đã lưu: nguồn <code>scratch.dfv_model</code> tạo dependency đến model tương ứng. Lineage này chỉ phân tích metadata, <b>không tự build lại hoặc tự chạy dbt</b>. SQL Code là vùng chưa thể truy vết đầy đủ.</div>

@@ -46,7 +46,7 @@ function StatusBadge({available}:{available:boolean}){
 function Metric({label,value,detail,icon:Icon}:{label:string;value:number;detail:string;icon:typeof Database}){
  return <Card className="hub-metric"><CardHeader className="pb-2"><CardDescription className="flex items-center gap-2"><Icon size={15}/>{label}</CardDescription><CardTitle className="text-2xl tabular-nums">{value.toString().padStart(2,"0")}</CardTitle></CardHeader><CardContent className="muted text-xs">{detail}</CardContent></Card>;
 }
-export function ConnectorHub({token,onTokenChange}:{token:string;onTokenChange:(value:string)=>void}){
+export function ConnectorHub({token,onTokenChange,sessionRole}:{token:string;onTokenChange:(value:string)=>void;sessionRole?:"operator"|"admin"|null}){
  const[tab,setTab]=useState<"sources"|"destinations"|"routes">("sources");
  const[query,setQuery]=useState("");
  const[filter,setFilter]=useState<"all"|Capability>("all");
@@ -77,8 +77,8 @@ export function ConnectorHub({token,onTokenChange}:{token:string;onTokenChange:(
    </div>
   </section>
   <ConfiguredConnections token={token} onTokenChange={onTokenChange}/>
-  <ConnectionDraftRegistry token={token}/>
-  <RuntimeConnectionManager token={token}/>
+  {sessionRole!=="operator"&&<ConnectionDraftRegistry token={token} sessionAdmin={sessionRole==="admin"}/>}
+  {sessionRole!=="operator"&&<RuntimeConnectionManager token={token} sessionAdmin={sessionRole==="admin"}/>}
   <section className="hub-workspace space-y-4">
    <div className="hub-tabs flex flex-wrap gap-1 rounded-lg border p-1" role="tablist" aria-label="Connector catalog sections">
     {([{id:"sources",label:"Sources",count:sources.length},{id:"destinations",label:"Destinations",count:targets.length},{id:"routes",label:"Data routes",count:1}] as const).map(section=><button type="button" key={section.id} role="tab" aria-selected={tab===section.id} className={`hub-tab inline-flex items-center gap-2 rounded px-4 py-2.5 text-sm font-semibold ${tab===section.id?"is-active":""}`} onClick={()=>pickTab(section.id)}>{section.label}<span className="hub-tab-count text-[10px] tabular-nums">{section.count.toString().padStart(2,"0")}</span></button>)}

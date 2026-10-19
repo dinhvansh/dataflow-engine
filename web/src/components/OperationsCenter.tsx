@@ -107,7 +107,7 @@ export function OperationsCenter({token,theme,onTokenChange,onOpenPipelines}:Pro
   <section className="section space-y-4" aria-label="SQL DAG run history">
    <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="font-semibold">Execution history</h3><p className="muted mt-1 text-xs">NO WRITE ACTIONS · SNAPSHOT VIEW · FILTER CLIENT-SIDE</p></div>
     <Button type="button" onClick={()=>void refresh()} disabled={!token||loading}><RefreshCw className={loading?"animate-spin":""} size={16}/>{loading?"Loading…":"Refresh runs"}</Button></div>
-   <label className="block space-y-1.5"><span className="muted text-xs">DataFlow API token (memory only)</span><input aria-label="Operations API token" className="field max-w-md" type="password" autoComplete="off" value={token} onChange={e=>onTokenChange(e.target.value)} placeholder="Enter token to fetch SQL DAG runs"/></label>
+   {token!=="session"&&<label className="block space-y-1.5"><span className="muted text-xs">DataFlow API token (memory only)</span><input aria-label="Operations API token" className="field max-w-md" type="password" autoComplete="off" value={token} onChange={e=>onTokenChange(e.target.value)} placeholder="Enter token to fetch SQL DAG runs"/></label>}
    {error&&<div role="alert" className="rounded-lg border df-border-error df-bg-error-soft p-3 text-sm df-text-error">{error}</div>}
    {observedAt&&<p className="muted text-xs">Last list fetch (browser local time): {observedAt}. No background list polling.</p>}
    {loaded&&<div className="grid gap-3 sm:grid-cols-[1fr_190px]">

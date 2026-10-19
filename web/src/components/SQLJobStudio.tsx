@@ -33,7 +33,7 @@ export function SQLJobStudio({token,onTokenChange}:{token:string;onTokenChange:(
   <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(310px,1fr)]">
    <section className="df-studio-panel section min-w-0 space-y-4" aria-label="SQL job editor">
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-semibold"><Code2 size={17}/>Query editor</h3><Badge variant={enabled?"success":"neutral"}>{enabled?"Enabled for test":"Disabled"}</Badge></div>
-    <label className="block space-y-1"><span className="df-studio-label">DataFlow API token · browser memory only</span><input type="password" className="field" autoComplete="off" aria-label="SQL Jobs API token" value={token} onChange={e=>onTokenChange(e.target.value)}/></label>
+    {token!=="session"&&<label className="block space-y-1"><span className="df-studio-label">DataFlow API token · browser memory only</span><input type="password" className="field" autoComplete="off" aria-label="SQL Jobs API token" value={token} onChange={e=>onTokenChange(e.target.value)}/></label>}
     <div className="grid gap-3 sm:grid-cols-2">
      <label className="block space-y-1"><span className="df-studio-label">Job name</span><input className="field" aria-label="SQL job name" value={name} onChange={e=>setName(e.target.value)}/></label>
      <label className="block space-y-1"><span className="df-studio-label">ClickHouse database</span><input className="field" aria-label="SQL job database" value={database} onChange={e=>setDatabase(e.target.value)}/></label>

@@ -40,6 +40,7 @@ type server struct {
 	chURL, chUser, chPass, token string
 	managedSlots                 chan struct{}
 	sqlDAGSlots                  chan struct{}
+	operatorSessions             *loginSessions
 }
 
 func (s *server) run(w http.ResponseWriter, r *http.Request) {
@@ -203,12 +204,13 @@ func main() {
 	if err = db.PingContext(ctx); err != nil {
 		log.Fatal(err)
 	}
-	svc := &server{pg: pg, sql: db, chURL: os.Getenv("DATAFLOW_CH_URL"), chUser: os.Getenv("DATAFLOW_CH_USER"), chPass: os.Getenv("DATAFLOW_CH_PASSWORD"), token: os.Getenv("DATAFLOW_API_TOKEN"), managedSlots: make(chan struct{}, 2), sqlDAGSlots: make(chan struct{}, 2)}
+	svc := &server{operatorSessions:&loginSessions{active:make(map[[32]byte]sessionState)},pg: pg, sql: db, chURL: os.Getenv("DATAFLOW_CH_URL"), chUser: os.Getenv("DATAFLOW_CH_USER"), chPass: os.Getenv("DATAFLOW_CH_PASSWORD"), token: os.Getenv("DATAFLOW_API_TOKEN"), managedSlots: make(chan struct{}, 2), sqlDAGSlots: make(chan struct{}, 2)}
 	// Fail startup if the opt-in isolated OIDC view lacks a pinned key or migration 018.
 	// No other API handler, connection or job uses this independent JWT path.
 	secureView, secureErr := connectionsecurity.NewSecureViewHandlerFromEnv(ctx, pg)
 	if secureErr != nil { log.Fatal(secureErr) }
 	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/auth/session",svc.localAuthAPI)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok")) })
 	mux.HandleFunc("/api/v1/bootstrap/runs", svc.run)
 	mux.HandleFunc("/api/v1/bootstrap/status", svc.status)
@@ -254,7 +256,7 @@ func main() {
 	}
 	tlsCert,tlsKey,tlsConfig,tlsErr := directTLSFromEnv()
 	if tlsErr != nil { log.Fatal(tlsErr) }
-	srv := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux, ReadHeaderTimeout: 5 * time.Second, TLSConfig: tlsConfig}
+	srv := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: svc.sessionMiddleware(mux), ReadHeaderTimeout: 5 * time.Second, TLSConfig: tlsConfig}
 	checkCtx, checkCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	schemaErr := svc.checkSQLDAGSchema(checkCtx)
 	checkCancel()

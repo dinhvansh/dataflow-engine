@@ -251,7 +251,8 @@ def test_core_run5_full_live_browser():
         context.tracing.start(screenshots=True, snapshots=True)
         page = context.new_page()
         try:
-            page.goto(BASE, wait_until="networkidle")
+            page.goto(BASE, wait_until="domcontentloaded")
+            page.get_by_role("button", name="Pipelines", exact=True).wait_for(state="visible", timeout=30000)
             section = operator(page, stream_id, model_id)
             first_id, first = execute_ui_run(page, section)
             assert first["has_backup"] is False
@@ -266,7 +267,7 @@ def test_core_run5_full_live_browser():
             assert pg("SELECT generation FROM sync_checkpoints WHERE "
                       f"stream_id='{stream_id}'") == "1"
             # A page refresh cannot synthesize previous local React state.
-            page.reload(wait_until="networkidle")
+            page.reload(wait_until="domcontentloaded")
             page.get_by_role("button", name="Pipelines", exact=True).click()
             section = page.locator('section[aria-label="Durable core pipeline operator"]')
             section.get_by_label("Core API bearer token").fill(TOKEN)
@@ -399,7 +400,7 @@ def test_core_run5_full_live_browser():
                       f"stream_id='{stream_id}'") == "3"
             assert pg("SELECT rows_written FROM managed_runs WHERE id='"
                       + graph_result["managed_run_id"] + "'") == "0"
-            page.reload(wait_until="networkidle")
+            page.reload(wait_until="domcontentloaded")
             page.get_by_role("button", name="Pipelines", exact=True).click()
             section = page.locator('section[aria-label="Durable core pipeline operator"]')
             section.get_by_label("Core API bearer token").fill(TOKEN)

@@ -226,7 +226,7 @@ export function TransformStudio({token,onTokenChange}:{token:string;onTokenChang
      {saved.filter(s=>s.name!==model.name&&s.model.mode==="visual"&&/^[a-z][a-z0-9_]{0,85}$/.test(s.name)).map(s=><option key={s.id} value={"dfv_"+s.name}>{s.name} → scratch.dfv_{s.name}</option>)}
     </select>
    </label>
-   <label className="block space-y-1 md:col-span-2"><span className="text-xs df-text-neutral">API token · lưu trong bộ nhớ trình duyệt</span><input type="password" autoComplete="off" className="field" value={token} onChange={e=>onTokenChange(e.target.value)} placeholder="Bearer token"/></label>
+   {token!=="session"&&<label className="block space-y-1 md:col-span-2"><span className="text-xs df-text-neutral">API token · lưu trong bộ nhớ trình duyệt</span><input type="password" autoComplete="off" className="field" value={token} onChange={e=>onTokenChange(e.target.value)} placeholder="Bearer token"/></label>}
    <div className="flex items-end"><Button variant="outline" disabled={!token||busy} onClick={fetchColumns}><Database size={15}/>Lấy danh sách cột</Button></div>
    {saved.length>0&&<div className="md:col-span-3 flex flex-wrap gap-2"><span className="muted text-xs self-center">Model đã lưu:</span>{saved.map(entry=><button key={entry.id} className="rounded-md border df-border-neutral df-surface-soft px-3 py-1.5 text-xs df-hover-accent" onClick={()=>{setModel(entry.model);setSelected("source");setPreview(null);setCompiled(null);setColumns([]);setSavedModelID(entry.id);setUnsaved(false);setDbtRun(null);setTableRun(null);setInfo("Đã tải model "+entry.name)}}>{entry.name}</button>)}</div>}
   </section>
