@@ -893,7 +893,7 @@ def test_ui25_connection_inventory_requires_token_and_never_exposes_secrets(ui):
     expect(load).to_be_disabled()
     assert not any(c["path"] == "/api/v1/connections" for c in state["calls"])
 
-    token = page.get_by_label("Connection API token")
+    token = page.get_by_label("Lab API token (shared across modules)")
     token.fill(TOKEN)
     load.click()
     expect(page.get_by_label("Connection env-sqlserver-source")).to_be_visible()
@@ -924,7 +924,7 @@ def test_ui26_connection_draft_registry_admin_only_metadata(ui):
     admin = page.get_by_label("Connection registry admin token")
     load = page.get_by_role("button", name="Load drafts", exact=True)
     expect(load).to_be_disabled()
-    page.get_by_label("Connection API token").fill(TOKEN)
+    page.get_by_label("Lab API token (shared across modules)").fill(TOKEN)
     load.click()
     expect(panel.get_by_text("Registry create is disabled.", exact=False)).to_be_visible()
     expect(page.get_by_role("button", name="Create draft")).to_be_disabled()
