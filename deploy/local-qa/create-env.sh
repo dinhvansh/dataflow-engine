@@ -14,6 +14,10 @@ umask 077
   printf 'CLICKHOUSE_READER_PASSWORD=%s\n' "$(secret)"
   printf 'CLICKHOUSE_WRITER_PASSWORD=%s\n' "$(secret)"
   printf 'DATAFLOW_API_TOKEN=%s\n' "$(secret)$(secret)"
+  printf 'DATAFLOW_CONNECTION_ADMIN_TOKEN=%s\n' "$(secret)$(secret)"
+  printf 'DATAFLOW_QA_CONNECTION_KEY_B64=%s\n' "$(openssl rand -base64 32 | tr -d '\\n')"
+  printf 'DATAFLOW_ENABLE_RUNTIME_CONNECTIONS_LAB=false\n'
+  printf 'DATAFLOW_ENABLE_LIVE_CONNECTION_TEST=false\n'
 } >"$envfile"
 chmod 600 "$envfile"
 echo "Created ignored QA secrets at $envfile"
