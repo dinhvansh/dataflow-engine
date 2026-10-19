@@ -87,8 +87,14 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
  if e!=nil{t.Fatal(e)}
  if _,e=svc.pg.Exec(ctx,string(raw));e!=nil{t.Fatalf("isolated migration unavailable: %v",e)}
  var createdIDs []string
+ var createdStreamID string
  defer func(){
   x,stop:=context.WithTimeout(context.Background(),15*time.Second);defer stop()
+  if createdStreamID!=""{
+   _,_=svc.pg.Exec(x,`DELETE FROM connection_runtime_bindings WHERE stream_id=$1::uuid`,createdStreamID)
+   _,_=svc.pg.Exec(x,`DELETE FROM sync_checkpoints WHERE stream_id=$1::uuid`,createdStreamID)
+   _,_=svc.pg.Exec(x,`DELETE FROM sync_streams WHERE id=$1::uuid`,createdStreamID)
+  }
   for _,id:=range createdIDs{
    _,_=svc.pg.Exec(x,`DELETE FROM connection_runtime_bindings WHERE source_profile_id=$1::uuid OR target_profile_id=$1::uuid`,id)
    _,_=svc.pg.Exec(x,`DELETE FROM connection_runtime_profiles WHERE id=$1::uuid`,id)
@@ -146,6 +152,8 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
  }()
  if status!=201{t.Fatalf("could not create isolated scratch stream: code=%d",status)}
  streamID,_:=streams["id"].(string)
+ if streamID==""{t.Fatal("missing QA stream ID")}
+ createdStreamID=streamID
  status,resp,_:=do(http.MethodPost,"/api/v1/connections/runtime/bind",connectionBindingInput{StreamID:streamID,SourceID:sourceID,TargetID:targetID})
  if status!=200||resp["bound"]!=true{t.Fatalf("binding refused in isolated QA")}
  db,endpoint,user,pass,release,e:=svc.runtimeForManagedStream(ctx,streamID)
