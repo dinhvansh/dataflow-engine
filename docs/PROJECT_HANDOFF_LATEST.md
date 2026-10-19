@@ -1,12 +1,18 @@
 # DataFlow Engine — Latest Chat Handoff
 
-**Snapshot:** 2026-10-19 · verified `main@95ee8617d526aa6ebbed4fb21bd59bbde0f921ed` after merged #117–#120. Hosted CI/real Core-8B E2E PASS; **one-shot owner-local QA package prepared but NOT executed**. More strict pre-test negative Docker/evidence checks proposed in dedicated QA change; only consider them merged after exact-head CI PASS. CORE-RUN-7 7m benchmark owner-deferred, production NO-GO. Recheck live main/PR/Actions.
+**Snapshot:** 2026-10-19 · `main@f90f7afbc66c9a22515b8722a1bb3ad96ad3c85f` after merged #121, **7/7 exact-head hosted Actions PASS** (Core real operator E2E, worker SIGKILL, API/network fault, Go/Web, SQL Server read-only and QA contract). The one-shot owner-local QA runner is **READY but has NEVER been executed on the owner's machine**. CORE-RUN-7 7m deferred/unmeasured; parallel/IF-ELSE and production security OPEN/NO-GO. Recheck live GitHub main/PR/Actions before any changes.
+
+## OWNER-LOCAL ONE-SHOT READY — PR #121 QA hardening merged (2026-10-19)
+
+- **[#121](https://github.com/dinhvansh/dataflow-engine/pull/121) MERGED** at `main@f90f7afbc66c9a22515b8722a1bb3ad96ad3c85f`, exact PR head `2b99424b1bc15ebcaedc4bac449c51ed3b57dd7c`. **7/7 same-head Actions PASS**, including [Core real operator E2E #39196292716](https://github.com/dinhvansh/dataflow-engine/actions/runs/39196292716), [one-shot negative safety/evidence contract #39196292674](https://github.com/dinhvansh/dataflow-engine/actions/runs/39196292674), [read-only SQL Server #39196292684](https://github.com/dinhvansh/dataflow-engine/actions/runs/39196292684), [real dbt worker SIGKILL #39196292706](https://github.com/dinhvansh/dataflow-engine/actions/runs/39196292706), [real API/CH fault #39196292735](https://github.com/dinhvansh/dataflow-engine/actions/runs/39196292735), [Go/Web CI #39196292636](https://github.com/dinhvansh/dataflow-engine/actions/runs/39196292636) and static QA contract. All are **HOSTED** GitHub CI, not owner-local QA.
+- `deploy/local-qa/run-core8b-one-shot.sh` now separately records `STATIC-RESET-NEGATIVE` stub-Docker guard refusals and `STATIC-EVIDENCE-CONTRACT` before any potential reset; outputs full Core 8B+6A+6B live test matrix, sanitized audit report and rollback/negative DQ evidence. **Only one future Codex Local task should run this runner** after the user explicitly approves resetting ONLY labeled disposable `dataflow-localqa` QA resources. Do not infer reset permission merely from the request to create tests.
+- Hardware 7m benchmark stays `NOT_RUN` by owner choice (disk blocked). 8 GB RAM is **not** a hard product requirement violation; any local resource shortage must be reported `BLOCKED` without disabling the 4 GiB **DISK** preflight. No production ERP writes.
 
 ## CURRENT QA WORK ORDER / OWNER-LOCAL NOT EXECUTED (2026-10-19)
 
 - **Latest merged safety fix:** [PR #120](https://github.com/dinhvansh/dataflow-engine/pull/120), `main@95ee8617d526aa6ebbed4fb21bd59bbde0f921ed`, strengthened reset guard to reject *extra* unexpected project-labeled Docker volumes and networks with stubbed-Docker negative tests. No unknown project may be reset.
 - Codex Local should use [one-shot guide](../qa/local-acceptance/v8b/README.md), [matrix](../qa/local-acceptance/v8b/TEST_MATRIX.md), [single prompt](../qa/local-acceptance/v8b/CODEX_PROMPT.md) and `deploy/local-qa/run-core8b-one-shot.sh` after **explicit approval for resetting only owned disposable QA volumes**. Prepare/QA test package is not a hardware local PASS.
-- The enhanced runner includes standalone `STATIC-RESET-NEGATIVE` and `STATIC-EVIDENCE-CONTRACT` stages before any real disposable Docker reset. Never relax disk or ERP read-only safety guards. Keep Core 7m deferred.
+- The **merged #121** runner includes standalone `STATIC-RESET-NEGATIVE` and `STATIC-EVIDENCE-CONTRACT` stages before any real disposable Docker reset. Never relax disk or ERP read-only safety guards. Keep Core 7m deferred.
 
 ## CORE 8B ONE-SHOT OWNER QA PACKAGE — ready for Codex Local, not locally executed (2026-10-19)
 

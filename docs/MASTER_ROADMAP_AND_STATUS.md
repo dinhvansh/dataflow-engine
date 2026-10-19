@@ -1,6 +1,6 @@
 # DataFlow Engine — Master Roadmap, Status & Acceptance Gates
 
-**Snapshot: 2026-10-19.** `main@d6f6a1cc8ec74561b566379a8bb463f70ff43d09`. One-shot Codex Local CORE acceptance code/runner/evidence gate [#117](https://github.com/dinhvansh/dataflow-engine/pull/117) merged, 9/9 hosted exact-head CI PASS incl real graph E2E and faults; **owner-local QA still NOT RUN**. CORE-RUN-7 real 7m benchmark deferred/disk-BLOCKED. Parallel/IF-ELSE and production security remain OPEN.
+**Snapshot: 2026-10-19.** `main@f90f7afbc66c9a22515b8722a1bb3ad96ad3c85f`. Consolidated Codex Local CORE-RUN-8B one-shot QA after merged [#117](https://github.com/dinhvansh/dataflow-engine/pull/117) through [#121](https://github.com/dinhvansh/dataflow-engine/pull/121): hosted real Core E2E/fault regressions **PASS**, 7/7 exact-head #121 Actions PASS; Codex **owner-local execution NOT RUN**. Strict Docker reset guard negative tests and official evidence-schema contract included before destructive QA resets. Explicit owner consent still required. 7m actual benchmark deferred/unmeasured; parallel/IF-ELSE, production security and funding-demo NO-GO.
 
 Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Original phased plan: [implementation/roadmap.md](../implementation/roadmap.md). Historical release evidence: [release-status-v13.md](../implementation/release-status-v13.md) and other `implementation/release-status-v*.md` files.
 
