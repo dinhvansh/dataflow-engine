@@ -6,8 +6,8 @@ import {Button} from "./ui/button";
 // QA-only: authenticated profile operations are handled by the Go backend.
 // Credential values never appear in API GET payloads, URL or localStorage.
 // The owner must configure exact approved endpoints and encryption key server-side.
-export function RuntimeConnectionManager({token}:{token:string}){
- const[adminToken,setAdminToken]=useState("");
+export function RuntimeConnectionManager({token,sessionAdmin=false}:{token:string;sessionAdmin?:boolean}){
+ const[adminToken,setAdminToken]=useState(sessionAdmin?"session":"");
  const[profiles,setProfiles]=useState<LabRuntimeConnection[]>([]);
  const[streams,setStreams]=useState<ManagedStream[]>([]);
  const[loaded,setLoaded]=useState(false);
@@ -67,9 +67,9 @@ export function RuntimeConnectionManager({token}:{token:string}){
    <span className="df-pipeline-stat">ISOLATED QA · ADMIN ONLY</span>
   </div>
   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-   <label className="space-y-1"><span className="muted text-xs">Connection admin credential · separate from lab API token</span>
+   {!sessionAdmin&&<label className="space-y-1"><span className="muted text-xs">Connection admin credential · separate from lab API token</span>
     <input className="field" type="password" autoComplete="off" aria-label="Live connection admin credential" value={adminToken} onChange={e=>{setAdminToken(e.target.value);setProfiles([]);setLoaded(false);setError("");}}/>
-   </label>
+   </label>}
    <Button variant="outline" size="sm" type="button" disabled={!token||!adminToken||!!busy} onClick={()=>void reload()}><RefreshCw size={15}/> Load connections</Button>
   </div>
   {error&&<p className="df-text-error text-xs" role="alert">{error}</p>}
