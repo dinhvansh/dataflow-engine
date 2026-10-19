@@ -48,6 +48,7 @@ jobs:
           import json,sys
           x=json.load(open(sys.argv[1]))
           assert x["verdict"]!="PASS-LOCAL-CORE8B"
-          assert x["counts"]["NOT RUN"]==2
+          assert x["counts"]["NOT_RUN"]==2
           assert x["seven_million_benchmark"]=="NOT RUN BY DESIGN"
+          assert ( __import__("pathlib").Path(sys.argv[1]).parent / "02_TEST_MATRIX.csv" ).exists()
           PY
