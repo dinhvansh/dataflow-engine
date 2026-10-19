@@ -93,7 +93,7 @@ func approvedRuntimeEndpoint(driver,host string,port int)bool{
  flag:="DATAFLOW_QA_SQLSERVER_ALLOWED_ENDPOINT"
  if driver=="clickhouse"{flag="DATAFLOW_QA_CLICKHOUSE_ALLOWED_ENDPOINT"}
  allowed:=os.Getenv(flag)
- if allowed==""||host==""||port<1||port>65535||strings.ContainsAny(host,"/\\@?# \\t\\r\\n"){return false}
+ if allowed==""||host==""||port<1||port>65535||strings.TrimSpace(host)!=host||strings.Contains(host,"/")||strings.Contains(host,"@")||strings.Contains(host,"?")||strings.Contains(host,"#"){return false}
  name,p,e:=net.SplitHostPort(allowed)
  if e!=nil||name==""||p==""{return false}
  parsed,e:=strconv.Atoi(p)
