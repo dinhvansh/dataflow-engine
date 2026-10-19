@@ -125,7 +125,7 @@ export function CoreMixedGraphEditor({token,streams,models,onRun,active}:Props){
   mutate(g=>({nodes:g.nodes.map(n=>n.id===c.target?{...n,requires:[c.source!]}:n)}));
  };
  const onNodesChange=(changes:NodeChange<TypedNode>[])=>{
-  const moves=changes.filter(c=>c.type==="position"&&!!c.position);
+  const moves=changes.filter((c):c is Extract<NodeChange<TypedNode>,{type:"position"}>=>c.type==="position"&&!!c.position);
   if(!moves.length)return;
   mutate(g=>({nodes:g.nodes.map(n=>{
    const move=moves.find(c=>c.id===n.id);

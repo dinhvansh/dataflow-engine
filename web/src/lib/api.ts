@@ -147,11 +147,11 @@ export type CorePipelineRun={
  graph_snapshot?:CoreGraphDefinition|null;
 };
 export const corePipelineApi={
- start:(stream_id:string,model_id:string,unique_column:string,token:string)=>
+ start:(stream_id:string,model_id:string,unique_column:string,token:string,graph?:SavedCoreGraph)=>
   parse<CorePipelineRun>(fetch("/api/v1/core/runs",{
    method:"POST",
    headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},
-   body:JSON.stringify({stream_id,model_id,unique_column})
+   body:JSON.stringify({stream_id,model_id,unique_column,...(graph?{graph_id:graph.id,graph_version:graph.version}:{})})
   })),
  status:(run_id:string,token:string)=>
   getSource<CorePipelineRun>(`/api/v1/core/runs?id=${encodeURIComponent(run_id)}`,token),
