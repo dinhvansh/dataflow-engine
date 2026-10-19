@@ -1,6 +1,6 @@
 # CORE-RUN-8B — persisted editable mixed-node Canvas, strict Core bindings
 
-**State: QA pending, do not merge before exact-head CI and real browser E2E PASS.**
+**State: HOSTED disposable QA PASS, 2026-10-19.** [PR #114](https://github.com/dinhvansh/dataflow-engine/pull/114) merged; all 6/6 exact-head workflows PASS, including [real browser E2E #39186193111](https://github.com/dinhvansh/dataflow-engine/actions/runs/39186193111) (`1 passed in 121.24s`). Still strictly linear, owner-local demo/production NO-GO.
 
 Scope: React Flow editor with SOURCE / SYNC / 1–30 saved dbt TRANSFORM / QUALITY / PUBLISH nodes, saved stream/model/quality bindings, draggable positions, editable directed dependencies, backend Validate and optimistic versioned Save. The existing SQL DAG builder remains unchanged. Only strict linear chains can execute in v8B; no UI or API may imply support for parallel branches, merge, arbitrary SQL, unsupported source or real production permissions.
 
