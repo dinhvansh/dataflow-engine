@@ -107,11 +107,13 @@ export const connectionDefinitionsApi={
    body:JSON.stringify(draft)}))
 };
 
+export type CoreStepObservation={index:number;model_name:string;status:string;rows_verified:number;error:string};
 export type CorePipelineRun={
  run_id:string;status:"waiting_sync"|"waiting_flow"|"publishing"|"succeeded"|"failed"|"rolled_back";
+ stream_id?:string;target_model_name?:string;
  managed_run_id:string;managed_status?:string;model_flow_id?:string;
  model_flow_status?:string;rows_verified?:number;stage?:string;target?:string;
- error?:string;has_backup?:boolean;dependency_order?:string[];
+ error?:string;has_backup?:boolean;dependency_order?:string[];steps?:CoreStepObservation[];
 };
 export const corePipelineApi={
  start:(stream_id:string,model_id:string,unique_column:string,token:string)=>
