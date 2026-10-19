@@ -1077,3 +1077,45 @@ def test_ui_runtime_connection_add_test_save_bind_uses_backend_and_hides_credent
     assert calls.count("/api/v1/connections/runtime") >= 3
     assert calls.count("/api/v1/connections/runtime/test") == 2
     assert calls.count("/api/v1/connections/runtime/bind") == 1
+
+
+def test_ui_local_session_login_roles_and_logout(ui):
+    """UI-only check: real credential/session RBAC is covered by Go tests."""
+    page, _ = ui
+    signed = {"role": None}
+
+    def session_api(route):
+        method = route.request.method
+        if method == "GET":
+            payload = {"authenticated": signed["role"] is not None, "role": signed["role"]}
+            route.fulfill(status=200, content_type="application/json", body=json.dumps(payload))
+        elif method == "POST":
+            data = json.loads(route.request.post_data or "{}")
+            role = data.get("username")
+            signed["role"] = role
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({"authenticated": True, "role": role}))
+        else:
+            signed["role"] = None
+            route.fulfill(status=204, body="")
+
+    page.route("**/api/v1/auth/session", session_api)
+    page.reload(wait_until="domcontentloaded")
+    expect(page.get_by_label("DataFlow sign in")).to_be_visible()
+    expect(page.get_by_label("Lab API token (shared across modules)")).to_have_count(0)
+
+    page.get_by_label("Account").select_option("operator")
+    page.get_by_label("Sign in password").fill("synthetic-operator-password")
+    page.get_by_role("button", name="Sign in", exact=True).click()
+    page.get_by_role("button", name="Connections", exact=True).click()
+    expect(page.get_by_label("Live lab connection manager")).to_have_count(0)
+    page.get_by_role("button", name="Sign out").click()
+    expect(page.get_by_label("DataFlow sign in")).to_be_visible()
+
+    page.get_by_label("Account").select_option("admin")
+    page.get_by_label("Sign in password").fill("synthetic-admin-password")
+    page.get_by_role("button", name="Sign in", exact=True).click()
+    page.get_by_role("button", name="Connections", exact=True).click()
+    expect(page.get_by_label("Live lab connection manager")).to_be_visible()
+    expect(page.get_by_label("Live connection admin credential")).to_have_count(0)
+    expect(page.get_by_label("Lab API token (shared across modules)")).to_have_count(0)
