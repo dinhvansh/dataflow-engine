@@ -9,6 +9,9 @@ export function ConfiguredConnections({token,onTokenChange}:{token:string;onToke
  const[items,setItems]=useState<ConfiguredConnection[]|null>(null);
  const[loading,setLoading]=useState(false);
  const[error,setError]=useState("");
+ const[testing,setTesting]=useState("");
+ const[testResults,setTestResults]=useState<Record<string,boolean>>({});
+ const testConnection=async(id:string)=>{setTesting(id);setError("");try{const result=await connectionApi.testConfigured(id,token);setTestResults(p=>({...p,[id]:result.passed}));}catch{setError("QA test unavailable. Check isolated lab flags, permissions and backend configuration.");}finally{setTesting("");}};
  const requestId=useRef(0);
  useEffect(()=>{requestId.current++;setItems(null);setError("");setLoading(false)},[token]);
  const changeToken=(value:string)=>{
@@ -49,10 +52,10 @@ export function ConfiguredConnections({token,onTokenChange}:{token:string;onToke
      <h4 className="font-semibold text-sm">{item.name}</h4>
      <p className="muted text-xs">{item.driver} · {item.kind}</p>
      <p className="muted text-xs leading-5">{item.usage}</p>
-     <div className="border-t df-border-neutral pt-2 text-xs muted">Server environment · Single instance · No test endpoint</div>
+     <div className="border-t df-border-neutral pt-2 space-y-2"><p className="text-xs muted">Server-managed single instance · isolated QA check only</p>{item.kind!=="internal"&&<Button type="button" size="sm" variant="outline" disabled={!token||!!testing||item.configuration_state!=="configured"} onClick={()=>void testConnection(item.id)}>{testing===item.id?"Testing…":"Test QA connection"}</Button>}{Object.prototype.hasOwnProperty.call(testResults,item.id)&&<p role="status" className={testResults[item.id]?"df-text-success text-xs":"df-text-error text-xs"}>{testResults[item.id]?"QA driver check PASS":"QA driver/permission check FAIL"}</p>}</div>
     </article>;
    })}
   </div>}
-  {items&&<p className="muted text-xs" role="status">{items.length} server slots listed. Multiple independent connections, credential editing and Test Connection are not available in this version.</p>}
+  {items&&<p className="muted text-xs" role="status">{items.length} server slots listed. Live checks cover only preconfigured isolated QA services. Independent credentials, new connection profiles and pipeline binding remain unavailable.</p>}
  </section>;
 }

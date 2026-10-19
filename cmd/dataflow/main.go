@@ -213,6 +213,7 @@ func main() {
 	mux.HandleFunc("/api/v1/bootstrap/runs", svc.run)
 	mux.HandleFunc("/api/v1/bootstrap/status", svc.status)
 	mux.HandleFunc("/api/v1/connections", svc.connectionsAPI)
+	mux.HandleFunc("/api/v1/connections/test-configured", svc.configuredConnectionTestAPI)
 	mux.HandleFunc("/api/v1/connections/definitions", svc.connectionDefinitionsAPI)
 	mux.Handle("/api/v1/secure/connections/definitions", secureView)
 	mux.HandleFunc("/api/v1/source/tables", svc.sourceAPI)
