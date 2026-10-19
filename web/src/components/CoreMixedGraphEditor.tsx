@@ -1,4 +1,4 @@
-import {useCallback,useMemo,useRef,useState,memo} from "react";
+import {useCallback,useEffect,useMemo,useRef,useState,memo} from "react";
 import {
  ReactFlow,Background,BackgroundVariant,Controls,Handle,MarkerType,Position,
  type Connection,type Edge,type Node,type NodeChange,type NodeProps,type ReactFlowInstance
@@ -51,10 +51,12 @@ export function CoreMixedGraphEditor({token,streams,models,onRun,active}:Props){
  const [error,setError]=useState("");
  const [note,setNote]=useState("");
  const instance=useRef<ReactFlowInstance<TypedNode,Edge>|null>(null);
+ useEffect(()=>{
+  setSaved(null);setCatalog([]);setDirty(true);setValidation(null);setError("");setNote("");
+ },[token]);
  const byID=useMemo(()=>new Map(graph.nodes.map(n=>[n.id,n])),[graph]);
  const inspected=selected?byID.get(selected):null;
  const activeModels=models.filter(m=>m.model.mode==="visual"&&m.model.source.database==="scratch");
- const currentName=name;
  const mutate=useCallback((fn:(old:CoreGraphDefinition)=>CoreGraphDefinition)=>{
   setGraph(fn);setDirty(true);setValidation(null);setError("");setNote("");
  },[]);
@@ -82,7 +84,7 @@ export function CoreMixedGraphEditor({token,streams,models,onRun,active}:Props){
   finally{setBusy(false)}
  };
  const save=async()=>{
-  if(!token||!validation||dirty&&saved?.name!==name)return;
+  if(!token||!validation)return;
   setBusy(true);setError("");setNote("");
   try{
    // Saving a changed existing name is an optimistic CAS update; a new name
