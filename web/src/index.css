@@ -482,3 +482,7 @@ body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
 :root.theme-dark .df-pipeline-edit-canvas .react-flow__minimap-mask{fill:rgba(22,29,27,.60)}
 @media(max-width:640px){.df-pipeline-edit-canvas{height:420px}.df-pipeline-graph-node{width:215px;padding:10px}}
 @media(prefers-reduced-motion:reduce){.df-pipeline-palette-job{transition:none}}
+
+/* Collapsed navigation and SQL-job search clarity. The generic .field padding shorthand otherwise wins over Tailwind pl-* utilities. */
+.sql-job-search-input{padding-left:2.75rem;padding-right:4.25rem}
+@media(min-width:768px){.console-sidebar.is-collapsed .navbtn-collapsed{justify-content:center;padding:.65rem 0}.console-sidebar.is-collapsed .navbtn-collapsed svg{flex-shrink:0}.console-sidebar.is-collapsed .sidebar-caption{text-align:center;padding:0}.console-sidebar.is-collapsed .sidebar-status{padding:.5rem}}
