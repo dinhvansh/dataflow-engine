@@ -1,0 +1,40 @@
+{
+  "gate": "CORE-RUN-7",
+  "status": "BLOCKED",
+  "tested_git_sha": "ee8401e0ca1b21c666d2dd365f11142f478fce3c",
+  "captured_utc": "2026-10-18T23:56:01Z",
+  "reason": "Workspace and Docker root share a filesystem with only 2388766720 bytes free; acceptance requires at least 17179869184 bytes.",
+  "benchmark_started": false,
+  "source_seed_started": false,
+  "source_rows": null,
+  "destination_rows": null,
+  "initial_elapsed_seconds": null,
+  "initial_rows_per_second": null,
+  "incremental_replay_rows_written": null,
+  "checkpoint_generation": null,
+  "duplicate_count": null,
+  "peak_cpu_percent": null,
+  "peak_memory_bytes": null,
+  "clickhouse_io": null,
+  "host": {
+    "cpu_count": 3,
+    "memory_total_bytes": 10452471808,
+    "memory_available_bytes": 9667764224,
+    "swap_total_bytes": 0,
+    "workspace_total_bytes": 33770192896,
+    "workspace_available_bytes": 2388766720,
+    "workspace_use_percent": "93%",
+    "docker_storage_driver": "vfs"
+  },
+  "evidence_files": [
+    "disk-guard.log",
+    "preflight.log",
+    "resource-facts.txt"
+  ],
+  "safety": {
+    "real_erp_contacted": false,
+    "database_mutations_executed": false,
+    "qa_stack_started": false,
+    "seven_million_seed_executed": false
+  }
+}

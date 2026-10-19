@@ -2,6 +2,12 @@
 
 **Snapshot:** 2026-10-18 · `main@d016c236e3cb40774d177460464b5f3361c37f4a` after real CORE-RUN-6B-3 [#107](https://github.com/dinhvansh/dataflow-engine/pull/107), 8/8 same-head CI PASS. CORE-RUN-6B hosted disposable fault matrix ACCEPTED. CORE-RUN-7 measured 7m hardware OPEN, CORE-RUN-8 Canvas and owner demo OPEN, production NO-GO. Always recheck live GitHub.
 
+## CORE-RUN-7 cloud attempt BLOCKED by mandatory disk guard (2026-10-18)
+
+- On live `main@ee8401e0ca1b21c666d2dd365f11142f478fce3c`, Codex Cloud issue [#109](https://github.com/dinhvansh/dataflow-engine/issues/109) preflight found 3 vCPU, 10,452,471,808 bytes RAM and only **2,388,766,720 bytes free** on the shared 32 GB workspace/Docker filesystem (93% used, `vfs`, no swap). CORE-RUN-7 requires 17,179,869,184 free bytes.
+- The 16 GiB disk guard exited 1, and even the general 4 GiB local-QA preflight exited 1. The stopped existing containers and named database volumes carried `dataflow-localqa` project/owner/role labels, but services were not restarted. No seed, ingestion, second incremental, database mutation, ERP contact or destructive cleanup occurred.
+- Result is **BLOCKED, not PASS or workload FAIL**. Throughput, peak workload CPU/RAM/IO, physical 7m count, zero-row replay, duplicate count and checkpoint generation remain unmeasured/N/A. CORE-RUN-7 and issue #109 stay OPEN until an owner-approved disposable machine has >=16 GiB free and produces the complete benchmark artifact set.
+
 ## ACCEPTED CORE-RUN-6B — real SQL-in-flight crash + physical publish race (2026-10-18)
 
 - **[#107](https://github.com/dinhvansh/dataflow-engine/pull/107) MERGED** at `main@d016c236e3cb40774d177460464b5f3361c37f4a` (exact source head `90ec53575ba3e187315830546d018cc8393a2a1e`). **All 8/8 exact-head workflows PASS:** [real mid-SQL #39145643517](https://github.com/dinhvansh/dataflow-engine/actions/runs/39145643517), [general CI #39145643493](https://github.com/dinhvansh/dataflow-engine/actions/runs/39145643493), [SELECT-only SQL QA #39145643620](https://github.com/dinhvansh/dataflow-engine/actions/runs/39145643620), [CORE-RUN-5 E2E #39145643489](https://github.com/dinhvansh/dataflow-engine/actions/runs/39145643489), [CORE-RUN-6A #39145643552](https://github.com/dinhvansh/dataflow-engine/actions/runs/39145643552), [6B-1 #39145643530](https://github.com/dinhvansh/dataflow-engine/actions/runs/39145643530), Browser UI and QA contract.
