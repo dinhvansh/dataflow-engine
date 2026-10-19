@@ -18,6 +18,7 @@ import (
 // because publication is performed through that independently provisioned worker.
 func(s *server)runtimeForManagedStream(ctx context.Context,streamID string)(*sql.DB,string,string,string,func(),error){
  keep:=func(){}
+ if !runtimeLabEnabled(){return s.sql,s.chURL,s.chUser,s.chPass,keep,nil}
  var sourceID,targetID string;var sourceRev,targetRev int64
  e:=s.pg.QueryRow(ctx,`SELECT source_profile_id::text,target_profile_id::text,
  source_revision,target_revision FROM connection_runtime_bindings WHERE stream_id=$1::uuid`,streamID).
