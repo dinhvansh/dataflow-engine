@@ -1,0 +1,11 @@
+id,status,expected,actual,exit_code,elapsed_s,evidence,bug_id
+GIT,PASS,Real validated synthetic QA; exact case contract in CORE_ONE_PASS_QA.md,Recorded stage completed (check original log),0,1.067,qa-results/local-core8b-20261019T053354Z/logs/STATIC-SAFETY.log,
+GO,PASS,Real validated synthetic QA; exact case contract in CORE_ONE_PASS_QA.md,Recorded stage completed (check original log),0,235.051,qa-results/local-core8b-20261019T053354Z/logs/STATIC-GO.log,
+WEB,PASS,Real validated synthetic QA; exact case contract in CORE_ONE_PASS_QA.md,Recorded stage completed (check original log),0,129.441,qa-results/local-core8b-20261019T053354Z/logs/STATIC-WEB.log,
+UI-MOCK,PASS,Real validated synthetic QA; exact case contract in CORE_ONE_PASS_QA.md,Recorded stage completed (check original log),0,51.877,qa-results/local-core8b-20261019T053354Z/logs/UI-MOCK.log,
+CORE8B,PASS,Real validated synthetic QA; exact case contract in CORE_ONE_PASS_QA.md,Recorded stage completed (check original log); graph_run_id=64d2914f-40cf-4359-a890-9b622063d91f; first_run_id=c3827250-addb-4a43-b415-cf123911b82b; source_rows=10000,0,212.999,qa-results/local-core8b-20261019T053354Z/logs/CORE-8B-E2E.log;qa-results/core-run5/operator-result.json,
+FAULT-LEASE,PASS,Real validated synthetic QA; exact case contract in CORE_ONE_PASS_QA.md,Recorded stage completed (check original log),0,83.685,qa-results/local-core8b-20261019T053354Z/logs/CORE-6B-CLAIM.log;qa-results/core-run6b/fencing-result.json,
+DQ-NEGATIVE,PASS,Real validated synthetic QA; exact case contract in CORE_ONE_PASS_QA.md,Recorded stage completed (check original log); source_rows=10000,0,126.284,qa-results/local-core8b-20261019T053354Z/logs/CORE-6B-DQ.log;qa-results/core-run6b-dq/negative-dq-concurrency.json,
+FAULT-MIDSQL,PASS,Real validated synthetic QA; exact case contract in CORE_ONE_PASS_QA.md,Recorded stage completed (check original log),0,87.416,qa-results/local-core8b-20261019T053354Z/logs/CORE-6B-MID-SQL.log;qa-results/core-run6b3/mid-sql-result.json,
+FAULT-API,PASS,Real validated synthetic QA; exact case contract in CORE_ONE_PASS_QA.md,Recorded stage completed (check original log); source_rows=10000,0,146.735,qa-results/local-core8b-20261019T053354Z/logs/CORE-6A-NETWORK.log;qa-results/core-run6/fault-result.json,
+SCALE-7M,NOT_RUN,Deferred; separate owner benchmark,Deferred by owner,,,,
