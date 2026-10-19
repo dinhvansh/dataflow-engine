@@ -18,6 +18,9 @@ gitsha=$(git rev-parse HEAD)
 { echo "BLOCKED: never run on main; check out isolated local test branch" >&2; exit 2; }
 [[ -z "$(git status --porcelain)" ]] ||
 { echo "BLOCKED: preserve/reconcile uncommitted changes first" >&2; exit 2; }
+git rev-parse --verify refs/remotes/origin/main >/dev/null 2>&1 &&
+git merge-base --is-ancestor refs/remotes/origin/main HEAD ||
+{ echo "BLOCKED: QA branch is behind origin/main or remote ref missing; fetch/rebase first" >&2; exit 2; }
 # Refuse accidentally inherited real integration DSNs during static Go tests.
 for key in DATAFLOW_INTEGRATION_POSTGRES_DSN DATAFLOW_INTEGRATION_CH_URL \
  DATAFLOW_INTEGRATION_CH_WRITER_USER DATAFLOW_INTEGRATION_CH_WRITER_PASSWORD \
@@ -35,7 +38,7 @@ git branch --show-current >"$out/git-branch.txt"
 git status --short >"$out/git-status.txt"
 git rev-list --left-right --count HEAD...refs/remotes/origin/main >"$out/git-divergence.txt" 2>/dev/null || true
 printf 'case\tstatus\tseconds\tlog\n' >"$out/matrix.tsv"
-printf '%s\n' STATIC-SAFETY STATIC-GO STATIC-WEB PREP-8B CORE-8B-E2E PREP-CLAIM CORE-6B-CLAIM PREP-DQ CORE-6B-DQ PREP-MID-SQL CORE-6B-MID-SQL PREP-NETWORK CORE-6A-NETWORK >"$out/case-catalog.txt"
+printf '%s\n' STATIC-SAFETY STATIC-GO STATIC-WEB UI-MOCK PREP-8B CORE-8B-E2E PREP-CLAIM CORE-6B-CLAIM PREP-DQ CORE-6B-DQ PREP-MID-SQL CORE-6B-MID-SQL PREP-NETWORK CORE-6A-NETWORK VERIFY-EVIDENCE >"$out/case-catalog.txt"
 finalize(){
  rc=$?
  python3 qa/local-acceptance/v8b/report.py "$out" "$rc" || true
@@ -44,13 +47,32 @@ finalize(){
 trap finalize EXIT
 case_run(){
  id="$1"; shift
- start=$(date +%s)
+ start=$(date +%s%3N)
  echo "START $id"
  set +e
  "$@" >"$out/logs/$id.log" 2>&1
  rc=$?
  set -e
- elapsed=$(( $(date +%s) - start ))
+ elapsed_ms=$(( $(date +%s%3N) - start ))
+ printf -v elapsed '%d.%03d' "$((elapsed_ms/1000))" "$((elapsed_ms%1000))"
+ # The shell exit code alone is not evidence: each live case must create
+ # a fresh, nonempty structured JSON artifact since it started.
+ if (( rc == 0 )); then
+  evidence=""
+  case "$id" in
+   CORE-8B-E2E) evidence="qa-results/core-run5/operator-result.json";;
+   CORE-6B-CLAIM) evidence="qa-results/core-run6b/fencing-result.json";;
+   CORE-6B-DQ) evidence="qa-results/core-run6b-dq/negative-dq-concurrency.json";;
+   CORE-6B-MID-SQL) evidence="qa-results/core-run6b3/mid-sql-result.json";;
+   CORE-6A-NETWORK) evidence="qa-results/core-run6/fault-result.json";;
+  esac
+  if [[ -n "$evidence" ]]; then
+   if [[ ! -s "$evidence" ]] || (( $(stat -c %Y "$evidence") < start/1000 )); then
+    echo "FAIL $id: fresh structured QA evidence missing: $evidence" >>"$out/logs/$id.log"
+    rc=3
+   fi
+  fi
+ fi
  if (( rc != 0 )); then
   printf '%s\tFAIL\t%s\t%s\n' "$id" "$elapsed" "logs/$id.log" >>"$out/matrix.tsv"
   echo "FAIL $id: retain QA volumes for debugging; see $out/logs/$id.log" >&2
@@ -65,8 +87,9 @@ fresh(){
  "$here/verify-isolation.sh"
 }
 case_run STATIC-SAFETY "$here/verify-reset-scope.sh"
-case_run STATIC-GO go test ./...
+case_run STATIC-GO bash -c 'go test -race ./... && go vet ./... && go build ./cmd/...'
 case_run STATIC-WEB bash -c 'cd web && npm ci --ignore-scripts && npm run build'
+case_run UI-MOCK python3 -m pytest qa/browser/test_console.py -q
 case_run PREP-8B fresh
 case_run CORE-8B-E2E env DATAFLOW_LIVE_QA_OPT_IN=true "$here/run-core-operator.sh"
 case_run PREP-CLAIM fresh
@@ -77,4 +100,7 @@ case_run PREP-MID-SQL fresh
 case_run CORE-6B-MID-SQL env DATAFLOW_LIVE_QA_OPT_IN=true "$here/run-core-mid-sql.sh"
 case_run PREP-NETWORK fresh
 case_run CORE-6A-NETWORK env DATAFLOW_LIVE_QA_OPT_IN=true "$here/run-core-faults.sh"
-echo "Core 8B one-shot suite complete; 7m benchmark NOT RUN."
+# Materialize the canonical report before checking actual JSON-based evidence.
+python3 qa/local-acceptance/v8b/report.py "$out" 0
+case_run VERIFY-EVIDENCE python3 qa/local-acceptance/verify_core_final_evidence.py --report "$out"
+echo "Core 8B one-shot suite complete; structured evidence verified, 7m benchmark NOT RUN."

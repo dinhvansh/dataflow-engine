@@ -1,5 +1,7 @@
 # Copy once to Codex Local — CORE final acceptance
 
+**Executable runner:** after verifying owned disposable QA Docker resources and obtaining explicit permission for each reset, follow `qa/local-acceptance/v8b/README.md` and run `deploy/local-qa/run-core8b-one-shot.sh`. It includes Go race/vet/build, Web build, mock Browser, full real Core E2E and independent fault scenarios, then writes `02_TEST_MATRIX.csv` and runs `verify_core_final_evidence.py` before technical PASS. GitHub CI only tests contracts; no owner-local run has occurred.
+
 Repo: https://github.com/dinhvansh/dataflow-engine
 
 Do the full final owner-local QA in ONE task, not piecemeal. Start by checking git main/PR/Actions/divergence, then read docs/PROJECT_HANDOFF_LATEST.md, qa/local-acceptance/CORE_ONE_PASS_QA.md, docs/CORE_RUN8B_MIXED_CANVAS_ACCEPTANCE.md, and the existing qa/local-acceptance/CODEX_LOCAL_QA_MISSION.md. Use CORE_ONE_PASS_QA.md as the CURRENT mandatory Core scope; older v1.3 performance cases are separate.
