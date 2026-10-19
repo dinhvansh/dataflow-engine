@@ -69,7 +69,7 @@ export function ConnectionDraftRegistry({token}:{token:string}){
    <span className="df-pipeline-stat">LAB METADATA · DRAFT ONLY</span>
   </div>
   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-   <label className="space-y-1"><span className="muted text-xs">Separate connection admin token · memory only</span>
+   <label className="space-y-1"><span className="muted text-xs">Connection admin token · separate elevated permission, memory only</span>
     <input className="field" aria-label="Connection registry admin token" autoComplete="off" type="password" value={adminToken}
      onChange={event=>{requestSerial.current++;setAdminToken(event.target.value);setDefinitions(null);setWriteEnabled(false);setError("");setNotice("");setBusy(false);}}/>
    </label>
