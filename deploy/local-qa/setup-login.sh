@@ -7,6 +7,7 @@ cd "$root"
 file="$root/.env.qa.local"
 [[ -f "$file" ]] || { echo "Create the isolated .env.qa.local first; refusing other environments" >&2; exit 1; }
 [[ "$(stat -c %a "$file")" == 600 ]] || { echo "Expected chmod 600 on private .env.qa.local" >&2; exit 1; }
+bash deploy/local-qa/verify-isolation.sh
 read -r -s -p "New OPERATOR password (min 12 chars): " operator_pass
 echo
 read -r -s -p "New ADMIN password (different, min 12 chars): " admin_pass
@@ -20,7 +21,7 @@ unset operator_pass admin_pass
 tmp="$(mktemp "$root/.env.qa.local.auth.XXXXXXXX")"
 trap 'rm -f "$tmp"' EXIT
 chmod 600 "$tmp"
-grep -Ev '^(DATAFLOW_AUTH_SESSION_MODE|DATAFLOW_LOCAL_OPERATOR_PASSWORD_HASH|DATAFLOW_LOCAL_ADMIN_PASSWORD_HASH)=' "$file" > "$tmp" || :
+grep -Ev '^(DATAFLOW_AUTH_SESSION_MODE|DATAFLOW_LOCAL_OPERATOR_PASSWORD_HASH|DATAFLOW_LOCAL_ADMIN_PASSWORD_HASH|DATAFLOW_ENABLE_RUNTIME_CONNECTIONS_LAB|DATAFLOW_ENABLE_LIVE_CONNECTION_TEST)=' "$file" > "$tmp" || :
 {
  printf "DATAFLOW_AUTH_SESSION_MODE=local\n"
  # Single-quoted Compose dotenv values retain literal bcrypt $ characters.
