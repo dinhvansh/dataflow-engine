@@ -10,7 +10,6 @@ import (
  "io"
  "net/http"
  "regexp"
- "strings"
  "time"
 
  "github.com/jackc/pgx/v5"
@@ -23,6 +22,8 @@ type coreGraphNode struct {
  StreamID string `json:"stream_id,omitempty"`
  ModelID string `json:"model_id,omitempty"`
  UniqueColumn string `json:"unique_column,omitempty"`
+ X int `json:"x,omitempty"`
+ Y int `json:"y,omitempty"`
 }
 type coreGraphDefinition struct{Nodes []coreGraphNode `json:"nodes"`}
 type coreGraphBinding struct {
@@ -57,7 +58,9 @@ func(s *server)validateCoreGraph(ctx context.Context,tx pgx.Tx,g coreGraphDefini
  children:=make(map[string][]string,len(g.Nodes))
  var root string
  for _,n:=range g.Nodes{
-  if !coreGraphNodeID.MatchString(n.ID){return out,errors.New("invalid graph node ID")}
+  if !coreGraphNodeID.MatchString(n.ID)||n.X < -10000||n.X > 10000||n.Y < -10000||n.Y > 10000{
+   return out,errors.New("invalid graph node ID or canvas position")
+  }
   if _,ok:=byID[n.ID];ok{return out,errors.New("duplicate node ID")}
   if len(n.Requires)>1{return out,errors.New("fork/join or multiple predecessors not supported by durable Core")}
   if len(n.Requires)==0{
