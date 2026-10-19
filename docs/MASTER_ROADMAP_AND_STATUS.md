@@ -1,10 +1,19 @@
 # DataFlow Engine — Master Roadmap, Status & Acceptance Gates
 
-**Snapshot: 2026-10-19.** `main@6e5ea5496e43f916efb2897674d0dc2a62556114` after #112. CORE-RUN-8A read-only durable Core Canvas + browser reload and PG step evidence 6/6 CI PASS. 8B persisted editable heterogeneous graph still OPEN. 7m benchmark has safety-blocked Cloud attempts, hardware measurements deferred. Production and owner-local funding-demo gates remain NO-GO.
+**Snapshot: 2026-10-19.** `main@1b31a4dbaf297b128542100c7aa3e319715cffdd`. CORE-RUN-8A and 8B real hosted browser QA PASS; persisted user-editable typed Core graph and backend exact-revision immutable launch done (linear only). CORE-RUN-7 measured 7m hardware benchmark deferred/BLOCKED; owner demo and production security NO-GO.
 
 Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Original phased plan: [implementation/roadmap.md](../implementation/roadmap.md). Historical release evidence: [release-status-v13.md](../implementation/release-status-v13.md) and other `implementation/release-status-v*.md` files.
 
 **Full V3.2B/V3.2C release acceptance matrix:** [CONNECTIONS_RELEASE_ACCEPTANCE.md](CONNECTIONS_RELEASE_ACCEPTANCE.md) — identity, Vault, TLS, writer-freeze, scoped Test Connection, infra/audit controls. All production gates remain NO-GO.
+
+## CORE-RUN-8B accepted — persisted editable mixed-node Canvas (2026-10-19)
+
+- **[#114](https://github.com/dinhvansh/dataflow-engine/pull/114) MERGED** at `main@1b31a4dbaf297b128542100c7aa3e319715cffdd` (exact PR head `29fed90f7236a0b684a20859f163b7bcb890548c`). **6/6 exact-head workflows PASS**, including [real four-service/browser Core E2E #39186193111](https://github.com/dinhvansh/dataflow-engine/actions/runs/39186193111) (`1 passed in 121.24s`), [Go/Web CI #39186193156](https://github.com/dinhvansh/dataflow-engine/actions/runs/39186193156), [SQL Server SELECT-only QA #39186193179](https://github.com/dinhvansh/dataflow-engine/actions/runs/39186193179), [real mid-SQL SIGKILL regression #39186193106](https://github.com/dinhvansh/dataflow-engine/actions/runs/39186193106), Browser UI QA and static contract.
+- **Real editable mixed React Flow Canvas** in `CoreMixedGraphEditor`: SOURCE / SYNC / 1–30 saved Visual TRANSFORM models / QUALITY / PUBLISH. Drag/drop model cards, connect typed dependencies, choose read-only managed stream, saved target model and unique DQ key, adjust node positions, POST Validate, version-CAS Save, load persisted graph, explicit confirmed Run. Legacy editable SQL Job DAG remains available and unchanged.
+- `migrations/postgres/030_core_pipeline_graphs.sql` creates durable versioned graph registry plus per-Core-Run immutable `graph_id/graph_version/graph_digest/graph_snapshot`. Go validates exactly **one linear connected** SOURCE→SYNC→TRANSFORM chain→QUALITY→PUBLISH, checks saved dbt Visual compiler/plan digest and scratch-only stream, rejects fork/cycle/dangling node/stale version. `POST /api/v1/core/runs` bound graph dispatch checks snapshot and version **before writing any managed or core run**. GET persisted run reconstructs frozen graph after browser reload.
+- **Full real Playwright QA**: save and validate saved A→B→C graph, reject invalid fork and stale save/launch, launch the exact saved graph through browser button, assert actual SQL Server→ClickHouse/dbt/DQ/physical publish after earlier two Core runs and rollback, third incremental sync writes **0 rows** with checkpoint generation 3, and immutable graph snapshot survives page reload.
+- **CORE-RUN-8B ACCEPTED for strict linear mixed-node Canvas in hosted disposable QA.** Parallel/fork/join, conditional routing, arbitrary SQL injection/external workspaces are **NOT supported**. Further work includes owner-operated repeatable demo, operational rollout and full production security; **do not call product production/funding GO**.
+- **CORE-RUN-7 real 7,000,000-row hardware benchmark remains BLOCKED/deferred** after Codex Cloud disk preflight; no 7m throughput claims or weakening disk guard. ERP always read-only.
 
 ## CORE-RUN-8A ACCEPTED — persisted Core steps in React Flow Canvas (2026-10-19)
 
@@ -82,7 +91,7 @@ Every milestone requires actual nonmock integration tests and exact-HEAD CI; do 
 4. Verify real workspace IdP/Vault/TLS/allowlisted egress/tenant isolation and production operations independently. No real ERP credentials or DML/DDL, no production GO.
 5. Only then evaluate fundraising demo readiness; production release requires separate security approval. **No UI cosmetics ahead of the remaining functional gates.**
 
-**NEXT (owner priority 2026-10-19):** CORE-RUN-8B persisted editable mixed-node Canvas and validated durable Core binding after 8A's successful observer; defer CORE-RUN-7 measured 7m+ first ingest/zero-row replay until adequate owner-approved disk hardware exists. Do not waive disk safety. Archive real performance evidence when resumed, then owner-visible operator walkthrough. Only merged CI-confirmed product milestones count. Update this roadmap/handoff with actual measured artifacts; never silently mark pending as complete.
+**NEXT (after CORE-RUN-8B hosted PASS):** independently repeat owner-operated disposable 8B product demo and harden lifecycle/UX around frozen run snapshots; consider parallel/conditional workflows as a separately scoped roadmap. Defer CORE-RUN-7 measured 7m+ first ingest/zero-row replay until adequate owner-approved disk hardware exists. Do not waive disk safety. Archive real performance evidence when resumed, then owner-visible operator walkthrough. Only merged CI-confirmed product milestones count. Update this roadmap/handoff with actual measured artifacts; never silently mark pending as complete.
 
 ## 1. Product direction
 
