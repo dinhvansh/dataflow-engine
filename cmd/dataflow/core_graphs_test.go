@@ -28,7 +28,11 @@ func TestCoreGraphStructuralFailClosed(t *testing.T){
   {"two_roots",func(g *coreGraphDefinition){g.Nodes[1].Requires=nil},"one SOURCE root"},
   {"fork",func(g *coreGraphDefinition){g.Nodes[3].Requires=[]string{"sync"}},"parallel"},
   {"multiple_parents",func(g *coreGraphDefinition){g.Nodes[3].Requires=[]string{"sync","transform"}},"fork/join"},
-  {"cycle",func(g *coreGraphDefinition){g.Nodes[0].Requires=[]string{"publish"}},"cycle"},
+  {"cycle",func(g *coreGraphDefinition){
+   g.Nodes=append(g.Nodes,
+    coreGraphNode{ID:"isolated_a",Type:"TRANSFORM",Requires:[]string{"isolated_b"}},
+    coreGraphNode{ID:"isolated_b",Type:"TRANSFORM",Requires:[]string{"isolated_a"}})
+  },"disconnected graph or dependency cycle"},
   {"disconnected",func(g *coreGraphDefinition){g.Nodes[3].Requires=[]string{"does_not_exist"}},"unknown"},
   {"wrong_order",func(g *coreGraphDefinition){g.Nodes[2].Type="QUALITY"},"expected TRANSFORM"},
   {"invalid_name",func(g *coreGraphDefinition){g.Nodes[0].ID="bad node"},"invalid graph node"},
