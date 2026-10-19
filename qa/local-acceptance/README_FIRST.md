@@ -1,3 +1,9 @@
+# Current CORE-RUN-8B local acceptance (2026-10-19)
+
+The current **one-shot Core 8B** work package is [v8b/README.md](v8b/README.md), [v8b/TEST_MATRIX.md](v8b/TEST_MATRIX.md) and [v8b/CODEX_PROMPT.md](v8b/CODEX_PROMPT.md). It is separate from the original broad v1.3 QA mission retained below. The user deferred CORE-RUN-7 7m; do not run it or lower the disk guard. No tests are considered executed merely because this package exists.
+
+---
+
 # Gói bàn giao Codex local — DataFlow v1.3
 
 Dùng theo thứ tự:
