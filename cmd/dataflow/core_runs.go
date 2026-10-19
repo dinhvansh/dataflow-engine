@@ -140,14 +140,15 @@ func(s *server)coreRunsAPI(w http.ResponseWriter,r *http.Request){
   id:=r.URL.Query().Get("id")
   if !validUUID.MatchString(id){http.Error(w,"valid run id required",400);return}
   var row struct{
-   ID,ManagedID,FlowID,Status,Target,Stage,Issue,OldUUID string
+   ID,StreamID,TargetModelName,ManagedID,FlowID,Status,Target,Stage,Issue,OldUUID string
    Rows int64
   }
-  err:=s.pg.QueryRow(ctx,`SELECT id::text,managed_run_id::text,
-    COALESCE(flow_id::text,''),status,target_name,stage_name,
+  err:=s.pg.QueryRow(ctx,`SELECT id::text,stream_id::text,target_model_name,
+    managed_run_id::text,COALESCE(flow_id::text,''),status,target_name,stage_name,
     COALESCE(rows_verified,0),COALESCE(error_message,''),COALESCE(old_uuid,'')
    FROM core_pipeline_runs WHERE id=$1::uuid`,id).
-    Scan(&row.ID,&row.ManagedID,&row.FlowID,&row.Status,&row.Target,
+    Scan(&row.ID,&row.StreamID,&row.TargetModelName,&row.ManagedID,
+      &row.FlowID,&row.Status,&row.Target,
       &row.Stage,&row.Rows,&row.Issue,&row.OldUUID)
   if err!=nil{http.Error(w,"core run not found",404);return}
   var managedStatus string
@@ -188,7 +189,8 @@ func(s *server)coreRunsAPI(w http.ResponseWriter,r *http.Request){
    records.Close()
   }
   jsonResponse(w,200,map[string]any{
-   "run_id":row.ID,"status":row.Status,"managed_run_id":row.ManagedID,
+   "run_id":row.ID,"status":row.Status,"stream_id":row.StreamID,
+   "target_model_name":row.TargetModelName,"managed_run_id":row.ManagedID,
    "managed_status":managedStatus,"model_flow_id":row.FlowID,
    "model_flow_status":flowStatus,"dependency_order":order,"steps":steps,
    "stage":"scratch."+row.Stage,
