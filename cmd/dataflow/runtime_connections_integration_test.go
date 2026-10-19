@@ -3,6 +3,7 @@ package main
 import (
  "bytes"
  "context"
+ "database/sql"
  "encoding/base64"
  "encoding/json"
  "net"
@@ -15,12 +16,44 @@ import (
  "strings"
  "testing"
  "time"
+
+ "github.com/jackc/pgx/v5/pgxpool"
 )
+
+// An independently verified disposable owner/CI Docker stack uses dataflow_qa,
+// whereas coreRealFixture accepts only dataflow_test_ci. Do not weaken the
+// shared Core acceptance fixture merely to exercise the new connection lab.
+func runtimeConnectionRealFixture(t *testing.T)(context.Context,*server,func()){
+ if os.Getenv("DATAFLOW_RUNTIME_QA_OPERATOR_VERIFIED")!="true"{return coreRealFixture(t)}
+ if os.Getenv("DATAFLOW_INTEGRATION_PG_ISOLATED")!="true"||
+ os.Getenv("DATAFLOW_INTEGRATION_MSSQL_ISOLATED")!="true"||
+ os.Getenv("DATAFLOW_INTEGRATION_CH_ISOLATED")!="true"{t.Fatal("all disposable labels required")}
+ pgDSN,sqlDSN,chURL:=os.Getenv("DATAFLOW_INTEGRATION_POSTGRES_DSN"),
+ os.Getenv("DATAFLOW_INTEGRATION_SQLSERVER_DSN"),os.Getenv("DATAFLOW_INTEGRATION_CH_URL")
+ if pgDSN==""||sqlDSN==""||chURL==""{t.Fatal("disposable fixture settings required")}
+ u,e:=url.Parse(chURL)
+ if e!=nil||u.Scheme!="http"||u.Hostname()!="127.0.0.1"||u.User!=nil||u.RawQuery!=""||u.Fragment!=""{
+  t.Fatal("refusing non-loopback ClickHouse target")
+ }
+ ctx,stop:=context.WithTimeout(context.Background(),3*time.Minute)
+ pg,e:=pgxpool.New(ctx,pgDSN);if e!=nil{stop();t.Fatal("QA PostgreSQL connection unavailable")}
+ var dbName string
+ if e=pg.QueryRow(ctx,"SELECT current_database()").Scan(&dbName);e!=nil||dbName!="dataflow_qa"{
+  pg.Close();stop();t.Fatal("refusing non-DataFlow disposable PostgreSQL")}
+ source,e:=sql.Open("sqlserver",sqlDSN)
+ if e!=nil{pg.Close();stop();t.Fatal("QA SQL driver unavailable")}
+ if !checkLabSQLSource(ctx,source){source.Close();pg.Close();stop();t.Fatal("refusing SQL reader lacking exact disposable SELECT-only permissions")}
+ svc:=&server{pg:pg,sql:source,chURL:chURL,
+  chUser:os.Getenv("DATAFLOW_INTEGRATION_CH_USER"),
+  chPass:os.Getenv("DATAFLOW_INTEGRATION_CH_PASSWORD"),
+  token:"synthetic-runtime-lab-token"}
+ return ctx,svc,func(){source.Close();pg.Close();stop()}
+}
 
 // This test exercises actual disposable PostgreSQL + SQL Server driver +
 // ClickHouse credentials; it is never permitted to dial company ERP.
 func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
- ctx,svc,cleanup:=coreRealFixture(t)
+ ctx,svc,cleanup:=runtimeConnectionRealFixture(t)
  defer cleanup()
  sqlDSN:=os.Getenv("DATAFLOW_INTEGRATION_SQLSERVER_DSN")
  sqlURL,e:=url.Parse(sqlDSN)
