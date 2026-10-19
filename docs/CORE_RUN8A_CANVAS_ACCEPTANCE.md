@@ -1,0 +1,9 @@
+# CORE-RUN-8A — Server-owned Core Canvas observer
+
+**Status: pending real browser/API/SQL Server/PG/ClickHouse/dbt CI**. Part 1 of Core/Canvas convergence; not a new mixed-step editing backend.
+
+The existing SQL Job DAG editor remains unchanged and intentionally distinct. The Core Pipeline operator now displays a read-only `@xyflow/react` runtime DAG: Source → managed incremental Sync → PostgreSQL **immutable** dbt model-flow steps → DQ → atomic Publish.
+
+Previously the Core API only exposed top-level status, so the UI could not reconstruct A→B→C after reloading. `GET /api/v1/core/runs?id=...` now reads `model_flow_steps` *in stored step_index order* and returns `steps:[{index,model_name,status,rows_verified,error}]`, `dependency_order`, `stream_id` and `target_model_name`. The front-end polls this endpoint and draws **actual child status**, not optimistic React progress. Before a model flow exists, an explicit `snapshot pending` node is shown; the graph NEVER claims unexecuted steps passed. When a saved run UUID is pasted after browser reload the same server snapshot is displayed. Existing confirmation, real Core POST and physical rollback are preserved. No fake SQL DAG execution, no ERP writes.
+
+**Acceptance required before merge:** Go/frontend builds, disposable SQL Server read-only QA, real operator Playwright → API → 10k SQL Server fixture → PG/CH/dbt A→B→C + DQ/publish → reload and GET stored step statuses → incremental zero-row replay → rollback UUID; same-head CI PASS and evidence. Caution: 7m hardware benchmark CORE-RUN-7 is intentionally deferred and still BLOCKED by previously observed Codex Cloud disk safety gates. Later CORE-RUN-8B must implement persisted editable mixed-node Canvas with validated bindings and snapshot lifecycle; 8A is a read-only reconciliation step, not full convergence.

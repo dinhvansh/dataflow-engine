@@ -4,6 +4,10 @@ on:
     paths:
       - "deploy/local-qa/**"
       - "qa/browser/test_core_live.py"
+      - "web/src/components/CoreRuntimeCanvas.tsx"
+      - "web/src/components/CorePipelineRunner.tsx"
+      - "web/src/lib/api.ts"
+      - "cmd/dataflow/core_runs.go"
       - ".github/workflows/core-run5-live-e2e.yml"
   workflow_dispatch:
 permissions:

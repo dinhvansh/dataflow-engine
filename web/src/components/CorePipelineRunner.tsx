@@ -4,6 +4,7 @@ import {Button} from "./ui/button";
 import {ConfirmActionDialog} from "./ui/confirm-action-dialog";
 import {corePipelineApi,managedApi,type CorePipelineRun,type ManagedStream} from "../lib/api";
 import {transformApi,type SavedTransform} from "../lib/transformApi";
+import {CoreRuntimeCanvas} from "./CoreRuntimeCanvas";
 
 // Minimal operator surface for the *real* server-owned CORE-RUN pipeline.
 // This is intentionally separate from the older in-process SQL DAG Canvas
@@ -109,7 +110,7 @@ export function CorePipelineRunner({token,onTokenChange}:Props){
   </div>
   <p className="flex items-start gap-2 rounded border df-border-warning df-bg-warning-soft p-3 text-xs df-text-warning">
    <ShieldAlert size={17} className="shrink-0"/>
-   CORE-RUN is a separate real managed pipeline, NOT the SQL DAG Canvas executor above. It requires backend CORE pipeline QA flags, database migrations 028/029, and an approved disposable environment. No production cutover, live ERP writes or verified 7M throughput.
+   This Core runtime graph observes the real durable pipeline; the editable SQL DAG above still uses a separate legacy executor. Backend CORE QA flags and migrations 028/029 are required. Full mixed-node Canvas editing and production cutover are not yet supported. No production cutover, live ERP writes or verified 7M throughput.
   </p>
   <label className="block max-w-xl space-y-1"><span className="muted text-xs">API bearer token (memory only)</span>
    <input aria-label="Core API bearer token" className="field" type="password" autoComplete="off"
@@ -135,6 +136,13 @@ export function CorePipelineRunner({token,onTokenChange}:Props){
      value={uniqueColumn} onChange={e=>setUniqueColumn(e.target.value)} placeholder="stream"/>
    </label>
   </div>
+  <CoreRuntimeCanvas run={run}
+   sourceLabel={run?
+    (eligibleStreams.find(s=>s.id===run.stream_id)
+      ? (()=>{const s=eligibleStreams.find(s=>s.id===run.stream_id)!;return s.source_schema+"."+s.source_table})()
+      : "Saved stream "+(run.stream_id??"unavailable")):
+     (selectedStream?selectedStream.source_schema+"."+selectedStream.source_table:"")}
+   modelLabel={selectedModel?.name??""}/>
   <div className="flex flex-wrap items-center gap-3">
    <Button type="button" disabled={!actionable||busy||!!run&&!terminal.has(run.status)}
     onClick={()=>setConfirm("run")}><Play size={15}/>Run complete core pipeline</Button>
@@ -158,7 +166,7 @@ export function CorePipelineRunner({token,onTokenChange}:Props){
      <div>dbt + quality: <strong>{run.model_flow_status||"waiting"}</strong></div>
      <div>Publication: <strong>{run.status}</strong></div>
     </div>
-    {lastPlan.length>0&&<p className="muted text-xs">Saved dependency order: {lastPlan.join(" → ")}</p>}
+    {(run.dependency_order?.length||lastPlan.length)>0&&<p className="muted text-xs">Server dependency order: {(run.dependency_order?.length?run.dependency_order:lastPlan).join(" → ")}</p>}
     {run.error&&<p className="df-text-error text-xs" role="alert">{run.error}</p>}
     {run.status==="succeeded"&&run.has_backup&&<Button type="button" size="sm" variant="destructive" disabled={busy}
      onClick={()=>setConfirm("rollback")}><RotateCcw size={14}/>Rollback to previous physical version</Button>}

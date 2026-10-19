@@ -225,6 +225,18 @@ def execute_ui_run(page, section, prior_id=None):
     assert result["managed_status"] == "succeeded"
     assert result["model_flow_status"] == "succeeded"
     assert result["rows_verified"] == 1
+    assert result["dependency_order"] == [A, B, C], (
+        "GET must read immutable dependency order back from PostgreSQL"
+    )
+    assert [step["model_name"] for step in result["steps"]] == [A, B, C]
+    assert [step["index"] for step in result["steps"]] == [0, 1, 2]
+    assert all(step["status"] == "succeeded" for step in result["steps"])
+    runtime = section.locator('[aria-label="Durable Core runtime canvas"]')
+    expect(runtime.locator('[data-testid="core-runtime-node-TRANSFORM"]')).to_have_count(3)
+    expect(runtime.locator('[data-testid="core-runtime-node-QUALITY"] '
+                           '[data-testid="core-runtime-status"]')).to_have_text("succeeded")
+    expect(runtime.locator('[data-testid="core-runtime-node-PUBLISH"] '
+                           '[data-testid="core-runtime-status"]')).to_have_text("succeeded")
     return run_id, result
 
 
@@ -261,6 +273,12 @@ def test_core_run5_full_live_browser():
             section.get_by_label("Core run UUID").fill(first_id)
             section.get_by_role("button", name="Inspect backend state").click()
             expect(section.locator('[role="status"]')).to_have_text("succeeded")
+            runtime = section.locator('[aria-label="Durable Core runtime canvas"]')
+            expect(runtime.locator('[data-testid="core-runtime-node-TRANSFORM"]')).to_have_count(3)
+            expect(runtime.locator('[data-testid="core-runtime-node-TRANSFORM"] '
+                                   '[data-testid="core-runtime-status"]')).to_have_text(
+                                       ["succeeded", "succeeded", "succeeded"])
+            expect(section.get_by_text("Server dependency order: " + " → ".join([A,B,C]))).to_be_visible()
             section.get_by_role("button", name="Load saved streams and models").click()
             section.get_by_label("Core source stream").select_option(stream_id)
             section.get_by_label("Core final model").select_option(model_id)

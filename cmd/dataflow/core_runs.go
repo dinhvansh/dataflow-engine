@@ -140,14 +140,15 @@ func(s *server)coreRunsAPI(w http.ResponseWriter,r *http.Request){
   id:=r.URL.Query().Get("id")
   if !validUUID.MatchString(id){http.Error(w,"valid run id required",400);return}
   var row struct{
-   ID,ManagedID,FlowID,Status,Target,Stage,Issue,OldUUID string
+   ID,StreamID,TargetModelName,ManagedID,FlowID,Status,Target,Stage,Issue,OldUUID string
    Rows int64
   }
-  err:=s.pg.QueryRow(ctx,`SELECT id::text,managed_run_id::text,
-    COALESCE(flow_id::text,''),status,target_name,stage_name,
+  err:=s.pg.QueryRow(ctx,`SELECT id::text,stream_id::text,target_model_name,
+    managed_run_id::text,COALESCE(flow_id::text,''),status,target_name,stage_name,
     COALESCE(rows_verified,0),COALESCE(error_message,''),COALESCE(old_uuid,'')
    FROM core_pipeline_runs WHERE id=$1::uuid`,id).
-    Scan(&row.ID,&row.ManagedID,&row.FlowID,&row.Status,&row.Target,
+    Scan(&row.ID,&row.StreamID,&row.TargetModelName,&row.ManagedID,
+      &row.FlowID,&row.Status,&row.Target,
       &row.Stage,&row.Rows,&row.Issue,&row.OldUUID)
   if err!=nil{http.Error(w,"core run not found",404);return}
   var managedStatus string
@@ -156,16 +157,43 @@ func(s *server)coreRunsAPI(w http.ResponseWriter,r *http.Request){
    http.Error(w,"missing child sync run",503);return
   }
   var flowStatus string
+  type stepObservation struct {
+   Index int `json:"index"`
+   Name string `json:"model_name"`
+   Status string `json:"status"`
+   Rows int64 `json:"rows_verified"`
+   Error string `json:"error"`
+  }
+  steps:=make([]stepObservation,0)
+  order:=make([]string,0)
   if row.FlowID!=""{
    if e:=s.pg.QueryRow(ctx,`SELECT status FROM model_flow_runs WHERE id=$1::uuid`,
      row.FlowID).Scan(&flowStatus);e!=nil{
     http.Error(w,"missing child model flow",503);return
    }
+   // This immutable child snapshot is persisted before any dbt worker runs.
+   // Never infer successful steps from top-level Core state or browser cache.
+   records,e:=s.pg.Query(ctx,`SELECT step_index,model_name,status,
+     COALESCE(rows_verified,0),COALESCE(error_message,'')
+     FROM model_flow_steps WHERE flow_id=$1::uuid ORDER BY step_index`,
+      row.FlowID)
+   if e!=nil{http.Error(w,"child model flow steps unavailable",503);return}
+   for records.Next(){
+    var step stepObservation
+    if e=records.Scan(&step.Index,&step.Name,&step.Status,&step.Rows,&step.Error);e!=nil{break}
+    steps=append(steps,step);order=append(order,step.Name)
+   }
+   if records.Err()!=nil||e!=nil{
+    records.Close();http.Error(w,"child model flow steps invalid",503);return
+   }
+   records.Close()
   }
   jsonResponse(w,200,map[string]any{
-   "run_id":row.ID,"status":row.Status,"managed_run_id":row.ManagedID,
+   "run_id":row.ID,"status":row.Status,"stream_id":row.StreamID,
+   "target_model_name":row.TargetModelName,"managed_run_id":row.ManagedID,
    "managed_status":managedStatus,"model_flow_id":row.FlowID,
-   "model_flow_status":flowStatus,"stage":"scratch."+row.Stage,
+   "model_flow_status":flowStatus,"dependency_order":order,"steps":steps,
+   "stage":"scratch."+row.Stage,
    "target":"scratch."+row.Target,"rows_verified":row.Rows,"error":row.Issue,
    "has_backup":row.OldUUID!="",
   })
