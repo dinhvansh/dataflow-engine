@@ -42,7 +42,10 @@ func (s *server) localAuthAPI(w http.ResponseWriter,r *http.Request){
  w.Header().Set("Cache-Control","no-store")
  w.Header().Set("X-Content-Type-Options","nosniff")
  w.Header().Set("Content-Type","application/json")
- if !s.sessionEnabled(){http.Error(w,"session login not configured",http.StatusNotFound);return}
+ if !s.sessionEnabled(){
+  if os.Getenv("DATAFLOW_AUTH_SESSION_MODE")=="local"{http.Error(w,"local sign-in misconfigured",http.StatusServiceUnavailable);return}
+  http.Error(w,"session login not configured",http.StatusNotFound);return
+ }
  switch {
  case r.Method==http.MethodGet:
   role,ok:=s.roleFromSession(r)
@@ -124,6 +127,7 @@ func hasAdminSession(r *http.Request)bool{
 }
 func(s *server)sessionMiddleware(next http.Handler)http.Handler{
  return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+  if os.Getenv("DATAFLOW_AUTH_SESSION_MODE")=="local"&&!s.sessionEnabled(){http.Error(w,"local sign-in misconfigured",http.StatusServiceUnavailable);return}
   if !s.sessionEnabled()||!strings.HasPrefix(r.URL.Path,"/api/v1/")||
    r.URL.Path=="/api/v1/auth/session"||
    strings.HasPrefix(r.URL.Path,"/api/v1/secure/"){
