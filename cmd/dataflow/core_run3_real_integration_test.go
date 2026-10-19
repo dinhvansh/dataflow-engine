@@ -39,7 +39,7 @@ func realCoreIntegration(t *testing.T,withFaults bool){
  for _,name:=range []string{
   "010_transform_models.sql","011_dbt_runs.sql",
   "013_auto_build_flows.sql","028_core_pipeline_runs.sql",
-  "029_core_pipeline_rollback.sql",
+  "029_core_pipeline_rollback.sql","030_core_pipeline_graphs.sql",
  }{
   content,e:=os.ReadFile(filepath.Join("..","..","migrations","postgres",name))
   if e!=nil{t.Fatal(e)}

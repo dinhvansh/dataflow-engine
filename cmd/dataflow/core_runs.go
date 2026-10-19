@@ -92,10 +92,13 @@ func(s *server)coreRunsAPI(w http.ResponseWriter,r *http.Request){
    StreamID string `json:"stream_id"`
    ModelID string `json:"model_id"`
    UniqueColumn string `json:"unique_column"`
+   GraphID string `json:"graph_id,omitempty"`
+   GraphVersion int `json:"graph_version,omitempty"`
   }
   if d.Decode(&arg)!=nil||!validUUID.MatchString(arg.StreamID)||
     !validUUID.MatchString(arg.ModelID)||!safeDQColumn.MatchString(arg.UniqueColumn)||
-    len(arg.UniqueColumn)>85 {
+    len(arg.UniqueColumn)>85||
+    ((arg.GraphID=="")!=(arg.GraphVersion==0)) {
    http.Error(w,"valid stream_id/model_id/unique_column required",400);return
   }
   var extra any
@@ -117,17 +120,33 @@ func(s *server)coreRunsAPI(w http.ResponseWriter,r *http.Request){
   plan,err:=s.corePlan(ctx,tx,arg.ModelID)
   if err!=nil{http.Error(w,"saved dependency chain unavailable or changed: "+err.Error(),422);return}
   var runID,managedID string
+  var graphID any
+  var graphVersion any
+  var graphDigest any
+  var graphSnapshot any
+  if arg.GraphID!=""{
+   stored,snapshot,e:=s.boundCoreGraph(ctx,tx,arg.GraphID,arg.GraphVersion,
+    arg.StreamID,arg.ModelID,arg.UniqueColumn,plan)
+   if e!=nil{http.Error(w,"Core graph binding refused: "+e.Error(),409);return}
+   graphID=stored.ID
+   graphVersion=stored.Version
+   graphDigest=stored.GraphDigest
+   graphSnapshot=string(snapshot)
+  }
   err=tx.QueryRow(ctx,`INSERT INTO managed_runs(stream_id,status)
    VALUES($1::uuid,'queued') RETURNING id::text`,arg.StreamID).Scan(&managedID)
   if err!=nil{http.Error(w,"active sync or missing migration",409);return}
   err=tx.QueryRow(ctx,`INSERT INTO core_pipeline_runs(
    stream_id,managed_run_id,target_model_id,target_model_name,
-   plan_digest,unique_column,stage_name,target_name)
+   plan_digest,unique_column,stage_name,target_name,
+   graph_id,graph_version,graph_digest,graph_snapshot)
    VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5,$6,
-    'dft_stage_'||replace(gen_random_uuid()::text,'-',''),$7)
+    'dft_stage_'||replace(gen_random_uuid()::text,'-',''),$7,
+    $8::uuid,$9::integer,$10,$11::jsonb)
    RETURNING id::text`,
     arg.StreamID,managedID,arg.ModelID,plan.Name,plan.Digest,arg.UniqueColumn,
-    safetable.TargetName("core_"+plan.Name)).Scan(&runID)
+    safetable.TargetName("core_"+plan.Name),
+    graphID,graphVersion,graphDigest,graphSnapshot).Scan(&runID)
   if err!=nil{http.Error(w,"another core pipeline active",409);return}
   // Stage identity must be derived from run ID; random stage GUID above
   // is stored as immutable per-run identity in PG before any ClickHouse DDL.
@@ -135,21 +154,29 @@ func(s *server)coreRunsAPI(w http.ResponseWriter,r *http.Request){
   names:=make([]string,0,len(plan.Steps))
   for _,step:=range plan.Steps{names=append(names,step.Name)}
   jsonResponse(w,202,map[string]any{"run_id":runID,"managed_run_id":managedID,
-    "status":"waiting_sync","dependency_order":names})
+    "status":"waiting_sync","dependency_order":names,
+    "graph_id":arg.GraphID,"graph_version":arg.GraphVersion})
  case http.MethodGet:
   id:=r.URL.Query().Get("id")
   if !validUUID.MatchString(id){http.Error(w,"valid run id required",400);return}
   var row struct{
    ID,StreamID,TargetModelName,ManagedID,FlowID,Status,Target,Stage,Issue,OldUUID string
+   GraphID string
+   GraphVersion int
+   GraphDigest string
+   GraphSnapshot json.RawMessage
    Rows int64
   }
   err:=s.pg.QueryRow(ctx,`SELECT id::text,stream_id::text,target_model_name,
     managed_run_id::text,COALESCE(flow_id::text,''),status,target_name,stage_name,
-    COALESCE(rows_verified,0),COALESCE(error_message,''),COALESCE(old_uuid,'')
+    COALESCE(rows_verified,0),COALESCE(error_message,''),COALESCE(old_uuid,''),
+    COALESCE(graph_id::text,''),COALESCE(graph_version,0),COALESCE(graph_digest,''),
+    COALESCE(graph_snapshot,'null'::jsonb)
    FROM core_pipeline_runs WHERE id=$1::uuid`,id).
     Scan(&row.ID,&row.StreamID,&row.TargetModelName,&row.ManagedID,
       &row.FlowID,&row.Status,&row.Target,
-      &row.Stage,&row.Rows,&row.Issue,&row.OldUUID)
+      &row.Stage,&row.Rows,&row.Issue,&row.OldUUID,
+      &row.GraphID,&row.GraphVersion,&row.GraphDigest,&row.GraphSnapshot)
   if err!=nil{http.Error(w,"core run not found",404);return}
   var managedStatus string
   if e:=s.pg.QueryRow(ctx,`SELECT status FROM managed_runs WHERE id=$1::uuid`,
@@ -196,6 +223,8 @@ func(s *server)coreRunsAPI(w http.ResponseWriter,r *http.Request){
    "stage":"scratch."+row.Stage,
    "target":"scratch."+row.Target,"rows_verified":row.Rows,"error":row.Issue,
    "has_backup":row.OldUUID!="",
+   "graph_id":row.GraphID,"graph_version":row.GraphVersion,
+   "graph_digest":row.GraphDigest,"graph_snapshot":row.GraphSnapshot,
   })
  default:http.Error(w,"method not allowed",405)
  }
