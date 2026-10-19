@@ -29,9 +29,18 @@ for suffix in mssql-data pg-data ch-data; do
   done < <(docker ps -aq --filter "volume=$name")
  fi
 done
-if docker network inspect dataflow-localqa_default >/dev/null 2>&1; then
- project=$(docker network inspect -f '{{index .Labels "com.docker.compose.project"}}' dataflow-localqa_default)
- [[ "$project" == dataflow-localqa ]] ||
- { echo "BLOCKED: unknown QA network owner" >&2; exit 2; }
+# compose.qa.yml declares an explicit network name, NOT project_default.
+if docker network inspect dataflow-localqa-net >/dev/null 2>&1; then
+ project=$(docker network inspect -f '{{index .Labels "com.docker.compose.project"}}' dataflow-localqa-net)
+ owner=$(docker network inspect -f '{{index .Labels "com.dataflow.owner"}}' dataflow-localqa-net)
+ role=$(docker network inspect -f '{{index .Labels "com.dataflow.role"}}' dataflow-localqa-net)
+ [[ "$project" == dataflow-localqa && "$owner" == dataflow-localqa && "$role" == local-qa ]] ||
+ { echo "BLOCKED: unknown QA network ownership" >&2; exit 2; }
+ # Every connected container must belong to the verified disposable project.
+ for cid in $(docker network inspect -f '{{range $id,$container := .Containers}}{{$id}} {{end}}' dataflow-localqa-net); do
+  project=$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' "$cid")
+  [[ "$project" == dataflow-localqa ]] ||
+  { echo "BLOCKED: foreign container connected to QA network: $cid" >&2; exit 2; }
+ done
 fi
 echo "PASS: only verified disposable dataflow-localqa project resources targeted"

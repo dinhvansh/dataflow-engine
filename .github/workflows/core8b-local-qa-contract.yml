@@ -22,6 +22,8 @@ jobs:
           bash -n deploy/local-qa/run-core8b-one-shot.sh
           bash -n deploy/local-qa/reset-owned-qa.sh
           bash -n deploy/local-qa/verify-reset-scope.sh
+          grep -q 'dataflow-localqa-net' deploy/local-qa/verify-reset-scope.sh
+          grep -q 'name: dataflow-localqa-net' deploy/local-qa/compose.qa.yml
           python3 -m py_compile qa/local-acceptance/v8b/report.py
       - name: Refuse unapproved local execution even without Docker
         run: |
