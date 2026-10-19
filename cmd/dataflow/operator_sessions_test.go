@@ -64,3 +64,19 @@ func TestLocalSessionLoginRoleCSRFAndLogout(t *testing.T){
  result=httptest.NewRecorder();s.localAuthAPI(result,bad)
  if result.Code!=401||len(result.Result().Cookies())!=0{t.Fatal("invalid password accepted")}
 }
+
+func TestIncompleteLocalAuthFailsClosed(t *testing.T){
+ t.Setenv("DATAFLOW_AUTH_SESSION_MODE","local")
+ t.Setenv("DATAFLOW_LOCAL_ADMIN_PASSWORD_HASH","")
+ t.Setenv("DATAFLOW_LOCAL_OPERATOR_PASSWORD_HASH","")
+ svc:=&server{token:"not-for-browser"}
+ wrapped:=svc.sessionMiddleware(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.WriteHeader(200)}))
+ r:=httptest.NewRequest("GET","http://example.com/api/v1/source/tables",nil)
+ r.Header.Set("Authorization","Bearer not-for-browser")
+ rec:=httptest.NewRecorder()
+ wrapped.ServeHTTP(rec,r)
+ if rec.Code!=http.StatusServiceUnavailable{t.Fatalf("failed open with code %d",rec.Code)}
+ login:=httptest.NewRecorder()
+ svc.localAuthAPI(login,httptest.NewRequest("GET","http://example.com/api/v1/auth/session",nil))
+ if login.Code!=http.StatusServiceUnavailable{t.Fatal("auth misconfiguration hidden behind legacy fallback")}
+}
