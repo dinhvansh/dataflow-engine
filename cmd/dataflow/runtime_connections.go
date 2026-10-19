@@ -220,11 +220,13 @@ func (s *server) runtimeTestAPI(w http.ResponseWriter,r *http.Request){
  if p.Driver=="sqlserver"{
   db,e:=openLabSQLServer(ctx,p,secret);if e==nil{passed=checkLabSQLSource(ctx,db);db.Close()}
  }else{passed=checkLabCH(ctx,p,secret)}
- if passed {
-  _,e=s.pg.Exec(ctx,`UPDATE connection_runtime_profiles SET status='verified',checked_at=now(),revision=revision+1
-   WHERE id=$1::uuid AND status IN ('draft','verified')`,p.ID)
-  if e!=nil{http.Error(w,"test evidence persistence unavailable",503);return}
- }
+ // Every re-test invalidates previous binding snapshots, including failures.
+ // Never let an old successful status survive a failed credential check.
+ status:="draft";if passed{status="verified"}
+ _,e=s.pg.Exec(ctx,`UPDATE connection_runtime_profiles SET
+ status=$2,checked_at=CASE WHEN $2='verified' THEN now() ELSE NULL END,
+ revision=revision+1 WHERE id=$1::uuid AND status IN ('draft','verified')`,p.ID,status)
+ if e!=nil{http.Error(w,"test evidence persistence unavailable",503);return}
  w.Header().Set("Content-Type","application/json")
  _ = json.NewEncoder(w).Encode(map[string]any{"id":p.ID,"passed":passed,"tested_at":time.Now().UTC().Format(time.RFC3339)})
 }
