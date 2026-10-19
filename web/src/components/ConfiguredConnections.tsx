@@ -1,4 +1,4 @@
-import {useRef,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import {Database,HardDrive,RefreshCw,Server,ShieldCheck} from "lucide-react";
 import {connectionApi,type ConfiguredConnection} from "../lib/api";
 import {Button} from "./ui/button";
@@ -10,6 +10,7 @@ export function ConfiguredConnections({token,onTokenChange}:{token:string;onToke
  const[loading,setLoading]=useState(false);
  const[error,setError]=useState("");
  const requestId=useRef(0);
+ useEffect(()=>{requestId.current++;setItems(null);setError("");setLoading(false)},[token]);
  const changeToken=(value:string)=>{
   requestId.current++;
   setItems(null);setError("");setLoading(false);onTokenChange(value);
