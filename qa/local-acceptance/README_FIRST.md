@@ -1,4 +1,12 @@
-# Gói bàn giao Codex local — DataFlow v1.3
+# Gói bàn giao Codex Local — CORE final QA và v1.3 (lịch sử)
+
+## Nhiệm vụ Core hiện tại: một lượt test cuối
+
+Dùng **qa/local-acceptance/CODEX_LOCAL_ONE_PASS_PROMPT.md** làm prompt mới nhất. Đọc **CORE_ONE_PASS_QA.md** để chạy tất cả các bài CORE-8B + regression + fault trên QA disposable được xác minh. Sau khi Codex tạo báo cáo, kiểm chứng bằng **verify_core_final_evidence.py --report qa-results/<UTC-RUN-ID>**. Không chạy benchmark 7 triệu dòng trong đợt này. Không tự reset volume nếu chưa xác nhận dữ liệu QA có thể xóa; nếu thiếu tài nguyên thì BLOCKED.
+
+**Trạng thái:** Chỉ mới GitHub-hosted CI/E2E PASS cho mã nguồn; Codex Local QA trên máy người dùng **chưa chạy**. Giữ Production NO-GO.
+
+## Hướng dẫn v1.3 cũ — chỉ dùng cho kiểm thử phạm vi E/L/T mở rộng
 
 Dùng theo thứ tự:
 

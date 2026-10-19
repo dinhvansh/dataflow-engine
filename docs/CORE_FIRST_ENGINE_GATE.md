@@ -38,3 +38,7 @@ Before starting, inspect live GitHub main/PRs/CI and both canonical docs. **Choo
 ## CORE-RUN-8B hosted acceptance (2026-10-19)
 
 [PR #114](https://github.com/dinhvansh/dataflow-engine/pull/114) and [real E2E #39186193111](https://github.com/dinhvansh/dataflow-engine/actions/runs/39186193111) PASS for user-editable connected, saved, versioned SOURCE/SYNC/TRANSFORM/QUALITY/PUBLISH Canvas; exact saved graph revision is bound to durable Core Run, and snapshot survives reload. This removes the previous **linear mixed-Canvas wiring** blocker; it does not authorize branching, unsaved graph execution, real production ERP writes, owner funding demo, or production security controls. CORE-RUN-7 7m benchmark is still resource-BLOCKED/deferred.
+
+## One-session Codex Local QA handoff (2026-10-19)
+
+[PR #116](https://github.com/dinhvansh/dataflow-engine/pull/116) has real hosted regression PASS for Core graph version 1→2 immutable old-run snapshot, plus read-only evidence verifier and [Codex Local one-pass QA prompt](../qa/local-acceptance/CODEX_LOCAL_ONE_PASS_PROMPT.md). Owner-local acceptance **NOT YET RUN**; do not claim production readiness or fundraising demo. 7m disk-blocked benchmark remains deferred. Only labeled disposable QA fixture may be reset with explicit owner authorization; ERP SELECT-only.
