@@ -3,6 +3,8 @@
 | ID | Priority | Actual check | Pass criteria |
 |---|---|---|---|
 | STATIC-SAFETY | P0 | Git branch/clean, owned Docker labels, volume/network scope, disk, QA credentials | No real ERP and no unknown project resource; refuse unverified reset |
+| STATIC-RESET-NEGATIVE | P0 | Negative tests with stubbed Docker: clean project, unknown volume, unexpected network | Unknown QA-labeled resources are refused; tests never call live Docker or remove volumes |
+| STATIC-EVIDENCE-CONTRACT | P0 | Read-only evidence schema and real QA artifact contract | Contract PASS without executing real E2E or fabricating evidence |
 | STATIC-GO | P0 | Go compiler/unit/integration tests that have applicable opt-ins | No failed tests; skipped tests recorded independently |
 | STATIC-WEB | P1 | npm lockfile install and TypeScript/React build | Exit 0 without lowering typesafety |
 | PREP-8B | P0 | New isolated fixture PostgreSQL 001–030/SQL Server/ClickHouse | All services healthy, application reader SELECT-only |

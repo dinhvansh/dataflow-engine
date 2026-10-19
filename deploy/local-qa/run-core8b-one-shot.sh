@@ -38,7 +38,7 @@ git branch --show-current >"$out/git-branch.txt"
 git status --short >"$out/git-status.txt"
 git rev-list --left-right --count HEAD...refs/remotes/origin/main >"$out/git-divergence.txt" 2>/dev/null || true
 printf 'case\tstatus\tseconds\tlog\n' >"$out/matrix.tsv"
-printf '%s\n' STATIC-SAFETY STATIC-GO STATIC-WEB UI-MOCK PREP-8B CORE-8B-E2E PREP-CLAIM CORE-6B-CLAIM PREP-DQ CORE-6B-DQ PREP-MID-SQL CORE-6B-MID-SQL PREP-NETWORK CORE-6A-NETWORK VERIFY-EVIDENCE >"$out/case-catalog.txt"
+printf '%s\n' STATIC-SAFETY STATIC-RESET-NEGATIVE STATIC-EVIDENCE-CONTRACT STATIC-GO STATIC-WEB UI-MOCK PREP-8B CORE-8B-E2E PREP-CLAIM CORE-6B-CLAIM PREP-DQ CORE-6B-DQ PREP-MID-SQL CORE-6B-MID-SQL PREP-NETWORK CORE-6A-NETWORK VERIFY-EVIDENCE >"$out/case-catalog.txt"
 finalize(){
  rc=$?
  python3 qa/local-acceptance/v8b/report.py "$out" "$rc" || true
@@ -87,6 +87,11 @@ fresh(){
  "$here/verify-isolation.sh"
 }
 case_run STATIC-SAFETY "$here/verify-reset-scope.sh"
+# Verify the fail-closed Docker reset behavior with a FAKE Docker binary.
+# No real network/volume can be changed by these negative safety tests.
+case_run STATIC-RESET-NEGATIVE python3 qa/local-acceptance/v8b/test_reset_scope_guard.py
+# Verify the canonical evidence schema before any test can modify QA volumes.
+case_run STATIC-EVIDENCE-CONTRACT python3 qa/local-acceptance/verify_core_final_evidence.py --contract
 case_run STATIC-GO bash -c 'go test -race ./... && go vet ./... && go build ./cmd/...'
 case_run STATIC-WEB bash -c 'cd web && npm ci --ignore-scripts && npm run build'
 case_run UI-MOCK python3 -m pytest qa/browser/test_console.py -q

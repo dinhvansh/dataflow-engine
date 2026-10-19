@@ -6,7 +6,7 @@ This replaces the **Core acceptance path** from the old v1.3 local QA mission; t
 
 ## Scope (one run, isolated, finite)
 
-The runner performs read-only Git/ownership/disk preflight, Go and Web builds, then on **fresh separately owned Docker QA volumes** executes:
+The runner performs read-only Git/ownership/disk preflight, then **two negative/static safety contract stages before running builds or touching disposable volumes**: `STATIC-RESET-NEGATIVE` uses a stub Docker command to prove unfamiliar project volumes/networks are refused, and `STATIC-EVIDENCE-CONTRACT` validates the report schema with no Docker access. Go/Web builds and **fresh separately owned Docker QA volumes** follow:
 
 1. **CORE-8B-E2E:** Playwright UI → Go → SQL Server 10k SELECT-only → PG/ClickHouse/dbt/DQ/publish; editable saved typed graph A→B→C and exact run/version, invalid fork, stale revision, physical rollback, zero-row replay, browser reload. Extended test: after launch, save graph revision 2; old version-1 run snapshot still unchanged and failed stale launches create no managed runs.
 2. **CORE-6B-CLAIM:** real worker SIGKILL post PG claim, lease takeover/fence replay.
@@ -52,3 +52,9 @@ The script **stops at first FAIL** and leaves containers/volumes untouched for r
 ## One executable owner-local technical gate
 
 The `run-core8b-one-shot.sh` command runs Go race/unit/vet/build, TypeScript build and mock Browser (reported separately), then a **fresh verified disposable QA fixture per live scenario**. The real Core-8B Playwright test now rejects unauthenticated graph catalog access with HTTP 401 in addition to saved-graph version/cursor/frozen snapshot checks. Every live PASS requires fresh structured JSON evidence; stale artifacts cannot be reused to claim success. After the live stages, the runner writes `02_TEST_MATRIX.csv` and calls the repository's existing `verify_core_final_evidence.py --report` gate. An empty/missing stage is NOT_RUN, not PASS. Full local execution remains PENDING until the owner authorizes resetting the **labeled disposable** QA volume set.
+
+## Before handing off to Codex Local (reviewed 2026-10-19)
+
+- The one-shot runner logs `STATIC-RESET-NEGATIVE` and `STATIC-EVIDENCE-CONTRACT` with independent PASS/FAIL results in `matrix.tsv` and `HANDOFF_TO_CHATGPT.md`. Neither stage launches/stops Docker workloads.
+- **Explicit owner consent is still mandatory** before the script can reset even disposable QA volumes. Providing the Codex task prompt does **not** authorize deleting previously created containers or stored work. Codex must first show the owner the proposed disposable project reset scope; if approval is withheld, report BLOCKED.
+- A green GitHub static contract test does not prove this runner has already executed on the owner's 8GB computer. Deferred 7m remains NOT RUN; production NO-GO.
