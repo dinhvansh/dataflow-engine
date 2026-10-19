@@ -54,13 +54,13 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
  if e!=nil{t.Fatal(e)}
  if _,e=svc.pg.Exec(ctx,string(raw));e!=nil{t.Fatalf("isolated migration unavailable: %v",e)}
  var createdIDs []string
- t.Cleanup(func(){
+ defer func(){
   x,stop:=context.WithTimeout(context.Background(),15*time.Second);defer stop()
   for _,id:=range createdIDs{
    _,_=svc.pg.Exec(x,`DELETE FROM connection_runtime_bindings WHERE source_profile_id=$1::uuid OR target_profile_id=$1::uuid`,id)
    _,_=svc.pg.Exec(x,`DELETE FROM connection_runtime_profiles WHERE id=$1::uuid`,id)
   }
- })
+ }()
  do:=func(method,path string,payload any)(int,map[string]any,string){
   t.Helper()
   var body bytes.Buffer
