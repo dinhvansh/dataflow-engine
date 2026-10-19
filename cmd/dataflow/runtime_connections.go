@@ -258,6 +258,17 @@ func (s *server) runtimeBindAPI(w http.ResponseWriter,r *http.Request){
  var db,table string
  e=tx.QueryRow(ctx,`SELECT target_database,target_table FROM sync_streams WHERE id=$1::uuid FOR SHARE`,b.StreamID).Scan(&db,&table)
  if e!=nil||db!="scratch"||table!="dataflow_raw_events"{http.Error(w,"only scratch sync stream allowed",403);return}
+ // Binding cannot mutate the identity of a stream already checkpointed or
+ // running: doing so would silently reuse a cursor against a different source.
+ if _,e=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(84721,1)`);e!=nil{
+  http.Error(w,"binding lock unavailable",503);return
+ }
+ var generation int64
+ e=tx.QueryRow(ctx,`SELECT generation FROM sync_checkpoints WHERE stream_id=$1::uuid FOR UPDATE`,b.StreamID).Scan(&generation)
+ if e!=nil||generation!=0{http.Error(w,"only fresh zero-checkpoint streams may be bound",409);return}
+ var active bool
+ e=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM managed_runs WHERE stream_id=$1::uuid AND status IN ('queued','running'))`,b.StreamID).Scan(&active)
+ if e!=nil||active{http.Error(w,"cannot rebind an active stream",409);return}
  _,e=tx.Exec(ctx,`INSERT INTO connection_runtime_bindings(stream_id,source_profile_id,target_profile_id,source_revision,target_revision)
  VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5)
  ON CONFLICT(stream_id) DO UPDATE SET
