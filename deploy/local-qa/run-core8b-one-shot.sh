@@ -18,6 +18,13 @@ gitsha=$(git rev-parse HEAD)
 { echo "BLOCKED: never run on main; check out isolated local test branch" >&2; exit 2; }
 [[ -z "$(git status --porcelain)" ]] ||
 { echo "BLOCKED: preserve/reconcile uncommitted changes first" >&2; exit 2; }
+# Refuse accidentally inherited real integration DSNs during static Go tests.
+for key in DATAFLOW_INTEGRATION_POSTGRES_DSN DATAFLOW_INTEGRATION_CH_URL \
+ DATAFLOW_INTEGRATION_CH_WRITER_USER DATAFLOW_INTEGRATION_CH_WRITER_PASSWORD \
+ DATAFLOW_INTEGRATION_DBT_BIN DATAFLOW_SQLSERVER_DSN DATAFLOW_POSTGRES_DSN \
+ DATAFLOW_CH_URL DATAFLOW_CH_USER DATAFLOW_CH_PASSWORD DATAFLOW_API_TOKEN; do
+ unset "$key"
+done
 export DATAFLOW_QA_MIN_FREE_BYTES=${DATAFLOW_QA_MIN_FREE_BYTES:-4294967296}
 "$here/verify-reset-scope.sh"
 "$here/check-disk-capacity.sh" "$root"
@@ -28,7 +35,7 @@ git branch --show-current >"$out/git-branch.txt"
 git status --short >"$out/git-status.txt"
 git rev-list --left-right --count HEAD...refs/remotes/origin/main >"$out/git-divergence.txt" 2>/dev/null || true
 printf 'case\tstatus\tseconds\tlog\n' >"$out/matrix.tsv"
-printf '%s\n' STATIC-SAFETY STATIC-GO STATIC-WEB CORE-8B-E2E CORE-6B-CLAIM CORE-6B-DQ CORE-6B-MID-SQL CORE-6A-NETWORK >"$out/case-catalog.txt"
+printf '%s\n' STATIC-SAFETY STATIC-GO STATIC-WEB PREP-8B CORE-8B-E2E PREP-CLAIM CORE-6B-CLAIM PREP-DQ CORE-6B-DQ PREP-MID-SQL CORE-6B-MID-SQL PREP-NETWORK CORE-6A-NETWORK >"$out/case-catalog.txt"
 finalize(){
  rc=$?
  python3 qa/local-acceptance/v8b/report.py "$out" "$rc" || true
@@ -60,14 +67,14 @@ fresh(){
 case_run STATIC-SAFETY "$here/verify-reset-scope.sh"
 case_run STATIC-GO go test ./...
 case_run STATIC-WEB bash -c 'cd web && npm ci --ignore-scripts && npm run build'
-fresh
+case_run PREP-8B fresh
 case_run CORE-8B-E2E env DATAFLOW_LIVE_QA_OPT_IN=true "$here/run-core-operator.sh"
-fresh
+case_run PREP-CLAIM fresh
 case_run CORE-6B-CLAIM env DATAFLOW_LIVE_QA_OPT_IN=true "$here/run-core-6b.sh"
-fresh
+case_run PREP-DQ fresh
 case_run CORE-6B-DQ env DATAFLOW_LIVE_QA_OPT_IN=true "$here/run-core-6b-dq.sh"
-fresh
+case_run PREP-MID-SQL fresh
 case_run CORE-6B-MID-SQL env DATAFLOW_LIVE_QA_OPT_IN=true "$here/run-core-mid-sql.sh"
-fresh
+case_run PREP-NETWORK fresh
 case_run CORE-6A-NETWORK env DATAFLOW_LIVE_QA_OPT_IN=true "$here/run-core-faults.sh"
 echo "Core 8B one-shot suite complete; 7m benchmark NOT RUN."
