@@ -164,3 +164,27 @@ export const corePipelineApi={
     body:JSON.stringify({run_id,action:"rollback",confirm:"ROLLBACK"})
    }))
 };
+
+export type LabRuntimeConnection={
+ id:string;name:string;driver:"sqlserver"|"clickhouse";kind:"source"|"destination";
+ host:string;port:number;database:string;username:string;status:"draft"|"verified";
+ revision:number;checked_at?:string
+};
+export type LabRuntimeInput={
+ name:string;driver:"sqlserver"|"clickhouse";host:string;port:number;
+ database:string;username:string;password:string
+};
+const runtimeHeaders=(token:string,adminToken:string)=>({
+ "Authorization":`Bearer ${token}`,"X-DataFlow-Connection-Admin":adminToken,"Content-Type":"application/json"
+});
+export const labRuntimeConnectionsApi={
+ list:(token:string,adminToken:string)=>parse<{profiles:LabRuntimeConnection[]}>(
+  fetch("/api/v1/connections/runtime",{headers:runtimeHeaders(token,adminToken)})),
+ create:(payload:LabRuntimeInput,token:string,adminToken:string)=>parse<LabRuntimeConnection>(
+  fetch("/api/v1/connections/runtime",{method:"POST",headers:runtimeHeaders(token,adminToken),body:JSON.stringify(payload)})),
+ test:(id:string,token:string,adminToken:string)=>parse<{id:string;passed:boolean;tested_at:string}>(
+  fetch("/api/v1/connections/runtime/test",{method:"POST",headers:runtimeHeaders(token,adminToken),body:JSON.stringify({id})})),
+ bind:(stream_id:string,source_connection_id:string,target_connection_id:string,token:string,adminToken:string)=>parse<{bound:boolean;stream_id:string}>(
+  fetch("/api/v1/connections/runtime/bind",{method:"POST",headers:runtimeHeaders(token,adminToken),
+    body:JSON.stringify({stream_id,source_connection_id,target_connection_id})}))
+};

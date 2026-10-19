@@ -37,6 +37,8 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Boot labeled isolated SQL Server / PG / ClickHouse fixtures
         run: bash deploy/local-qa/up.sh
+      - name: Real encrypted Add / Test / Bind on isolated PG + SQL Server + ClickHouse
+        run: bash deploy/local-qa/run-runtime-connections-real.sh
       - name: Real UI → Go HTTP API → SQL Server → PG → ClickHouse → dbt → DQ → publish / rollback
         run: bash deploy/local-qa/run-core-operator.sh
       - name: Upload redacted browser and source-vs-target evidence

@@ -46,6 +46,7 @@ def ui(browser, request):
              "database": "scratch", "query": "SELECT 1", "enabled": False},
         ],
         "draft_connections": [],
+        "runtime_connections": [],
         "pipelines": [
             {"id": "33333333-3333-4333-8333-333333333333", "name": "revenue_reporting",
              "enabled": True, "nodes": [
@@ -79,6 +80,30 @@ def ui(browser, request):
                 result = new_item
             else:
                 result = {"definitions": state["draft_connections"], "write_enabled": can_write}
+        elif path == "/api/v1/connections/runtime":
+            if req.headers.get("x-dataflow-connection-admin") != "synthetic-admin-token":
+                route.fulfill(status=403, body="independent admin required")
+                return
+            if method == "POST":
+                new_id = f"b0000000-0000-4000-8000-{len(state['runtime_connections'])+1:012d}"
+                new_item = {"id": new_id, "name": body["name"], "driver": body["driver"],
+                            "kind": "source" if body["driver"] == "sqlserver" else "destination",
+                            "host": body["host"], "port": body["port"],
+                            "database": body["database"], "username": body["username"],
+                            "status": "draft", "revision": 1}
+                state["runtime_connections"].append(new_item)
+                result = new_item
+            else:
+                result = {"profiles": state["runtime_connections"]}
+        elif path == "/api/v1/connections/runtime/test":
+            for item in state["runtime_connections"]:
+                if item["id"] == body.get("id"):
+                    item["status"] = "verified"
+                    item["revision"] = 2
+            result = {"id": body.get("id"), "passed": True,
+                      "tested_at": "2026-10-19T10:00:00Z"}
+        elif path == "/api/v1/connections/runtime/bind":
+            result = {"bound": True, "stream_id": body.get("stream_id")}
         elif path == "/api/v1/connections":
             result = {"connections": [
                 {"id": "env-sqlserver-source", "name": "SQL Server source", "kind": "source",
@@ -1002,3 +1027,48 @@ def test_ui27_core_real_api_panel_wires_run_and_backup_gated_rollback(ui):
     panel.get_by_label("Core API bearer token").fill("other-qa-token")
     expect(panel.get_by_label("Core run UUID")).to_have_value("")
     assert all(c["path"] != "/api/v1/bootstrap/runs" for c in state["calls"])
+
+
+def test_ui_runtime_connection_add_test_save_bind_uses_backend_and_hides_credentials(ui):
+    """UI contract only: real driver and encrypted PG acceptance is separate."""
+    page, state = ui
+    page.get_by_label("Lab API token (shared across modules)").fill(TOKEN)
+    page.get_by_role("button", name="Connections", exact=True).click()
+    panel = page.get_by_label("Live lab connection manager")
+    panel.get_by_label("Live connection admin credential").fill("synthetic-admin-token")
+    panel.get_by_role("button", name="Load connections").click()
+    expect(panel.get_by_text("No saved connections.")).to_be_visible()
+
+    for driver, name, host, port, database, username in [
+        ("sqlserver", "QA SQL Profile", "qa-sql", "1433", "DataFlowFixtureQA", "qa_erp_reader"),
+        ("clickhouse", "QA CH Profile", "qa-ch", "8123", "scratch", "qa_writer"),
+    ]:
+        panel.get_by_label("Live connection driver").select_option(driver)
+        panel.get_by_label("Live connection name").fill(name)
+        panel.get_by_label("Live connection host").fill(host)
+        panel.get_by_label("Live connection port").fill(port)
+        panel.get_by_label("Live connection database").fill(database)
+        panel.get_by_label("Live connection username").fill(username)
+        panel.get_by_label("Live connection password").fill("synthetic-credential-do-not-log")
+        panel.get_by_role("button", name="Save encrypted draft").click()
+        expect(panel.get_by_text(name, exact=True)).to_be_visible()
+        expect(panel.get_by_label("Live connection password")).to_have_value("")
+
+    assert "synthetic-credential-do-not-log" not in panel.inner_text()
+    buttons = panel.get_by_role("button", name="Test real connection")
+    buttons.nth(0).click()
+    expect(panel.get_by_text("Verified", exact=True)).to_have_count(1)
+    buttons.nth(1).click()
+    expect(panel.get_by_text("Verified", exact=True)).to_have_count(2)
+    panel.get_by_label("Runtime bind stream").select_option(
+        "cccccccc-cccc-4ccc-8ccc-cccccccccccc")
+    panel.get_by_label("Runtime bind source").select_option(
+        "b0000000-0000-4000-8000-000000000001")
+    panel.get_by_label("Runtime bind target").select_option(
+        "b0000000-0000-4000-8000-000000000002")
+    panel.get_by_role("button", name="Bind to pipeline").click()
+    expect(panel.get_by_text("Verified connection pair bound", exact=False)).to_be_visible()
+    calls = [x["path"] for x in state["calls"] if x["path"].startswith("/api/v1/connections/runtime")]
+    assert calls.count("/api/v1/connections/runtime") >= 3
+    assert calls.count("/api/v1/connections/runtime/test") == 2
+    assert calls.count("/api/v1/connections/runtime/bind") == 1
