@@ -20,7 +20,6 @@ import (
  "github.com/dinhvansh/dataflow-engine/internal/connectors/clickhouse"
  "github.com/dinhvansh/dataflow-engine/internal/connectors/sqlserver"
  "github.com/google/uuid"
- "github.com/jackc/pgx/v5"
 )
 
 type qaStreamBatchInput struct{
