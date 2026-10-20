@@ -69,6 +69,33 @@ export function RuntimeBatchSyncWizard({token,adminToken,profiles,onCreated}:Pro
   setNotice(saved.count+" QA streams created + bound atomically. Run them separately.");
   onCreated();
  });
+ const runAll=()=>task("run-all",async()=>{
+  let accepted=0;const errors:string[]=[];
+  // Bounded sequential enqueue; each managed stream has its own durable
+  // queue and single-active-stream guard. We never start 10 jobs at once.
+  for(const item of results){
+   try{
+    const r=await managedApi.run(item.stream_id,token);
+    setRuns(prev=>({...prev,[item.stream_id]:r}));
+    accepted++;
+   }catch(e){errors.push(item.source+": "+String(e))}
+  }
+  setNotice(accepted+" / "+results.length+" streams queued.");
+  if(errors.length)throw Error("Some streams were not queued: "+errors.join("; "));
+ });
+ useEffect(()=>{
+  const pending=Object.entries(runs).filter(([,run])=>run.status==="queued"||run.status==="running");
+  if(pending.length===0||!token)return;
+  let cancelled=false;
+  const handle=window.setInterval(()=>{
+   for(const [id,run] of pending){
+    managedApi.status(run.run_id,token).then(next=>{
+     if(!cancelled)setRuns(current=>({...current,[id]:next}));
+    }).catch(()=>{/* retain last known status; manual refresh remains available */});
+   }
+  },4000);
+  return()=>{cancelled=true;window.clearInterval(handle)};
+ },[runs,token]);
  const start=(id:string)=>task("run-"+id,async()=>{
   const result=await managedApi.run(id,token);
   setRuns(prev=>({...prev,[id]:result}));setNotice("Run queued for "+id);
@@ -151,7 +178,12 @@ export function RuntimeBatchSyncWizard({token,adminToken,profiles,onCreated}:Pro
    <Button type="button" disabled={!!busy||!sourceID||!targetID} onClick={save}><Save size={15}/>Save & Bind {queue.length} streams</Button>
   </div>}
   {results.length>0&&<div className="space-y-2">
-   <p className="font-semibold text-sm">Saved &amp; bound streams</p>
+   <div className="flex flex-wrap items-center justify-between gap-2">
+    <p className="font-semibold text-sm">Saved &amp; bound streams</p>
+    <Button type="button" disabled={!!busy||results.some(x=>["queued","running"].includes(runs[x.stream_id]?.status??""))} onClick={runAll}>
+     <Play size={14}/>Run All ({results.length}) — sequential enqueue
+    </Button>
+   </div>
    {results.map(result=><div className="border rounded p-3 space-y-2 text-xs" key={result.stream_id}>
     <p>{result.source} → <code>{result.destination}</code></p>
     <p>{result.mode} · stream <code className="break-all">{result.stream_id}</code></p>
