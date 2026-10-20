@@ -1,5 +1,13 @@
 # DataFlow Engine — Latest Chat Handoff
 
+## QA Airbyte-style Full/Incremental Multi-Stream slice — 2026-10-20
+
+- **[PR #140](https://github.com/dinhvansh/dataflow-engine/pull/140) MERGED** at `main@62f9a6c973cc69568bb352e3f41c0505f78c4d3d`. Exact PR head `5d484e86295d7837fc2f3ea2ddbd3537e6ff660b` achieved **7/7 hosted workflow PASS**, including Go/Web, mocked Browser UI, REAL SQL Server 2022 + PostgreSQL + ClickHouse fixture, core real E2E, fault/SIGKILL fencing. Post-merge main CI is a **separate gate** and should be checked independently.
+- Added `migrations/postgres/033_qa_stream_modes_destinations.sql` (additive, backwards-compatible default `incremental_rowversion`), real batch API `/api/v1/connections/runtime/streams/batch`, new `RuntimeBatchSyncWizard`. Up to **10 distinct source tables per transaction** with selected catalog-validated columns and per-table Full Refresh/Incremental mode, verified connection references and named destination *aliases*. Backend generates **dedicated scratch raw-event tables** `scratch.dfqa_<alias>_<12 hex>`; never arbitrary production databases or shared core raw-events replacement.
+- **Full Refresh**: QA source SQL SNAPSHOT/SELECT-only → selected row data → verified unique ClickHouse stage → `EXCHANGE TABLES` → persisted managed run. Repeating the full snapshot replaces its own target (200 fixture rows twice in real CI), not append. Full never implicitly establishes an Incremental checkpoint/cutover. Independent Incremental fixture InvcHead (100 rows) passed, source remains SELECT-only.
+- Operator testing: `docs/QA_CONNECTION_SYNC_QUICKSTART.md` and `docs/QA_MULTI_STREAM_FULL_REFRESH.md`. Local QA databases `DataFlowFixtureQA`, `dataflow_qa`, `scratch`; guard startup `deploy/local-qa/start-sync-setup.sh` now idempotently installs migration 033 on preserved isolated volumes. Local owner acceptance **not yet reported**; no live ERP or new 7m benchmark required.
+- **Explicit remaining gaps:** Direct typed SQL→CH column mapping and arbitrary destination database, source tables without SysRowID/SysRevID, multi-table all-at-once Run scheduler, zero-gap Full→Incremental handoff, production credential/IdP/Vault/TLS/HA, production GO. Preserve issues #135 and #137 OPEN and do not treat QA acceptance as production certification.
+
 ## QA Connection / Sync Setup delivered — 2026-10-20
 
 - **[#134](https://github.com/dinhvansh/dataflow-engine/pull/134)** MERGED, owner-local 7m full-scale synthetic Core Run 7 QA PASS (not ERP production; not Production GO).
