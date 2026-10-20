@@ -16,8 +16,8 @@ OUT = Path(os.getenv('DATAFLOW_7M_EVIDENCE', 'qa-results/core-run7-full'))
 N = 7_000_000
 
 
-def fingerprint(table):
-    return f.ch(f"SELECT count(),uniqExact(_pk),sum(cityHash64(_pk,_payload)),"
+def fingerprint(table, key):
+    return f.ch(f"SELECT count(),uniqExact({key}),sum(cityHash64({key},_payload)),"
                 f"sum(JSONExtractInt(_payload,'TranNum')) FROM scratch.{table} FORMAT TSV")
 
 
@@ -51,23 +51,25 @@ def test_full_scale_pipeline():
     names = ['scale7_'+f.SUFFIX+'_'+s for s in ('a','b','c')]
     prior = f.RAW
     for i,name in enumerate(names):
-        model = dict(name=name, mode='visual',source=dict(database='scratch',table=prior),
-            steps=[dict(id='rename'+str(i),type='rename',
-                        column=('_stream_id' if i == 0 else 'stream'+str(i-1)),alias='stream'+str(i))])
+        steps=[dict(id='rename_stream'+str(i),type='rename',
+                    column=('_stream_id' if i == 0 else 'stream'+str(i-1)),alias='stream'+str(i))]
+        if i == 0:
+            steps.append(dict(id='rename_key',type='rename',column='_pk',alias='id'))
+        model = dict(name=name, mode='visual',source=dict(database='scratch',table=prior),steps=steps)
         code,saved = f.api('/api/v1/transform/models','POST',dict(model=model))
         assert code == 201
         prior = 'dfv_'+name
-    request = dict(stream_id=stream['id'],model_id=saved['id'],unique_column='_pk')
+    request = dict(stream_id=stream['id'],model_id=saved['id'],unique_column='id')
     target = 'dft_core_'+names[-1]
     code,queued = f.api('/api/v1/core/runs','POST',request)
     assert code == 202
     first = wait_done(queued['run_id'],1800)
     assert first['status'] == 'succeeded', first
     assert first['rows_verified'] == N, first
-    expected = fingerprint(f.RAW)
+    expected = fingerprint(f.RAW, '_pk')
     fields = expected.split('\t')
     assert fields[:2] == [str(N),str(N)] and fields[3] == str(N*(N+1)//2), expected
-    assert fingerprint(target) == expected
+    assert fingerprint(target, 'id') == expected
     assert [s['model_name'] for s in first['steps']] == names
     first_uuid = target_uuid(target)
     record('full_sync_dbt_abc_dq_publish',started,rows=N,fingerprint=expected,
@@ -78,7 +80,7 @@ def test_full_scale_pipeline():
     second = wait_done(queued['run_id'],1800)
     assert second['status'] == 'succeeded' and second['rows_verified'] == N, second
     assert f.pg("SELECT rows_written FROM managed_runs WHERE id='"+second['managed_run_id']+"'") == '0'
-    assert fingerprint(target) == expected and fingerprint(f.RAW) == expected
+    assert fingerprint(target, 'id') == expected and fingerprint(f.RAW, '_pk') == expected
     assert target_uuid(target) != first_uuid and second['has_backup']
     generation = f.pg("SELECT generation FROM sync_checkpoints WHERE stream_id='"+stream['id']+"'")
     assert generation == '2'
@@ -89,7 +91,7 @@ def test_full_scale_pipeline():
             run_id=queued['run_id'],action='rollback',confirm='ROLLBACK'))
         assert code == 200 and rolled['status'] == 'rolled_back', rolled
         assert target_uuid(target) == first_uuid
-    assert fingerprint(target) == expected
+    assert fingerprint(target, 'id') == expected
     assert f.pg("SELECT generation FROM sync_checkpoints WHERE stream_id='"+stream['id']+"'") == generation
     record('rollback_idempotency_checkpoint',started,rows=N)
     started = time.monotonic()
@@ -105,7 +107,7 @@ def test_full_scale_pipeline():
     rejected = wait_done(bad_run['run_id'],1800)
     assert rejected['status'] == 'failed', rejected
     assert target_uuid('dft_core_'+badname) == ''
-    assert target_uuid(target) == first_uuid and fingerprint(target) == expected
+    assert target_uuid(target) == first_uuid and fingerprint(target, 'id') == expected
     assert f.ch(f'SELECT count(),uniqExact(duplicate_key) FROM scratch.dfv_{badname} FORMAT TSV') == f'{N}\t1'
     record('negative_dq_no_publish',started,rows=N,existing_uuid_preserved=True)
 
