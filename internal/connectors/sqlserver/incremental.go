@@ -61,7 +61,9 @@ func BuildRowVersionPageQuery(schema,table,projection string,hasAfter bool)(stri
  if hasAfter{
   query+=" AND ([SysRevID] > @p4 OR ([SysRevID] = @p5 AND [SysRowID] > CONVERT(uniqueidentifier,@p6)))"
  }
- query+=" ORDER BY [SysRevID],[SysRowID]"
+ // Qualify source columns: unqualified names resolve to the converted SELECT
+ // aliases, forcing a full Sort and changing uniqueidentifier cursor order.
+ query+=" ORDER BY "+tbl+".[SysRevID],"+tbl+".[SysRowID] OPTION (MAXDOP 1)"
  return query,nil
 }
 
@@ -85,7 +87,9 @@ func(r *RowVersionReader)Read(ctx context.Context,emit func(engine.Batch)error)e
  hasAfter:=false
  for {
   query,err:=BuildRowVersionPageQuery(r.Schema,r.Table,projection,hasAfter);if err!=nil{return err}
-  args:=[]any{r.BatchSize,r.Lower.Bytes(),upper.Bytes()}
+  pageLower:=r.Lower
+  if hasAfter{pageLower=afterRev}
+  args:=[]any{r.BatchSize,pageLower.Bytes(),upper.Bytes()}
   if hasAfter{args=append(args,afterRev.Bytes(),afterRev.Bytes(),afterID)}
   rows,err:=tx.QueryContext(ctx,query,args...);if err!=nil{return err}
   names,err:=rows.Columns();if err!=nil{rows.Close();return err}
