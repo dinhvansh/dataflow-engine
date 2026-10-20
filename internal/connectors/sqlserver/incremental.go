@@ -61,9 +61,9 @@ func BuildRowVersionPageQuery(schema,table,projection string,hasAfter bool)(stri
  if hasAfter{
   query+=" AND ([SysRevID] > @p4 OR ([SysRevID] = @p5 AND [SysRowID] > CONVERT(uniqueidentifier,@p6)))"
  }
- // Preserve cursor-index order. SQL Server's parallel Top/Sort plan can spill
- // the entire source to tempdb for every page on the large QA fixture.
- query+=" ORDER BY [SysRevID],[SysRowID] OPTION (MAXDOP 1)"
+ // Qualify source columns: unqualified names resolve to the converted SELECT
+ // aliases, forcing a full Sort and changing uniqueidentifier cursor order.
+ query+=" ORDER BY "+tbl+".[SysRevID],"+tbl+".[SysRowID] OPTION (MAXDOP 1)"
  return query,nil
 }
 
