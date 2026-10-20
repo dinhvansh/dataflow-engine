@@ -1291,6 +1291,7 @@ def test_qa_batch_full_refresh_custom_dest_and_multistream_save(ui):
     assert data["streams"][1]["target_table"]=="invoice_delta"
     assert "TranQty" not in data["streams"][0]["selected_columns"]
     wizard.get_by_role("button",name="Run All (2) — sequential enqueue").click()
+    expect(wizard.get_by_text("2 / 2 streams queued.", exact=False)).to_be_visible()
     runs=[c for c in state["calls"] if c["path"]=="/api/v1/managed/runs" and c["method"]=="POST"]
     assert len(runs)==2
     assert {c["body"]["stream_id"] for c in runs}=={
