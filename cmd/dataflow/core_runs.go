@@ -320,9 +320,8 @@ func(s *server)reconcileOneCore(ctx context.Context)error{
     ` ENGINE=MergeTree ORDER BY tuple() AS SELECT * FROM scratch.dfv_`+modelName)
    if err!=nil{return err}
    dq,checkErr:=writer.ValidateStage(chCtx,stage,unique)
-   if checkErr!=nil||dq.Rows!=uint64(count){
-    return fail("core publication DQ rejected staged row count or uniqueness")
-   }
+   if checkErr!=nil{return fail("core publication DQ rejected staging output: "+checkErr.Error())}
+   if dq.Rows!=uint64(count){return fail("core publication DQ row count disagrees with trusted dbt evidence")}
    stageID,e:=writer.UUID(chCtx,stage);if e!=nil||stageID==""{return errors.New("stage identity lookup failed")}
    oldID,e:=writer.UUID(chCtx,target);if e!=nil{return e}
    _,err=tx.Exec(ctx,`UPDATE core_pipeline_runs

@@ -4,7 +4,14 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
 "$root/deploy/local-qa/check-disk-capacity.sh" "$root"
 for port in 11433 15433 18123 18080 15173; do
-  if ss -ltn "sport = :$port" | tail -n +2 | grep -q .; then echo "Port $port is already in use" >&2; exit 1; fi
+  if command -v ss >/dev/null 2>&1; then
+    listeners=$(ss -ltn "sport = :$port")
+    if printf '%s\n' "$listeners" | tail -n +2 | grep -q .; then echo "Port $port is already in use" >&2; exit 1; fi
+  elif command -v powershell.exe >/dev/null 2>&1; then
+    powershell.exe -NoProfile -Command "if (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue) { exit 1 }" || { echo "Port $port is already in use" >&2; exit 1; }
+  else
+    echo 'BLOCKED: no supported listening-port checker' >&2; exit 1
+  fi
 done
 if docker ps -a --format '{{.Names}}' | grep -E '^dataflow-localqa-' | grep -q .; then
   bad=$(docker ps -a --filter 'name=^/dataflow-localqa-' --format '{{.ID}}' | while read -r id; do

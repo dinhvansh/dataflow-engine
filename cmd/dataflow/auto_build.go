@@ -214,7 +214,7 @@ func(s *server)reconcileOneFlow(ctx context.Context)error{
   if e!=nil{return fail("DQ query failed for "+name+"; check view output and SELECT grants")}
   count,e:=strconv.ParseInt(strings.TrimSpace(raw),10,64)
   if e!=nil||count<1{return fail("DQ check failed for "+name+": expected at least one output row")}
-  if count>1000000{return fail("TEST DQ cap exceeded: more than 1m output rows")}
+  if uint64(count)>safetable.TestRowLimit(){return fail("TEST DQ cap exceeded: output exceeds approved row safety limit")}
   if _,err=tx.Exec(ctx,`UPDATE model_flow_steps SET status='succeeded',
     rows_verified=$3 WHERE flow_id=$1::uuid AND step_index=$2`,id,current,count);err!=nil{return err}
   if current+1==total{

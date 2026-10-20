@@ -1,8 +1,15 @@
 # DataFlow Engine — Master Roadmap, Status & Acceptance Gates
 
-**Snapshot: 2026-10-19.** `main@f90f7afbc66c9a22515b8722a1bb3ad96ad3c85f`. Consolidated Codex Local CORE-RUN-8B one-shot QA after merged [#117](https://github.com/dinhvansh/dataflow-engine/pull/117) through [#121](https://github.com/dinhvansh/dataflow-engine/pull/121): hosted real Core E2E/fault regressions **PASS**, 7/7 exact-head #121 Actions PASS; Codex **owner-local execution NOT RUN**. Strict Docker reset guard negative tests and official evidence-schema contract included before destructive QA resets. Explicit owner consent still required. 7m actual benchmark deferred/unmeasured; parallel/IF-ELSE, production security and funding-demo NO-GO.
+**Snapshot: 2026-10-20.** CORE-RUN-7 completed on the owner's disposable Windows QA host at tested SHA `dc40d9cc4a0b7953f1a7410bf09c71023d06d088`: 7m managed ingestion/replay plus full dbt/DQ/publish/rollback and active-SQL crash recovery/fencing **PASS**. This closes the scoped owner-local synthetic performance/fault gate only. Parallel/IF-ELSE, real Epicor acceptance, production security/operations and Production GO remain open.
 
 Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Original phased plan: [implementation/roadmap.md](../implementation/roadmap.md). Historical release evidence: [release-status-v13.md](../implementation/release-status-v13.md) and other `implementation/release-status-v*.md` files.
+
+## CORE-RUN-7 full-scale owner-local acceptance — PASS (2026-10-20)
+
+- Exactly 7,000,000 synthetic SELECT-only SQL Server rows reached ClickHouse in 126.269 s (55,437.07 rows/s); zero-write replay took 0.165 s and advanced checkpoint generation to 2 without changing the physical 7m rows.
+- API-driven row-preserving dbt A→B→C, DQ and physical publish reconciled 7,000,000 rows/unique keys in 188.766 s (37,082.95 rows/s). Pipeline replay, repeated rollback, negative DQ fail-closed, and active-SQL dbt-worker SIGKILL/reclaim/fencing/rebuild/publish/rollback also passed over 7m rows.
+- Evidence: `qa-results/core-run7-20261020T051740Z/` plus ingestion sub-evidence `qa-results/core-seven-million-20261020T051748Z/`; full acceptance and scope limits are in [CORE_RUN7_BENCHMARK_ACCEPTANCE.md](CORE_RUN7_BENCHMARK_ACCEPTANCE.md).
+- This is not real Epicor, production sizing, production security/HA certification, funding approval or Production GO. Historical `NOT_RUN`/deferred statements below describe earlier snapshots and are superseded only for the scoped CORE-RUN-7 owner-local gate.
 
 **Full V3.2B/V3.2C release acceptance matrix:** [CONNECTIONS_RELEASE_ACCEPTANCE.md](CONNECTIONS_RELEASE_ACCEPTANCE.md) — identity, Vault, TLS, writer-freeze, scoped Test Connection, infra/audit controls. All production gates remain NO-GO.
 
@@ -107,7 +114,7 @@ Every milestone requires actual nonmock integration tests and exact-HEAD CI; do 
 4. Verify real workspace IdP/Vault/TLS/allowlisted egress/tenant isolation and production operations independently. No real ERP credentials or DML/DDL, no production GO.
 5. Only then evaluate fundraising demo readiness; production release requires separate security approval. **No UI cosmetics ahead of the remaining functional gates.**
 
-**NEXT (after CORE-RUN-8B hosted PASS):** independently repeat owner-operated disposable 8B product demo and harden lifecycle/UX around frozen run snapshots; consider parallel/conditional workflows as a separately scoped roadmap. Defer CORE-RUN-7 measured 7m+ first ingest/zero-row replay until adequate owner-approved disk hardware exists. Do not waive disk safety. Archive real performance evidence when resumed, then owner-visible operator walkthrough. Only merged CI-confirmed product milestones count. Update this roadmap/handoff with actual measured artifacts; never silently mark pending as complete.
+**NEXT:** independently repeat the owner-operated disposable product demo and harden lifecycle/UX around frozen run snapshots; consider parallel/conditional workflows as a separately scoped roadmap. CORE-RUN-7 owner-local synthetic acceptance is now complete, but real Epicor and production gates remain independent. Only merged CI-confirmed product milestones count; never waive safety or silently promote local QA into production acceptance.
 
 ## 1. Product direction
 

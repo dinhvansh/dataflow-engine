@@ -183,6 +183,11 @@ func retryableManagedFailure(err error)bool{
  if errors.Is(err,driver.ErrBadConn)||errors.Is(err,io.EOF)||errors.Is(err,io.ErrUnexpectedEOF)||
    errors.Is(err,context.DeadlineExceeded){return true}
  var networkErr net.Error
+ // Service discovery can temporarily remove a name during an outage (for
+ // example Docker network disconnect). Retry within the existing three-claim
+ // budget; a permanently invalid hostname still terminates without a checkpoint.
+ var dnsErr *net.DNSError
+ if errors.As(err,&dnsErr) && dnsErr.IsNotFound{return true}
  return errors.As(err,&networkErr) && (networkErr.Timeout()||networkErr.Temporary())
 }
 
