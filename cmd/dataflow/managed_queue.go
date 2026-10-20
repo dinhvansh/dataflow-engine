@@ -253,9 +253,9 @@ func(s *server)runClaimedManaged(parent context.Context,c managedClaim){
  stats:=engine.Stats{}
  var cfg managedStream
  err:=s.pg.QueryRow(ctx,`SELECT source_schema,source_table,target_database,target_table,
-    batch_size,workers,queue_capacity FROM sync_streams WHERE id=$1::uuid`,
+    batch_size,workers,queue_capacity,selected_columns FROM sync_streams WHERE id=$1::uuid`,
  c.StreamID).Scan(&cfg.SourceSchema,&cfg.SourceTable,&cfg.TargetDatabase,&cfg.TargetTable,
- &cfg.BatchSize,&cfg.Workers,&cfg.QueueCapacity)
+ &cfg.BatchSize,&cfg.Workers,&cfg.QueueCapacity,&cfg.SelectedColumns)
  if err==nil&&(cfg.TargetDatabase!=scratchDatabase()||cfg.TargetTable!="dataflow_raw_events"){
   err=errors.New("managed destination must be isolated scratch raw events")
  }
@@ -267,7 +267,7 @@ func(s *server)runClaimedManaged(parent context.Context,c managedClaim){
  defer closeDynamic()
  if err==nil{
   reader:=&sqlserver.RowVersionReader{DB:activeDB,Schema:cfg.SourceSchema,Table:cfg.SourceTable,
-   BatchSize:cfg.BatchSize,Lower:c.Lower}
+   BatchSize:cfg.BatchSize,Columns:cfg.SelectedColumns,Lower:c.Lower}
   dest:=&clickhouse.Writer{Endpoint:activeURL,Database:cfg.TargetDatabase,Table:cfg.TargetTable,
    Username:activeUser,Password:activePass,Client:managedClient}
   writer:=&clickhouse.EventWriter{Destination:dest,StreamID:c.StreamID,RunID:c.OwnerID}
