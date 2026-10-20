@@ -61,7 +61,7 @@ func(c Client)ValidateStage(ctx context.Context,stage,key string)(Counts,error){
  if len(chunks)<1{return stats,errors.New("invalid DQ result")}
  stats.Rows,err=strconv.ParseUint(chunks[0],10,64);if err!=nil{return stats,err}
  if stats.Rows==0{return stats,errors.New("empty output rejected by DQ gate")}
- if stats.Rows>1000000{return stats,errors.New("TEST output exceeds 1m row safety cap")}
+ if stats.Rows>TestRowLimit(){return stats,errors.New("TEST output exceeds approved row safety cap")}
  if key!=""{
   if len(chunks)!=2{return stats,errors.New("missing key cardinality")}
   stats.Unique,err=strconv.ParseUint(chunks[1],10,64);if err!=nil{return stats,err}
