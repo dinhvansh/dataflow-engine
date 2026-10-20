@@ -29,7 +29,7 @@ export async function getRunHistory(token:string,limit=20):Promise<HistoryRespon
 export type ManagedStream={
  id:string;source_schema:string;source_table:string;
  target_database:string;target_table:string;
- batch_size:number;workers:number;queue_capacity:number;lower_cursor?:string
+ batch_size:number;workers:number;queue_capacity:number;selected_columns?:string[];lower_cursor?:string
 };
 export type ManagedRun={
  run_id:string;stream_id?:string;status:string;lower_cursor?:string;

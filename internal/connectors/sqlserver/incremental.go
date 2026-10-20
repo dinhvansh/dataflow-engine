@@ -19,6 +19,7 @@ type RowVersionReader struct {
  DB *sql.DB
  Schema,Table string
  BatchSize int
+ Columns []string // nil: preserve legacy all-column projection
  Lower cursor.RowVersion
  Upper cursor.RowVersion // populated after Read, valid only on successful return
 }
@@ -26,10 +27,34 @@ type RowVersionReader struct {
 func (r *RowVersionReader) projection(ctx context.Context)(string,error){
  cols,err:=DiscoverColumns(ctx,r.DB,r.Schema,r.Table)
  if err!=nil{return "",err}
+ projection,err:=BuildRowVersionProjection(cols,r.Columns)
+ if err!=nil{return "",err}
+ unique,err:=HasUniqueSysRowID(ctx,r.DB,r.Schema,r.Table)
+ if err!=nil{return "",fmt.Errorf("source unique index inspection: %w",err)}
+ if !unique{return "",errors.New("SysRowID requires a declared unique single-key index for deterministic incremental pagination")}
+ return projection,nil
+}
+
+// BuildRowVersionProjection accepts only exact catalog column names and retains
+// the two cursor/key columns required for safe paging and replay. Empty means all.
+func BuildRowVersionProjection(cols []ColumnInfo, selected []string)(string,error){
  if len(cols)==0{return "",errors.New("source table missing or metadata not visible")}
+ chosen:=make(map[string]bool,len(selected))
+ if len(selected)>256{return "",errors.New("too many selected columns")}
+ if len(selected)>0{
+  available:=make(map[string]bool,len(cols))
+  for _,c:=range cols{available[c.Name]=true}
+  for _,name:=range selected{
+   if !available[name]{return "",fmt.Errorf("selected column %q not in source catalog",name)}
+   if chosen[name]{return "",fmt.Errorf("duplicate selected column %q",name)}
+   chosen[name]=true
+  }
+  if !chosen["SysRevID"]||!chosen["SysRowID"]{return "",errors.New("selected columns must include SysRevID and SysRowID")}
+ }
  foundRev,foundID:=false,false
  expr:=make([]string,0,len(cols))
  for _,c:=range cols{
+  if len(chosen)>0&&!chosen[c.Name]{continue}
   quoted,err:=quote(c.Name);if err!=nil{return "",err}
   switch strings.ToLower(c.Name){
   case "sysrevid":
@@ -46,9 +71,6 @@ func (r *RowVersionReader) projection(ctx context.Context)(string,error){
   }
  }
  if !foundRev||!foundID{return "",errors.New("source requires SysRevID rowversion and SysRowID uniqueidentifier")}
- unique,err:=HasUniqueSysRowID(ctx,r.DB,r.Schema,r.Table)
- if err!=nil{return "",fmt.Errorf("source unique index inspection: %w",err)}
- if !unique{return "",errors.New("SysRowID requires a declared unique single-key index for deterministic incremental pagination")}
  return strings.Join(expr,","),nil
 }
 

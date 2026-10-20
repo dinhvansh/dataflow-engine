@@ -182,7 +182,10 @@ def ui(browser, request):
                      "status": "succeeded", "error": ""}
                 ]}
         elif path == "/api/v1/managed/streams":
-            result = {"streams": [
+            if method == "POST":
+                result = {**body, "id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc", "lower_cursor": "0x0000000000000000"}
+            else:
+                result = {"streams": [
                 {"id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
                  "source_schema": "Erp", "source_table": "PartTran",
                  "target_database": "scratch", "target_table": "dataflow_raw_events",
@@ -1119,3 +1122,40 @@ def test_ui_local_session_login_roles_and_logout(ui):
     expect(page.get_by_label("Live lab connection manager")).to_be_visible()
     expect(page.get_by_label("Live connection admin credential")).to_have_count(0)
     expect(page.get_by_label("Lab API token (shared across modules)")).to_have_count(0)
+
+
+def test_ui_airbyte_stream_columns_are_selected_and_saved(ui):
+    """A stream column selection must reach the API; read-only metadata GET is distinct."""
+    page, state = ui
+
+    def columns(route):
+        route.fulfill(status=200, content_type="application/json", body=json.dumps([
+            {"name": name, "sql_type": sql_type, "max_length": 0,
+             "precision": 0, "scale": 0, "nullable": False,
+             "identity": False, "primary_key": name == "SysRowID",
+             "cursor_candidate": name == "SysRevID"}
+            for name, sql_type in [
+                ("SysRowID", "uniqueidentifier"), ("SysRevID", "timestamp"),
+                ("PartNum", "nvarchar"), ("TranQty", "decimal")]
+        ]))
+
+    page.route("**/api/v1/source/columns*", columns)
+    open_tab(page, "Sync Jobs")
+    panel = page.get_by_label("Airbyte-style source discovery and field projection")
+    save = page.get_by_role("button", name="Save selected stream")
+    expect(save).to_be_disabled()
+    panel.get_by_role("button", name="Discover tables").click()
+    panel.get_by_label("Discovered source table").select_option("PartTran")
+    panel.get_by_role("button", name="Inspect columns").click()
+    expect(panel.get_by_label("Sync column SysRowID")).to_be_disabled()
+    expect(panel.get_by_label("Sync column SysRevID")).to_be_disabled()
+    panel.get_by_label("Sync column TranQty").uncheck()
+    expect(save).to_be_enabled()
+    save.click()
+    posts = [call for call in state["calls"]
+             if call["path"] == "/api/v1/managed/streams" and call["method"] == "POST"]
+    assert len(posts) == 1
+    assert posts[0]["body"]["source_table"] == "PartTran"
+    assert posts[0]["body"]["selected_columns"] == ["SysRowID", "SysRevID", "PartNum"]
+    assert all(call["method"] == "GET" for call in state["calls"]
+               if call["path"].startswith("/api/v1/source/"))

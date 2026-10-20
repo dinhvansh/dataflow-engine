@@ -30,6 +30,25 @@ func TestSnapshotReaderSQLServerIntegration(t *testing.T) {
  incremental:=RowVersionReader{DB:db,Schema:"Erp",Table:"Part",BatchSize:37}
  if err=incremental.Read(ctx,func(batch engine.Batch)error{rows+=len(batch.Rows);return nil});err!=nil{t.Fatal(err)}
  if rows!=200{t.Fatalf("incremental rows=%d want 200",rows)}
+ // The same SELECT-only fixture must honor a *subset* projection without
+ // losing mandatory keyset paging and the exact row count.
+ cols,err:=DiscoverColumns(ctx,db,"Erp","Part");if err!=nil{t.Fatal(err)}
+ projection:=[]string{"SysRowID","SysRevID"}
+ for _,col:=range cols{
+  if col.Name!="SysRowID"&&col.Name!="SysRevID"{projection=append(projection,col.Name);break}
+ }
+ if len(projection)!=3{t.Fatal("disposable Part fixture has no non-system column")}
+ projected:=RowVersionReader{DB:db,Schema:"Erp",Table:"Part",BatchSize:37,Columns:projection}
+ rows=0
+ if err=projected.Read(ctx,func(batch engine.Batch)error{
+  for _,row:=range batch.Rows{
+   if len(row)!=3{t.Fatalf("projection leaked columns: got %d want 3",len(row))}
+   for _,name:=range projection{if _,ok:=row[name];!ok{t.Fatalf("missing selected column %s",name)}}
+  }
+  rows+=len(batch.Rows)
+  return nil
+ });err!=nil{t.Fatal(err)}
+ if rows!=200{t.Fatalf("projected incremental rows=%d want 200",rows)}
 }
 
 // Regression for a SQL Server driver/conversion path that truncated rowversion
