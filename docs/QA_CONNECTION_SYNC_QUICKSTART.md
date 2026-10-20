@@ -9,6 +9,23 @@ Status: **disposable local QA, not production**. No real ERP test or writes are 
 - Never point `DATAFLOW_SQLSERVER_DSN` or approved runtime endpoints at company ERP.
 - Never reset unknown Docker resources. Only project `dataflow-localqa` with verified ownership labels can be touched.
 
+## Recommended: one-pass local QA (setup + test once)
+
+Use an interactive **WSL/Bash terminal** from the repository root with Docker Desktop, Go, Node and sufficient disposable QA disk/RAM available. Ensure Docker Desktop data is already on the intended drive (such as E:) **before** starting; this script never moves WSL/Docker volumes.
+
+```bash
+git switch main && git pull origin main
+DATAFLOW_LIVE_QA_OPT_IN=true bash deploy/local-qa/one-pass-sync-qa.sh
+```
+
+On the first run, the script generates ignored private QA credentials, boots/labels the synthetic SQL Server/PostgreSQL/ClickHouse services, requests a local admin/operator password **interactively**, starts the localhost QA API and Web and executes real **Connection Add/Test → schema discovery → 2-table atomic Save+Bind → Full Refresh twice → Incremental once** disposable QA acceptance. Subsequent runs reuse existing isolated volumes and login settings; no automatic teardown, credential reset or 7m benchmark. Keep your terminal open to enter the passwords when prompted.
+
+The UI is at `http://127.0.0.1:15173`. In Connections use **Airbyte-style Batch Sync Setup · QA**, select previously tested connections, configure up to 10 tables and use **Run All** to enqueue the saved streams in a bounded sequence. Run All reports each stream separately and refreshes queued/running status. It is not a single atomic all-or-nothing execution and does not automatically publish results through dbt.
+
+**QA-only safeguards:** never enter real ERP host/database or login. An existing port is reused only when it belongs to an exactly labeled, running `dataflow-localqa` container bound to the expected loopback port. Any foreign service collision blocks startup. Use [full/batch QA details](QA_MULTI_STREAM_FULL_REFRESH.md) for destination and snapshot semantics.
+
+## Manual setup and troubleshooting
+
 ## Start the isolated QA databases
 
 From repository root, in a trusted terminal:
