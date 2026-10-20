@@ -32,6 +32,9 @@ func TestCoreRun2TransientRetryClassification(t *testing.T){
   {context.DeadlineExceeded,true},
   {&net.DNSError{IsTimeout:true},true},
   {&net.DNSError{IsTemporary:true},true},
+  {&net.DNSError{IsNotFound:true},true},
+  {fmt.Errorf("wrapped service discovery: %w",&net.DNSError{IsNotFound:true}),true},
+  {&net.DNSError{Err:"invalid DNS response"},false},
  }
  for i,tt:=range cases{
   if got:=retryableManagedFailure(tt.err);got!=tt.retry{
