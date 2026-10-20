@@ -2,6 +2,8 @@
 
 **Snapshot: 2026-10-20.** CORE-RUN-7 completed on the owner's disposable Windows QA host at tested SHA `dc40d9cc4a0b7953f1a7410bf09c71023d06d088`: 7m managed ingestion/replay plus full dbt/DQ/publish/rollback and active-SQL crash recovery/fencing **PASS**. This closes the scoped owner-local synthetic performance/fault gate only. Parallel/IF-ELSE, real Epicor acceptance, production security/operations and Production GO remain open.
 
+**QA Connection-to-Stream slice MERGED (2026-10-20):** PR [#138](https://github.com/dinhvansh/dataflow-engine/pull/138) provides an isolated, admin-only local QA wizard using recently verified SQL Server/ClickHouse profiles: profile-scoped metadata discovery, selected columns, validated RowVersion configuration, atomic scratch Stream + revision-pinned binding and managed Run. PR [#136](https://github.com/dinhvansh/dataflow-engine/pull/136) added persisted selected-column projections. PR #138 exact-head **7/7 hosted workflows PASS**, owner-local operator acceptance **PENDING**. Use [QA local setup](QA_CONNECTION_SYNC_QUICKSTART.md); no production ERP or benchmark rerun required. **Partial milestone only:** no production IdP/Vault/TLS approval, no verified-profile Full Refresh in this wizard, no arbitrary destination mapping or multi-table wizard; #135/#137 remain OPEN.
+
 Canonical handoff: [PROJECT_HANDOFF_LATEST.md](PROJECT_HANDOFF_LATEST.md). Original phased plan: [implementation/roadmap.md](../implementation/roadmap.md). Historical release evidence: [release-status-v13.md](../implementation/release-status-v13.md) and other `implementation/release-status-v*.md` files.
 
 ## CORE-RUN-7 full-scale owner-local acceptance — PASS (2026-10-20)
