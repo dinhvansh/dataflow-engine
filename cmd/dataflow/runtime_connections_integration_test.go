@@ -108,10 +108,12 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
   req.Header.Set("Authorization","Bearer "+svc.token)
   req.Header.Set("X-DataFlow-Connection-Admin","different-synthetic-qa-admin-only")
   rec:=httptest.NewRecorder()
-  switch path {
+  switch req.URL.Path {
   case "/api/v1/connections/runtime":svc.runtimeProfilesAPI(rec,req)
   case "/api/v1/connections/runtime/test":svc.runtimeTestAPI(rec,req)
   case "/api/v1/connections/runtime/bind":svc.runtimeBindAPI(rec,req)
+  case "/api/v1/connections/runtime/discover":svc.runtimeDiscoverAPI(rec,req)
+  case "/api/v1/connections/runtime/streams":svc.runtimeStreamSetupAPI(rec,req)
   default:t.Fatal("unexpected test path")
   }
   var result map[string]any
@@ -141,18 +143,30 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
   status,resp,_:=do(http.MethodPost,"/api/v1/connections/runtime/test",map[string]string{"id":id})
   if status!=200||resp["passed"]!=true{t.Fatalf("real driver test failed for verified disposable profile")}
  }
- status,streams,_:=func()(int,map[string]any,string){
-  cfg:=map[string]any{"source_schema":"Erp","source_table":"Part","target_database":"scratch","target_table":"dataflow_raw_events","batch_size":100,"workers":2,"queue_capacity":2}
-  raw,_:=json.Marshal(cfg)
-  req:=httptest.NewRequest(http.MethodPost,"/api/v1/managed/streams",bytes.NewReader(raw))
-  req.Header.Set("Authorization","Bearer "+svc.token)
-  rec:=httptest.NewRecorder();svc.streamAPI(rec,req)
-  var obj map[string]any;_ = json.Unmarshal(rec.Body.Bytes(),&obj)
-  return rec.Code,obj,rec.Body.String()
- }()
- if status!=201{t.Fatalf("could not create isolated scratch stream: code=%d",status)}
- streamID,_:=streams["id"].(string)
- if streamID==""{t.Fatal("missing QA stream ID")}
+ // Metadata discovery is scoped to the selected encrypted, verified source profile.
+ status,catalog,_:=do(http.MethodGet,"/api/v1/connections/runtime/discover?source_connection_id="+sourceID+"&schema=Erp",nil)
+ if status!=200||catalog["tables"]==nil{t.Fatalf("scoped QA table discovery code=%d",status)}
+ status,details,_:=do(http.MethodGet,"/api/v1/connections/runtime/discover?source_connection_id="+sourceID+"&schema=Erp&table=Part",nil)
+ if status!=200||details["columns"]==nil{t.Fatalf("scoped QA columns code=%d",status)}
+ streamCfg:=labStreamInput{SourceConnectionID:sourceID,TargetConnectionID:targetID,
+  SourceSchema:"Erp",SourceTable:"Part",SelectedColumns:[]string{"SysRowID","SysRevID"},
+  Mode:"incremental_rowversion",TargetDatabase:"scratch",TargetTable:"dataflow_raw_events",
+  BatchSize:100,Workers:2,QueueCapacity:2}
+ invalid:=streamCfg
+ invalid.SelectedColumns=[]string{"SysRowID","SysRevID","nonexistent"}
+ status,_,_=do(http.MethodPost,"/api/v1/connections/runtime/streams",invalid)
+ if status!=422{t.Fatalf("unknown projection should be refused: code=%d",status)}
+ status,streams,_:=do(http.MethodPost,"/api/v1/connections/runtime/streams",streamCfg)
+ if status!=201||streams["bound"]!=true{t.Fatalf("atomic QA stream setup failed code=%d",status)}
+ streamID,_:=streams["stream_id"].(string)
+ if streamID==""{t.Fatal("no bound stream UUID")}
+ var projection []string
+ if e=svc.pg.QueryRow(ctx,`SELECT selected_columns FROM sync_streams WHERE id=$1::uuid`,streamID).Scan(&projection);e!=nil||
+  len(projection)!=2||projection[0]!="SysRowID"||projection[1]!="SysRevID"{
+  t.Fatalf("selected projection not persisted correctly: %v %v",projection,e)
+ }
+ status,_,_=do(http.MethodPost,"/api/v1/connections/runtime/streams",streamCfg)
+ if status!=409{t.Fatalf("existing stream was allowed to be rebound: code=%d",status)}
  createdStreamID=streamID
  status,resp,_:=do(http.MethodPost,"/api/v1/connections/runtime/bind",connectionBindingInput{StreamID:streamID,SourceID:sourceID,TargetID:targetID})
  if status!=200||resp["bound"]!=true{t.Fatalf("binding refused in isolated QA")}

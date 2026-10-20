@@ -107,6 +107,32 @@ def ui(browser, request):
                     item["revision"] = 2
             result = {"id": body.get("id"), "passed": True,
                       "tested_at": "2026-10-19T10:00:00Z"}
+        elif path == "/api/v1/connections/runtime/discover":
+            if "table=" in req.url:
+                result = {"columns": [
+                    {"name": name, "sql_type": typ, "nullable": False,
+                     "primary_key": name == "SysRowID", "cursor_candidate": name == "SysRevID",
+                     "max_length": 0, "precision": 0, "scale": 0, "identity": False}
+                    for name, typ in [
+                        ("SysRowID", "uniqueidentifier"), ("SysRevID", "timestamp"),
+                        ("PartNum", "nvarchar"), ("TranQty", "decimal")]
+                ]}
+            else:
+                result = {"tables": [{"schema": "Erp", "name": "Part"}]}
+        elif path == "/api/v1/connections/runtime/streams":
+            if method == "POST":
+                result = {"stream_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+                          "bound": True, "mode": body.get("mode")}
+            else:
+                route.fulfill(status=405, body="POST required")
+                return
+        elif path == "/api/v1/managed/runs":
+            if method == "POST":
+                result = {"run_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+                          "status": "queued", "stream_id": body.get("stream_id")}
+            else:
+                result = {"run_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+                          "status": "succeeded", "rows_written": 200, "batches_written": 2}
         elif path == "/api/v1/connections/runtime/bind":
             result = {"bound": True, "stream_id": body.get("stream_id")}
         elif path == "/api/v1/connections":
@@ -1159,3 +1185,52 @@ def test_ui_airbyte_stream_columns_are_selected_and_saved(ui):
     assert posts[0]["body"]["selected_columns"] == ["SysRowID", "SysRevID", "PartNum"]
     assert all(call["method"] == "GET" for call in state["calls"]
                if call["path"].startswith("/api/v1/source/"))
+
+
+def test_qa_sync_setup_uses_verified_profiles_to_discover_save_bind_and_run(ui):
+    """Browser contract: selected profile scopes discovery and source/target refs persist."""
+    page, state = ui
+    page.get_by_label("Lab API token (shared across modules)").fill(TOKEN)
+    page.get_by_role("button", name="Connections", exact=True).click()
+    panel = page.get_by_label("Live lab connection manager")
+    panel.get_by_label("Live connection admin credential").fill("synthetic-admin-token")
+    panel.get_by_role("button", name="Load connections").click()
+
+    for driver,name,host,port,db,user in [
+        ("sqlserver","Wizard SQL","qa-sql","1433","DataFlowFixtureQA","qa_erp_reader"),
+        ("clickhouse","Wizard CH","qa-ch","8123","scratch","qa_writer"),
+    ]:
+        panel.get_by_label("Live connection driver").select_option(driver)
+        panel.get_by_label("Live connection name").fill(name)
+        panel.get_by_label("Live connection host").fill(host)
+        panel.get_by_label("Live connection port").fill(port)
+        panel.get_by_label("Live connection database").fill(db)
+        panel.get_by_label("Live connection username").fill(user)
+        panel.get_by_label("Live connection password").fill("synthetic-not-secret")
+        panel.get_by_role("button", name="Save encrypted draft").click()
+    buttons=panel.get_by_role("button", name="Test real connection")
+    buttons.nth(0).click()
+    buttons.nth(1).click()
+    wizard=panel.get_by_label("QA sync setup wizard")
+    wizard.get_by_label("Wizard source connection").select_option(
+        "b0000000-0000-4000-8000-000000000001")
+    wizard.get_by_label("Wizard target connection").select_option(
+        "b0000000-0000-4000-8000-000000000002")
+    wizard.get_by_role("button", name="Discover", exact=True).click()
+    wizard.get_by_label("Wizard source table").select_option("Part")
+    wizard.get_by_role("button", name="Columns", exact=True).click()
+    expect(wizard.get_by_label("Wizard column SysRevID")).to_be_disabled()
+    expect(wizard.get_by_label("Wizard column SysRowID")).to_be_disabled()
+    wizard.get_by_label("Wizard column TranQty").uncheck()
+    wizard.get_by_role("button", name="Save stream + Bind").click()
+    expect(wizard.get_by_text("Saved stream ID", exact=False)).to_be_visible()
+    posts=[c for c in state["calls"] if c["path"]=="/api/v1/connections/runtime/streams"]
+    assert len(posts)==1
+    assert posts[0]["body"]["source_connection_id"]=="b0000000-0000-4000-8000-000000000001"
+    assert posts[0]["body"]["target_connection_id"]=="b0000000-0000-4000-8000-000000000002"
+    assert posts[0]["body"]["selected_columns"]==["SysRowID","SysRevID","PartNum"]
+    assert posts[0]["body"]["mode"]=="incremental_rowversion"
+    wizard.get_by_role("button", name="Run selected stream").click()
+    assert any(c["path"]=="/api/v1/managed/runs" and c["method"]=="POST"
+               and c["body"]["stream_id"]=="dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+               for c in state["calls"])

@@ -177,6 +177,23 @@ export type LabRuntimeInput={
 const runtimeHeaders=(token:string,adminToken:string)=>({
  "Authorization":`Bearer ${token}`,"X-DataFlow-Connection-Admin":adminToken,"Content-Type":"application/json"
 });
+export type LabStreamSetup={
+ source_connection_id:string;target_connection_id:string;
+ source_schema:string;source_table:string;selected_columns:string[];
+ target_database:"scratch";target_table:"dataflow_raw_events";
+ mode:"incremental_rowversion";batch_size:number;workers:number;queue_capacity:number
+};
+export const labSyncSetupApi={
+ tables:(sourceID:string,schema:string,token:string,adminToken:string)=>
+  parse<{tables:TableInfo[]}>(fetch("/api/v1/connections/runtime/discover?source_connection_id="+encodeURIComponent(sourceID)+"&schema="+encodeURIComponent(schema),{
+   headers:runtimeHeaders(token,adminToken)})),
+ columns:(sourceID:string,schema:string,table:string,token:string,adminToken:string)=>
+  parse<{columns:ColumnInfo[]}>(fetch("/api/v1/connections/runtime/discover?source_connection_id="+encodeURIComponent(sourceID)+"&schema="+encodeURIComponent(schema)+"&table="+encodeURIComponent(table),{
+   headers:runtimeHeaders(token,adminToken)})),
+ create:(config:LabStreamSetup,token:string,adminToken:string)=>
+  parse<{stream_id:string;bound:boolean;mode:string}>(fetch("/api/v1/connections/runtime/streams",{
+   method:"POST",headers:runtimeHeaders(token,adminToken),body:JSON.stringify(config)}))
+};
 export const labRuntimeConnectionsApi={
  list:(token:string,adminToken:string)=>parse<{profiles:LabRuntimeConnection[]}>(
   fetch("/api/v1/connections/runtime",{headers:runtimeHeaders(token,adminToken)})),
