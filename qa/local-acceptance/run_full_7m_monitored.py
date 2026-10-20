@@ -7,6 +7,9 @@ import subprocess
 import threading
 import time
 import shutil
+import sys
+
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 assert os.name == 'nt', 'This owner-local storage attestation is Windows-specific'
 assert os.environ.get('DATAFLOW_CORE_FULL_7M') == 'YES_OWNED_DISPOSABLE_7M'
