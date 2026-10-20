@@ -16,11 +16,19 @@ BEGIN
   TranQty decimal(18,6) NULL,ExtCost decimal(18,4) NULL,
   CommentText nvarchar(200) NULL,SysRowID uniqueidentifier NOT NULL,
   SysRevID rowversion NOT NULL,
-  CONSTRAINT PK_PartTranScale7M PRIMARY KEY(Company,TranNum),
-  CONSTRAINT UQ_PartTranScale7M_SysRowID UNIQUE(SysRowID)
+  CONSTRAINT PK_PartTranScale7M PRIMARY KEY(Company,TranNum)
  );
 END;
 DECLARE @next bigint=(SELECT ISNULL(MAX(TranNum),0) FROM Erp.PartTranScale7M);
+-- Fixture-only bulk preparation: maintaining a random UUID index row by row
+-- thrashes HDD-backed disposable volumes. Resume committed batches, then
+-- rebuild the same UNIQUE constraint before exposing the fixture to readers.
+-- The primary key stays enforced throughout. No benchmark assertion changes.
+IF @next < 7000000 AND EXISTS (
+ SELECT 1 FROM sys.key_constraints WHERE parent_object_id=OBJECT_ID(N'Erp.PartTranScale7M')
+ AND name=N'UQ_PartTranScale7M_SysRowID'
+)
+ ALTER TABLE Erp.PartTranScale7M DROP CONSTRAINT UQ_PartTranScale7M_SysRowID;
 WHILE @next < 7000000
 BEGIN
  DECLARE @batch int=CASE WHEN 7000000-@next<50000
@@ -55,6 +63,11 @@ BEGIN
   THROW;
  END CATCH;
 END;
+IF NOT EXISTS (
+ SELECT 1 FROM sys.key_constraints WHERE parent_object_id=OBJECT_ID(N'Erp.PartTranScale7M')
+ AND name=N'UQ_PartTranScale7M_SysRowID'
+)
+ ALTER TABLE Erp.PartTranScale7M ADD CONSTRAINT UQ_PartTranScale7M_SysRowID UNIQUE(SysRowID);
 -- The managed reader pages by (SysRevID, SysRowID). Build this after seeding
 -- so fixture creation stays fast and each 10k-row page can seek by cursor.
 IF NOT EXISTS (
