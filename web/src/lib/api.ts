@@ -194,6 +194,17 @@ export const labSyncSetupApi={
   parse<{stream_id:string;bound:boolean;mode:string}>(fetch("/api/v1/connections/runtime/streams",{
    method:"POST",headers:runtimeHeaders(token,adminToken),body:JSON.stringify(config)}))
 };
+export type QABatchStream={
+ source_schema:string;source_table:string;selected_columns:string[];
+ mode:"incremental_rowversion"|"full_refresh";target_database:"scratch";target_table:string;
+ batch_size:number;workers:number;queue_capacity:number
+};
+export type QABatchResult={stream_id:string;source:string;mode:string;destination:string};
+export const labQABatchSyncApi={
+ create:(request:{source_connection_id:string;target_connection_id:string;streams:QABatchStream[]},token:string,adminToken:string)=>
+  parse<{streams:QABatchResult[];count:number}>(fetch("/api/v1/connections/runtime/streams/batch",{
+   method:"POST",headers:runtimeHeaders(token,adminToken),body:JSON.stringify(request)}))
+};
 export const labRuntimeConnectionsApi={
  list:(token:string,adminToken:string)=>parse<{profiles:LabRuntimeConnection[]}>(
   fetch("/api/v1/connections/runtime",{headers:runtimeHeaders(token,adminToken)})),
