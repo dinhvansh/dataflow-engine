@@ -3,6 +3,15 @@
 This owner-only suite complements, and does not redefine, the ingestion/replay
 acceptance in CORE_RUN7_BENCHMARK_ACCEPTANCE.md. A skipped test is NOT PASS.
 
+## Accepted owner-local result — 2026-10-20
+
+Tested SHA `dc40d9cc4a0b7953f1a7410bf09c71023d06d088` completed this suite over
+7,000,000 rows: dbt A→B→C/DQ/publish, zero-write replay, repeated rollback,
+negative DQ/no-publish, and active-SQL SIGKILL/reclaim/fencing/rebuild all PASS.
+Evidence: `qa-results/core-run7-20261020T051740Z/` and ingestion evidence
+`qa-results/core-seven-million-20261020T051748Z/`. This is scoped owner-local
+synthetic QA acceptance, not production certification.
+
 ## Workload and assertions
 
 - Existing `run-core-7m.sh`: seed exactly 7,000,000 synthetic SQL Server rows,
