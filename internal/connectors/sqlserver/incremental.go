@@ -85,7 +85,9 @@ func(r *RowVersionReader)Read(ctx context.Context,emit func(engine.Batch)error)e
  hasAfter:=false
  for {
   query,err:=BuildRowVersionPageQuery(r.Schema,r.Table,projection,hasAfter);if err!=nil{return err}
-  args:=[]any{r.BatchSize,r.Lower.Bytes(),upper.Bytes()}
+  pageLower:=r.Lower
+  if hasAfter{pageLower=afterRev}
+  args:=[]any{r.BatchSize,pageLower.Bytes(),upper.Bytes()}
   if hasAfter{args=append(args,afterRev.Bytes(),afterRev.Bytes(),afterID)}
   rows,err:=tx.QueryContext(ctx,query,args...);if err!=nil{return err}
   names,err:=rows.Columns();if err!=nil{rows.Close();return err}
