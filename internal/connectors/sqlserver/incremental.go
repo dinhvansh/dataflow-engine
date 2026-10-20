@@ -27,7 +27,12 @@ type RowVersionReader struct {
 func (r *RowVersionReader) projection(ctx context.Context)(string,error){
  cols,err:=DiscoverColumns(ctx,r.DB,r.Schema,r.Table)
  if err!=nil{return "",err}
- return BuildRowVersionProjection(cols,r.Columns)
+ projection,err:=BuildRowVersionProjection(cols,r.Columns)
+ if err!=nil{return "",err}
+ unique,err:=HasUniqueSysRowID(ctx,r.DB,r.Schema,r.Table)
+ if err!=nil{return "",fmt.Errorf("source unique index inspection: %w",err)}
+ if !unique{return "",errors.New("SysRowID requires a declared unique single-key index for deterministic incremental pagination")}
+ return projection,nil
 }
 
 // BuildRowVersionProjection accepts only exact catalog column names and retains
@@ -66,9 +71,6 @@ func BuildRowVersionProjection(cols []ColumnInfo, selected []string)(string,erro
   }
  }
  if !foundRev||!foundID{return "",errors.New("source requires SysRevID rowversion and SysRowID uniqueidentifier")}
- unique,err:=HasUniqueSysRowID(ctx,r.DB,r.Schema,r.Table)
- if err!=nil{return "",fmt.Errorf("source unique index inspection: %w",err)}
- if !unique{return "",errors.New("SysRowID requires a declared unique single-key index for deterministic incremental pagination")}
  return strings.Join(expr,","),nil
 }
 
