@@ -17,6 +17,9 @@ assert Path.cwd().drive.upper() == 'E:'
 for key in ('TEMP','TMP','GOCACHE','GOMODCACHE'):
     assert Path(os.environ[key]).drive.upper() == 'E:', key+' must be on E:'
 assert Path('E:/docker/DockerDesktopWSL/disk/docker_data.vhdx').is_file()
+settings=json.loads((Path(os.environ['APPDATA'])/'Docker/settings-store.json').read_text(encoding='utf-8'))
+assert Path(settings['CustomWslDistroDir']).resolve() == Path('E:/docker/DockerDesktopWSL').resolve()
+assert subprocess.check_output(['docker','context','show'],text=True).strip() == 'desktop-linux'
 assert shutil.disk_usage('E:/').free >= 16*1024**3
 assert shutil.disk_usage('C:/').free > 2.2*1024**3
 out = Path(os.environ['DATAFLOW_7M_EVIDENCE'])
@@ -76,6 +79,9 @@ try:
         matrix[stage]=dict(status='BLOCKED' if blocked.is_set() else ('PASS' if rc==0 else 'FAIL'),
                            seconds=round(time.monotonic()-start,3),exit_code=rc)
         if rc or blocked.is_set():break
+except BaseException as exc:
+    matrix[stage]=dict(status='FAIL',reason=type(exc).__name__)
+    raise
 finally:
     stop.set();thread.join(timeout=20)
     (out/'test-matrix.json').write_text(json.dumps(matrix,indent=2)+'\n')
