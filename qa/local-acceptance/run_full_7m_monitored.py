@@ -64,7 +64,7 @@ steps=[('ingestion_benchmark',[bash,'-lc','bash deploy/local-qa/run-core-7m.sh']
        ('operator_build',[bash,'-lc',
         'qa_ca=$(mktemp deploy/local-qa/.qa-build-ca.XXXXXXXX); trap \'rm -f "$qa_ca"\' EXIT; '
         'cp "$CODEX_PROXY_CERT" "$qa_ca"; export CODEX_PROXY_CERT="$qa_ca"; '
-        'docker compose --project-name dataflow-localqa --env-file .env.qa.local '
+        'cd ../.. && docker compose --project-name dataflow-localqa --env-file .env.qa.local '
         '-f deploy/local-qa/compose.qa.yml --profile operator up -d --build --wait dbt-worker api web']),
        ('pipeline_and_fault',['python','-m','pytest','qa/browser/test_core_seven_million_live.py','-v','-s','--tb=short'])]
 try:
