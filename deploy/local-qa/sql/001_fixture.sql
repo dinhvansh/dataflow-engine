@@ -27,7 +27,18 @@ IF NOT EXISTS(SELECT 1 FROM sys.sql_logins WHERE name=N'qa_seed_admin') EXEC(N'C
 IF NOT EXISTS(SELECT 1 FROM sys.sql_logins WHERE name=N'qa_erp_reader') EXEC(N'CREATE LOGIN qa_erp_reader WITH PASSWORD='''+'$(ReaderPassword)'+''', CHECK_POLICY=OFF');
 IF USER_ID(N'qa_seed_admin') IS NULL CREATE USER qa_seed_admin FOR LOGIN qa_seed_admin;
 IF USER_ID(N'qa_erp_reader') IS NULL CREATE USER qa_erp_reader FOR LOGIN qa_erp_reader;
-ALTER ROLE db_datareader ADD MEMBER qa_seed_admin; ALTER ROLE db_datawriter ADD MEMBER qa_seed_admin;
+IF NOT EXISTS (
+ SELECT 1 FROM sys.database_role_members drm
+ JOIN sys.database_principals rolep ON rolep.principal_id=drm.role_principal_id
+ JOIN sys.database_principals memberp ON memberp.principal_id=drm.member_principal_id
+ WHERE rolep.name=N'db_datareader' AND memberp.name=N'qa_seed_admin'
+) ALTER ROLE db_datareader ADD MEMBER qa_seed_admin;
+IF NOT EXISTS (
+ SELECT 1 FROM sys.database_role_members drm
+ JOIN sys.database_principals rolep ON rolep.principal_id=drm.role_principal_id
+ JOIN sys.database_principals memberp ON memberp.principal_id=drm.member_principal_id
+ WHERE rolep.name=N'db_datawriter' AND memberp.name=N'qa_seed_admin'
+) ALTER ROLE db_datawriter ADD MEMBER qa_seed_admin;
 GRANT EXECUTE, CONTROL ON SCHEMA::qa TO qa_seed_admin; GRANT SELECT ON SCHEMA::Erp TO qa_erp_reader; DENY INSERT,UPDATE,DELETE,ALTER ON SCHEMA::Erp TO qa_erp_reader;
 GO
 
