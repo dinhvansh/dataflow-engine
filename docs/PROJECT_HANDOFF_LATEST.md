@@ -1,5 +1,13 @@
 # DataFlow Engine — Latest Chat Handoff
 
+## QA Connection / Sync Setup delivered — 2026-10-20
+
+- **[#134](https://github.com/dinhvansh/dataflow-engine/pull/134)** MERGED, owner-local 7m full-scale synthetic Core Run 7 QA PASS (not ERP production; not Production GO).
+- **[#136](https://github.com/dinhvansh/dataflow-engine/pull/136)** MERGED: SQL Server read-only table/column discovery and selected-column projection are persisted per RowVersion stream (migration 032); worker honors actual selected columns and keeps key/cursor fields.
+- **[#138](https://github.com/dinhvansh/dataflow-engine/pull/138)** MERGED to `main@e31b089c93b872d0ad8ce41d233d9554f6a3d912` after **7/7 exact-head GitHub workflows PASS** at `d4cc29c3a34d36f83e6352dbe20d61432939d320`: verified encrypted local QA SQL Server/ClickHouse profiles → schema/table discovery from selected profile → checkbox columns → guarded Incremental RowVersion settings → atomic persisted fresh Stream + credential binding → managed Run from same UI. Go/Web, Browser, SQL Server disposable, Core operator E2E, worker crash and fault recovery QA passed.
+- **One-step local setup/test docs:** [QA_CONNECTION_SYNC_QUICKSTART.md](QA_CONNECTION_SYNC_QUICKSTART.md) and `deploy/local-qa/start-sync-setup.sh`. Existing `deploy/local-qa/run-runtime-connections-real.sh` now additionally exercises scoped real-driver discovery and atomic stream/binding persistence with the SQL Server/PostgreSQL/ClickHouse disposable stack. This **owner-local test has not been executed by this assistant**, and is an explicit owner acceptance gate after pulling main.
+- Exact safe scope: `DataFlowFixtureQA` SELECT-only, `dataflow_qa` PostgreSQL, `scratch.dataflow_raw_events` ClickHouse; connection runtime behind opt-in isolation/admin/host allowlists, credential encryption, revision fencing. No actual ERP run or write. Full Refresh continues via separate isolated bootstrap, **not** the verified-profile Sync Wizard; batch multi-table selection, arbitrary ClickHouse mapping, production Vault/IdP/SSO/HA remain OPEN (issues [#135](https://github.com/dinhvansh/dataflow-engine/issues/135), [#137](https://github.com/dinhvansh/dataflow-engine/issues/137)). Do not label the whole Connection Manager or Airbyte-parity wizard complete or production-approved.
+
 ## CORE-RUN-7 full-scale owner-local PASS — 2026-10-20
 
 - On branch `test/core-run7-full-scale-20261020`, tested SHA `dc40d9cc4a0b7953f1a7410bf09c71023d06d088` completed the guarded 7,000,000-row suite. PR [#134](https://github.com/dinhvansh/dataflow-engine/pull/134) had all 10 exact-head hosted checks PASS at that execution head; hosted CI is separate from the owner-local 7m evidence.
