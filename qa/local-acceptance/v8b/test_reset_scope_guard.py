@@ -38,7 +38,12 @@ class ResetScopeTest(unittest.TestCase):
    env=os.environ.copy()
    env.update(PATH=str(bindir)+os.pathsep+env.get("PATH",""),
     QA_FAKE_VOLUMES=volumes,QA_FAKE_NETWORKS=networks)
-   return subprocess.run(["bash",str(script)],env=env,cwd=root,
+   bash_cmd = "bash"
+   if os.name == "nt":
+    git_bash = Path(os.environ.get("PROGRAMFILES",r"C:\\Program Files")) / "Git" / "bin" / "bash.exe"
+    if git_bash.exists():
+     bash_cmd = str(git_bash)
+   return subprocess.run([bash_cmd,str(script)],env=env,cwd=root,
      text=True,capture_output=True,check=False)
 
  def test_clean_project_inventory_allows_preflight(self):
