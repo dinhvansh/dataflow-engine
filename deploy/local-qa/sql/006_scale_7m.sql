@@ -55,6 +55,17 @@ BEGIN
   THROW;
  END CATCH;
 END;
+-- The managed reader pages by (SysRevID, SysRowID). Build this after seeding
+-- so fixture creation stays fast and each 10k-row page can seek by cursor.
+IF NOT EXISTS (
+ SELECT 1 FROM sys.indexes
+ WHERE object_id=OBJECT_ID(N'Erp.PartTranScale7M')
+   AND name=N'IX_PartTranScale7M_SysRevID_SysRowID'
+)
+ CREATE INDEX IX_PartTranScale7M_SysRevID_SysRowID
+ ON Erp.PartTranScale7M(SysRevID,SysRowID)
+ INCLUDE (Company,TranNum,PartNum,TranDate,SysDate,TranType,
+          TranQty,ExtCost,CommentText);
 IF (SELECT COUNT_BIG(*) FROM Erp.PartTranScale7M)<>7000000
  THROW 51000,'QA 7m fixture count mismatch',1;
 IF NOT EXISTS(SELECT 1 FROM qa.fixture_manifest WHERE dataset=N'SCALE_7M')
