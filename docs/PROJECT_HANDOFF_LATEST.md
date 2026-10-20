@@ -1,5 +1,12 @@
 # DataFlow Engine — Latest Chat Handoff
 
+## One-pass owner QA readiness hardening — 2026-10-20
+
+- Separate PR (check status before calling done): repair a local launch blocker where port preflight rejected the QA stack's own running loopback ports; accepts **only** exact Docker label + running container + expected container/host port binding, refuses foreign ports and wrong labels. Initial source remains isolated `DataFlowFixtureQA` and SQL account strictly SELECT-only.
+- `deploy/local-qa/up.sh` starts long-lived DB services and runs mssql-init/clickhouse-init as one-off `docker compose run --rm --no-deps` containers, avoiding `--abort-on-container-exit` that may stop the DBs.
+- `deploy/local-qa/one-pass-sync-qa.sh` guarded interactive entrypoint: boot and verify QA DBs, prompt for local login only if not configured, start UI and additive migrations, run `TestRuntimeProfilesRealDisposableQA` with real disposable SQL/PG/ClickHouse. No Docker volume reset or 7m. Run from trusted WSL/Bash with explicit `DATAFLOW_LIVE_QA_OPT_IN=true`.
+- New batch UI **Run All** enqueues each saved stream in a bounded sequence, updates per-stream statuses; it is not atomic batch execution. User's QA acceptance remains pending until owner executes local test. Production IdP/Vault/typed destinations/full-incremental handoff remain separate open gates.
+
 ## QA Airbyte-style Full/Incremental Multi-Stream slice — 2026-10-20
 
 - **[PR #140](https://github.com/dinhvansh/dataflow-engine/pull/140) MERGED** at `main@62f9a6c973cc69568bb352e3f41c0505f78c4d3d`. Exact PR head `5d484e86295d7837fc2f3ea2ddbd3537e6ff660b` achieved **7/7 hosted workflow PASS**, including Go/Web, mocked Browser UI, REAL SQL Server 2022 + PostgreSQL + ClickHouse fixture, core real E2E, fault/SIGKILL fencing. Post-merge main CI is a **separate gate** and should be checked independently.

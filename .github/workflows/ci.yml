@@ -20,6 +20,15 @@ jobs:
       - run: go mod tidy
       - name: Validate explicit 7m disposable QA launcher syntax
         run: bash -n deploy/local-qa/run-core-7m.sh
+      - name: QA one-pass launch and owned-port preflight script syntax
+        run: |
+          bash -n deploy/local-qa/preflight.sh
+          bash -n deploy/local-qa/start-sync-setup.sh
+          bash -n deploy/local-qa/one-pass-sync-qa.sh
+          bash -n deploy/local-qa/up.sh
+          bash -n deploy/local-qa/run-runtime-connections-real.sh
+      - name: QA owned-port reuse security regression (mock Docker only)
+        run: bash deploy/local-qa/preflight_owned_ports_test.sh
       - name: QA disk guard regression (no Docker teardown)
         run: bash deploy/local-qa/check-disk-capacity_test.sh
       - name: Go unit and race tests
