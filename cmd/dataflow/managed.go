@@ -3,12 +3,14 @@ package main
 import (
  "context"
  "encoding/json"
+ "errors"
  "net/http"
  "os"
  "regexp"
  "time"
 
  "github.com/dinhvansh/dataflow-engine/internal/connectors/sqlserver"
+ "github.com/jackc/pgx/v5"
 )
 
 var validUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
@@ -22,6 +24,7 @@ type managedStream struct {
  BatchSize int `json:"batch_size"`
  Workers int `json:"workers"`
  QueueCapacity int `json:"queue_capacity"`
+ SelectedColumns []string `json:"selected_columns,omitempty"` // nil = all catalog columns
  LowerCursor string `json:"lower_cursor,omitempty"`
 }
 func(s *server) streamAPI(w http.ResponseWriter,r *http.Request){
@@ -29,14 +32,14 @@ func(s *server) streamAPI(w http.ResponseWriter,r *http.Request){
  switch r.Method{
  case http.MethodGet:
   ctx,cancel:=context.WithTimeout(r.Context(),10*time.Second);defer cancel()
-  rows,err:=s.pg.Query(ctx,`SELECT s.id::text,s.source_schema,s.source_table,s.target_database,s.target_table,s.batch_size,s.workers,s.queue_capacity,encode(c.lower_cursor,'hex')
+  rows,err:=s.pg.Query(ctx,`SELECT s.id::text,s.source_schema,s.source_table,s.target_database,s.target_table,s.batch_size,s.workers,s.queue_capacity,s.selected_columns,encode(c.lower_cursor,'hex')
   FROM sync_streams s JOIN sync_checkpoints c ON c.stream_id=s.id ORDER BY s.created_at DESC LIMIT 100`)
   if err!=nil{http.Error(w,"cannot list streams",500);return}
   defer rows.Close()
   out:=make([]managedStream,0)
   for rows.Next(){
    var item managedStream;var hex string
-   if err=rows.Scan(&item.ID,&item.SourceSchema,&item.SourceTable,&item.TargetDatabase,&item.TargetTable,&item.BatchSize,&item.Workers,&item.QueueCapacity,&hex);err!=nil{http.Error(w,"cannot scan streams",500);return}
+   if err=rows.Scan(&item.ID,&item.SourceSchema,&item.SourceTable,&item.TargetDatabase,&item.TargetTable,&item.BatchSize,&item.Workers,&item.QueueCapacity,&item.SelectedColumns,&hex);err!=nil{http.Error(w,"cannot scan streams",500);return}
    item.LowerCursor="0x"+hex;out=append(out,item)
   }
   if err=rows.Err();err!=nil{http.Error(w,"cannot fetch streams",500);return}
@@ -55,6 +58,9 @@ func(s *server) streamAPI(w http.ResponseWriter,r *http.Request){
   ctx,cancel:=context.WithTimeout(r.Context(),30*time.Second);defer cancel()
   cols,err:=sqlserver.DiscoverColumns(ctx,s.sql,cfg.SourceSchema,cfg.SourceTable)
   if err!=nil||len(cols)==0{http.Error(w,"source metadata unavailable",400);return}
+  if len(cfg.SelectedColumns)>0{
+   if _,err=sqlserver.BuildRowVersionProjection(cols,cfg.SelectedColumns);err!=nil{http.Error(w,err.Error(),422);return}
+  }
   rev,id:=false,false
   for _,col:=range cols{
    if col.Name=="SysRevID"&&col.CursorCandidate{rev=true}
@@ -70,11 +76,13 @@ func(s *server) streamAPI(w http.ResponseWriter,r *http.Request){
   tx,err:=s.pg.Begin(ctx)
   if err!=nil{http.Error(w,"metadata storage unavailable",500);return}
   defer tx.Rollback(ctx)
-  err=tx.QueryRow(ctx,`INSERT INTO sync_streams(source_schema,source_table,target_database,target_table,batch_size,workers,queue_capacity)
-    VALUES($1,$2,$3,$4,$5,$6,$7)
+  err=tx.QueryRow(ctx,`INSERT INTO sync_streams(source_schema,source_table,target_database,target_table,batch_size,workers,queue_capacity,selected_columns)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8)
     ON CONFLICT(source_schema,source_table,target_database,target_table)
     DO UPDATE SET batch_size=EXCLUDED.batch_size,workers=EXCLUDED.workers,queue_capacity=EXCLUDED.queue_capacity
-    RETURNING id::text`,cfg.SourceSchema,cfg.SourceTable,cfg.TargetDatabase,cfg.TargetTable,cfg.BatchSize,cfg.Workers,cfg.QueueCapacity).Scan(&cfg.ID)
+    WHERE sync_streams.selected_columns IS NOT DISTINCT FROM EXCLUDED.selected_columns
+    RETURNING id::text`,cfg.SourceSchema,cfg.SourceTable,cfg.TargetDatabase,cfg.TargetTable,cfg.BatchSize,cfg.Workers,cfg.QueueCapacity,cfg.SelectedColumns).Scan(&cfg.ID)
+  if errors.Is(err,pgx.ErrNoRows){http.Error(w,"existing stream column projection is immutable; use original selection",409);return}
   if err!=nil{http.Error(w,"cannot save stream",500);return}
   if _,err=tx.Exec(ctx,`INSERT INTO sync_checkpoints(stream_id) VALUES ($1::uuid) ON CONFLICT DO NOTHING`,cfg.ID);err!=nil{http.Error(w,"cannot initialize cursor",500);return}
   if err=tx.Commit(ctx);err!=nil{http.Error(w,"cannot commit stream",500);return}
