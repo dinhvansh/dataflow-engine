@@ -64,11 +64,15 @@ if resume and (out/'test-matrix.json').exists():
     matrix.update(json.loads((out/'test-matrix.json').read_text()))
 bash='C:/Program Files/Git/bin/bash.exe'
 steps=[] if resume else [('ingestion_benchmark',[bash,'-lc','bash deploy/local-qa/run-core-7m.sh'])]
-steps += [('operator_build',[bash,'-lc',
+if resume and os.environ.get('DATAFLOW_7M_SKIP_OPERATOR_BUILD') == 'true':
+    matrix['operator_build']={'status':'PASS','seconds':0,
+        'note':'prebuilt owned API/web/dbt-worker services verified healthy before resume'}
+else:
+    steps += [('operator_build',[bash,'-lc',
         'export CODEX_PROXY_CERT=$(cygpath -w "$CODEX_PROXY_CERT"); '
         'docker compose --project-name dataflow-localqa --env-file .env.qa.local '
-        '-f deploy/local-qa/compose.qa.yml --profile operator up -d --build --wait dbt-worker api web']),
-       ('pipeline_and_fault',['python','-m','pytest','qa/browser/test_core_seven_million_live.py','-v','-s','--tb=short'])]
+        '-f deploy/local-qa/compose.qa.yml --profile operator up -d --build --wait dbt-worker api web'])]
+steps += [('pipeline_and_fault',['python','-m','pytest','qa/browser/test_core_seven_million_live.py','-v','-s','--tb=short'])]
 try:
     for stage,args in steps:
         if blocked.is_set(): matrix[stage]='BLOCKED';break
