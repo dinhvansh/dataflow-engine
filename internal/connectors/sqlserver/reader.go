@@ -38,6 +38,7 @@ type Reader struct{
  DB *sql.DB
  Schema,Table string
  BatchSize int
+ Columns []string // nil = legacy SELECT *; selected projections validated from catalog
  Snapshot bool
 }
 func(r *Reader)Read(ctx context.Context,emit func(engine.Batch)error)error{
@@ -54,8 +55,16 @@ func(r *Reader)Read(ctx context.Context,emit func(engine.Batch)error)error{
   if err!=nil{return fmt.Errorf("consistent full refresh requires SQL Server SNAPSHOT isolation: %w",err)}
   defer tx.Rollback()
  }
+ projection:="*"
+ if len(r.Columns)>0{
+  catalog,e:=DiscoverColumns(ctx,r.DB,r.Schema,r.Table)
+  if e!=nil{return fmt.Errorf("full source metadata unavailable: %w",e)}
+  projection,e=BuildRowVersionProjection(catalog,r.Columns)
+  if e!=nil{return fmt.Errorf("full selected fields invalid: %w",e)}
+ }
  var rows *sql.Rows
- if tx!=nil{rows,err=tx.QueryContext(ctx,"SELECT * FROM "+schema+"."+table)} else {rows,err=r.DB.QueryContext(ctx,"SELECT * FROM "+schema+"."+table)}
+ query:="SELECT "+projection+" FROM "+schema+"."+table
+ if tx!=nil{rows,err=tx.QueryContext(ctx,query)} else {rows,err=r.DB.QueryContext(ctx,query)}
  if err!=nil{return err};defer rows.Close()
  cols,err:=rows.Columns();if err!=nil{return err}
  types,err:=rows.ColumnTypes();if err!=nil{return err}

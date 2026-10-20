@@ -3,6 +3,7 @@ import {CheckCircle2,Database,KeyRound,Link2,Plus,RefreshCw,ShieldAlert,TestTube
 import {labRuntimeConnectionsApi,managedApi,type LabRuntimeConnection,type LabRuntimeInput,type ManagedStream} from "../lib/api";
 import {Button} from "./ui/button";
 import {RuntimeSyncSetupWizard} from "./RuntimeSyncSetupWizard";
+import {RuntimeBatchSyncWizard} from "./RuntimeBatchSyncWizard";
 
 // QA-only: authenticated profile operations are handled by the Go backend.
 // Credential values never appear in API GET payloads, URL or localStorage.
@@ -104,6 +105,7 @@ export function RuntimeConnectionManager({token,sessionAdmin=false}:{token:strin
      </div>)}
     </div>
    </div>
+   <RuntimeBatchSyncWizard token={token} adminToken={adminToken} profiles={profiles} onCreated={()=>void reload()}/>
    <RuntimeSyncSetupWizard token={token} adminToken={adminToken} profiles={profiles} onCreated={()=>void reload()}/>
    <div className="rounded-md border p-3 space-y-3">
     <h4 className="font-semibold text-sm flex items-center gap-2"><Link2 size={16}/> Bind verified connections to scratch pipeline</h4>

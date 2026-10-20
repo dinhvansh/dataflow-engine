@@ -222,6 +222,7 @@ func main() {
 	mux.HandleFunc("/api/v1/connections/runtime/bind", svc.runtimeBindAPI)
 	mux.HandleFunc("/api/v1/connections/runtime/discover", svc.runtimeDiscoverAPI)
 	mux.HandleFunc("/api/v1/connections/runtime/streams", svc.runtimeStreamSetupAPI)
+	mux.HandleFunc("/api/v1/connections/runtime/streams/batch", svc.qaBatchSetupAPI)
 	mux.Handle("/api/v1/secure/connections/definitions", secureView)
 	mux.HandleFunc("/api/v1/source/tables", svc.sourceAPI)
 	mux.HandleFunc("/api/v1/source/columns", svc.sourceAPI)

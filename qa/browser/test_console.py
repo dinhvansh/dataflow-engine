@@ -118,7 +118,14 @@ def ui(browser, request):
                         ("PartNum", "nvarchar"), ("TranQty", "decimal")]
                 ]}
             else:
-                result = {"tables": [{"schema": "Erp", "name": "Part"}]}
+                result = {"tables": [{"schema": "Erp", "name": "Part"}, {"schema":"Erp","name":"InvcHead"}]}
+        elif path == "/api/v1/connections/runtime/streams/batch":
+            result = {"count": len(body.get("streams", [])), "streams": [
+                {"stream_id": f"abcdabcd-abcd-4bcd-8bcd-{i+1:012d}",
+                 "source": x.get("source_schema", "")+"."+x.get("source_table", ""),
+                 "mode": x.get("mode", ""),
+                 "destination": "scratch.dfqa_"+x.get("target_table","")+"_123456789abc"}
+                for i,x in enumerate(body.get("streams", []))]}
         elif path == "/api/v1/connections/runtime/streams":
             if method == "POST":
                 result = {"stream_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
@@ -1234,3 +1241,54 @@ def test_qa_sync_setup_uses_verified_profiles_to_discover_save_bind_and_run(ui):
     assert any(c["path"]=="/api/v1/managed/runs" and c["method"]=="POST"
                and c["body"]["stream_id"]=="dddddddd-dddd-4ddd-8ddd-dddddddddddd"
                for c in state["calls"])
+
+
+def test_qa_batch_full_refresh_custom_dest_and_multistream_save(ui):
+    page,state=ui
+    page.get_by_label("Lab API token (shared across modules)").fill(TOKEN)
+    page.get_by_role("button",name="Connections",exact=True).click()
+    panel=page.get_by_label("Live lab connection manager")
+    panel.get_by_label("Live connection admin credential").fill("synthetic-admin-token")
+    panel.get_by_role("button",name="Load connections").click()
+    for driver,name,host,port,db,user in [
+        ("sqlserver","Full source","qa-sql","1433","DataFlowFixtureQA","qa_erp_reader"),
+        ("clickhouse","Full dest","qa-ch","8123","scratch","qa_writer"),
+    ]:
+        panel.get_by_label("Live connection driver").select_option(driver)
+        panel.get_by_label("Live connection name").fill(name)
+        panel.get_by_label("Live connection host").fill(host)
+        panel.get_by_label("Live connection port").fill(port)
+        panel.get_by_label("Live connection database").fill(db)
+        panel.get_by_label("Live connection username").fill(user)
+        panel.get_by_label("Live connection password").fill("synthetic-qa-secret")
+        panel.get_by_role("button",name="Save encrypted draft").click()
+    buttons=panel.get_by_role("button",name="Test real connection")
+    buttons.nth(0).click()
+    buttons.nth(1).click()
+    wizard=panel.get_by_label("Batch sync setup wizard")
+    wizard.get_by_label("Batch source connection").select_option("b0000000-0000-4000-8000-000000000001")
+    wizard.get_by_label("Batch target connection").select_option("b0000000-0000-4000-8000-000000000002")
+    wizard.get_by_role("button",name="Discover").click()
+    wizard.get_by_label("Batch source table").select_option("Part")
+    wizard.get_by_role("button",name="Columns").click()
+    wizard.get_by_label("Batch sync mode").select_option("full_refresh")
+    wizard.get_by_label("Batch target alias").fill("full_parts")
+    wizard.get_by_label("Batch column TranQty").uncheck()
+    wizard.get_by_role("button",name="Add configured table to batch").click()
+    wizard.get_by_label("Batch source table").select_option("InvcHead")
+    wizard.get_by_role("button",name="Columns").click()
+    wizard.get_by_label("Batch sync mode").select_option("incremental_rowversion")
+    wizard.get_by_label("Batch target alias").fill("invoice_delta")
+    wizard.get_by_role("button",name="Add configured table to batch").click()
+    wizard.get_by_role("button",name="Save & Bind 2 streams").click()
+    saved=[c for c in state["calls"] if c["path"]=="/api/v1/connections/runtime/streams/batch"]
+    assert len(saved)==1
+    data=saved[0]["body"]
+    assert len(data["streams"])==2
+    assert data["streams"][0]["mode"]=="full_refresh"
+    assert data["streams"][0]["target_table"]=="full_parts"
+    assert data["streams"][1]["mode"]=="incremental_rowversion"
+    assert data["streams"][1]["target_table"]=="invoice_delta"
+    assert "TranQty" not in data["streams"][0]["selected_columns"]
+    wizard.get_by_role("button",name="Run",exact=True).first.click()
+    assert any(c["path"]=="/api/v1/managed/runs" and c["method"]=="POST" for c in state["calls"])

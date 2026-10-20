@@ -18,6 +18,7 @@ import (
  "time"
 
  "github.com/jackc/pgx/v5/pgxpool"
+ "github.com/dinhvansh/dataflow-engine/internal/safetable"
 )
 
 // An independently verified disposable owner/CI Docker stack uses dataflow_qa,
@@ -88,6 +89,8 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
  if _,e=svc.pg.Exec(ctx,string(raw));e!=nil{t.Fatalf("isolated migration unavailable: %v",e)}
  var createdIDs []string
  var createdStreamID string
+ var batchIDs []string
+ var batchTables []string
  defer func(){
   x,stop:=context.WithTimeout(context.Background(),15*time.Second);defer stop()
   if createdStreamID!=""{
@@ -95,7 +98,15 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
    _,_=svc.pg.Exec(x,`DELETE FROM sync_checkpoints WHERE stream_id=$1::uuid`,createdStreamID)
    _,_=svc.pg.Exec(x,`DELETE FROM sync_streams WHERE id=$1::uuid`,createdStreamID)
   }
-  for _,id:=range createdIDs{
+  for _,id:=range batchIDs{
+    _,_=svc.pg.Exec(x,"DELETE FROM managed_runs WHERE stream_id=$1::uuid",id)
+    _,_=svc.pg.Exec(x,"DELETE FROM connection_runtime_bindings WHERE stream_id=$1::uuid",id)
+    _,_=svc.pg.Exec(x,"DELETE FROM sync_checkpoints WHERE stream_id=$1::uuid",id)
+    _,_=svc.pg.Exec(x,"DELETE FROM sync_streams WHERE id=$1::uuid",id)
+   }
+   owned:=safetable.Client{Endpoint:svc.chURL,User:os.Getenv("DATAFLOW_INTEGRATION_CH_USER"),Password:os.Getenv("DATAFLOW_INTEGRATION_CH_PASSWORD")}
+   for _,table:=range batchTables{if strings.HasPrefix(table,"dfqa_"){_,_=owned.Query(x,"DROP TABLE IF EXISTS scratch.`"+table+"`")}}
+   for _,id:=range createdIDs{
    _,_=svc.pg.Exec(x,`DELETE FROM connection_runtime_bindings WHERE source_profile_id=$1::uuid OR target_profile_id=$1::uuid`,id)
    _,_=svc.pg.Exec(x,`DELETE FROM connection_runtime_profiles WHERE id=$1::uuid`,id)
   }
@@ -114,6 +125,7 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
   case "/api/v1/connections/runtime/bind":svc.runtimeBindAPI(rec,req)
   case "/api/v1/connections/runtime/discover":svc.runtimeDiscoverAPI(rec,req)
   case "/api/v1/connections/runtime/streams":svc.runtimeStreamSetupAPI(rec,req)
+  case "/api/v1/connections/runtime/streams/batch":svc.qaBatchSetupAPI(rec,req)
   default:t.Fatal("unexpected test path")
   }
   var result map[string]any
@@ -176,4 +188,41 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
  if !checkLabSQLSource(ctx,db)||endpoint!=svc.chURL||user!=chUser||pass!=chPass{
   t.Fatal("stream-bound runtime differs from verified QA resources")
  }
+ // Two source tables, two independent QA destinations, modes saved in one PG transaction.
+ batch:=qaStreamBatchInput{SourceConnectionID:sourceID,TargetConnectionID:targetID,
+  Streams:[]labStreamInput{
+   {SourceSchema:"Erp",SourceTable:"Part",TargetDatabase:"scratch",TargetTable:"partsnapshot",Mode:"full_refresh",
+    SelectedColumns:[]string{"SysRowID","SysRevID","PartNum"},BatchSize:100,Workers:2,QueueCapacity:2},
+   {SourceSchema:"Erp",SourceTable:"InvcHead",TargetDatabase:"scratch",TargetTable:"invoiceincremental",
+    Mode:"incremental_rowversion",SelectedColumns:[]string{"SysRowID","SysRevID","InvoiceNum"},BatchSize:100,Workers:2,QueueCapacity:2},
+ }}
+ bad:=batch;bad.Streams=[]labStreamInput{batch.Streams[0],batch.Streams[0]}
+ status,_,_=do("POST","/api/v1/connections/runtime/streams/batch",bad)
+ if status!=422{t.Fatalf("duplicate batch allowed: %d",status)}
+ status,created,_:=do("POST","/api/v1/connections/runtime/streams/batch",batch)
+ if status!=201||created["count"]!=float64(2){t.Fatalf("batch config failed: %d %v",status,created)}
+ items,ok:=created["streams"].([]any);if !ok||len(items)!=2{t.Fatalf("missing batch streams %v",created)}
+ cl:=safetable.Client{Endpoint:svc.chURL,User:chUser,Password:chPass}
+ for i,record:=range items{
+  row:=record.(map[string]any)
+  id,_:=row["stream_id"].(string);dest,_:=row["destination"].(string)
+  if !validUUID.MatchString(id)||!strings.HasPrefix(dest,"scratch.dfqa_"){t.Fatalf("unexpected isolated target %v",row)}
+  batchIDs=append(batchIDs,id);batchTables=append(batchTables,strings.TrimPrefix(dest,"scratch."))
+  var mode string
+  if e=svc.pg.QueryRow(ctx,"SELECT sync_mode FROM sync_streams WHERE id=$1::uuid",id).Scan(&mode);e!=nil||mode!=batch.Streams[i].Mode{t.Fatalf("mode %q err=%v",mode,e)}
+  repetitions:=1;if i==0{repetitions=2}
+  for n:=0;n<repetitions;n++{
+   var runID string
+   if e=svc.pg.QueryRow(ctx,"INSERT INTO managed_runs(stream_id,status) VALUES($1::uuid,'queued') RETURNING id::text",id).Scan(&runID);e!=nil{t.Fatal(e)}
+   claim,e:=svc.claimManagedRun(ctx,runID);if e!=nil||claim.StreamID!=id{t.Fatalf("claim %s err=%v",claim.StreamID,e)}
+   svc.runClaimedManaged(ctx,claim)
+   var state string;var count int
+   if e=svc.pg.QueryRow(ctx,"SELECT status,rows_written FROM managed_runs WHERE id=$1::uuid",runID).Scan(&state,&count);e!=nil||state!="succeeded"{t.Fatalf("sync failed mode=%s state=%s count=%d err=%v",mode,state,count,e)}
+   want:=200;if i==1{want=100}
+   if count!=want{t.Fatalf("wrong rows got %d want %d",count,want)}
+   physical,e:=cl.Query(ctx,"SELECT count() FROM "+dest)
+   if e!=nil||strings.TrimSpace(physical)!=strconv.Itoa(want){t.Fatalf("target %s count %q err=%v",dest,physical,e)}
+  }
+ }
+
 }

@@ -252,12 +252,17 @@ func(s *server)runClaimedManaged(parent context.Context,c managedClaim){
  defer func(){cancel();<-done}()
  stats:=engine.Stats{}
  var cfg managedStream
+ var syncMode string
  err:=s.pg.QueryRow(ctx,`SELECT source_schema,source_table,target_database,target_table,
-    batch_size,workers,queue_capacity,selected_columns FROM sync_streams WHERE id=$1::uuid`,
+    batch_size,workers,queue_capacity,selected_columns,sync_mode FROM sync_streams WHERE id=$1::uuid`,
  c.StreamID).Scan(&cfg.SourceSchema,&cfg.SourceTable,&cfg.TargetDatabase,&cfg.TargetTable,
- &cfg.BatchSize,&cfg.Workers,&cfg.QueueCapacity,&cfg.SelectedColumns)
- if err==nil&&(cfg.TargetDatabase!=scratchDatabase()||cfg.TargetTable!="dataflow_raw_events"){
-  err=errors.New("managed destination must be isolated scratch raw events")
+ &cfg.BatchSize,&cfg.Workers,&cfg.QueueCapacity,&cfg.SelectedColumns,&syncMode)
+ if err==nil&&(
+    cfg.TargetDatabase!=scratchDatabase()||
+    (cfg.TargetTable!="dataflow_raw_events"&&!clickhouse.ValidQARawTarget(cfg.TargetDatabase,cfg.TargetTable))||
+    (syncMode!="incremental_rowversion"&&syncMode!="full_refresh")||
+    (syncMode=="full_refresh"&&(!clickhouse.ValidQARawTarget(cfg.TargetDatabase,cfg.TargetTable)||len(cfg.SelectedColumns)<2))){
+  err=errors.New("managed mode/destination is not an approved isolated QA stream")
  }
  var managedClient *http.Client
  if err==nil{managedClient,err=managedWriteHTTPClient()}
@@ -266,26 +271,60 @@ func(s *server)runClaimedManaged(parent context.Context,c managedClaim){
  if err==nil{activeDB,activeURL,activeUser,activePass,closeDynamic,err=s.runtimeForManagedStream(ctx,c.StreamID)}
  defer closeDynamic()
  if err==nil{
-  reader:=&sqlserver.RowVersionReader{DB:activeDB,Schema:cfg.SourceSchema,Table:cfg.SourceTable,
-   BatchSize:cfg.BatchSize,Columns:cfg.SelectedColumns,Lower:c.Lower}
   dest:=&clickhouse.Writer{Endpoint:activeURL,Database:cfg.TargetDatabase,Table:cfg.TargetTable,
    Username:activeUser,Password:activePass,Client:managedClient}
-  writer:=&clickhouse.EventWriter{Destination:dest,StreamID:c.StreamID,RunID:c.OwnerID}
-  stats,err=engine.Run(ctx,engine.Config{Workers:cfg.Workers,QueueCapacity:cfg.QueueCapacity},reader,writer)
-  if err==nil{err=ctx.Err()}
-  if err==nil{
-   // _run_id is the unique attempt owner, not the logical run UUID.
-   // Old partial attempts cannot inflate this attempt's row count.
-   err=verifyManagedAttempt(ctx,dest,c.OwnerID,stats.Rows)
+  // Each user-mapped scratch table is isolated by an opaque generated suffix.
+  // The shared legacy raw table is NEVER replaced by a Full Refresh.
+  if clickhouse.ValidQARawTarget(cfg.TargetDatabase,cfg.TargetTable){
+   err=dest.EnsureQARawTarget(ctx)
+  }
+  var rd engine.Reader
+  var next= c.Lower
+  var stage *clickhouse.Staging
+  writeDest:=dest
+  if err==nil&&syncMode=="full_refresh"{
+   stage,err=dest.PrepareStage(ctx,c.OwnerID)
    if err==nil{
-    finishCtx,stop:=context.WithTimeout(ctx,20*time.Second)
-    err=s.finishManagedSuccess(finishCtx,c,reader.Upper,stats)
-    stop()
-    if err==nil{return}
-    // An ambiguous PG commit may have succeeded; don't mark it failed.
-    log.Printf("managed %s checkpoint/terminal commit uncertain: %v",c.RunID,err)
+    writeDest=stage.Writer
+    rd=&sqlserver.Reader{DB:activeDB,Schema:cfg.SourceSchema,Table:cfg.SourceTable,
+     BatchSize:cfg.BatchSize,Columns:cfg.SelectedColumns,Snapshot:true}
+   }
+  }else if err==nil{
+   reader:=&sqlserver.RowVersionReader{DB:activeDB,Schema:cfg.SourceSchema,Table:cfg.SourceTable,
+    BatchSize:cfg.BatchSize,Columns:cfg.SelectedColumns,Lower:c.Lower}
+   rd=reader
+   // The upper boundary is captured inside Read; keep reader to obtain it.
+   defer func(){_ = reader}()
+   if err==nil{
+    writer:=&clickhouse.EventWriter{Destination:writeDest,StreamID:c.StreamID,RunID:c.OwnerID}
+    stats,err=engine.Run(ctx,engine.Config{Workers:cfg.Workers,QueueCapacity:cfg.QueueCapacity},reader,writer)
+    if err==nil{next=reader.Upper}
+   }
+  }
+  if err==nil&&syncMode=="full_refresh"{
+   writer:=&clickhouse.EventWriter{Destination:writeDest,StreamID:c.StreamID,RunID:c.OwnerID}
+   stats,err=engine.Run(ctx,engine.Config{Workers:cfg.Workers,QueueCapacity:cfg.QueueCapacity},rd,writer)
+  }
+  if err==nil{err=ctx.Err()}
+  if err==nil{err=verifyManagedAttempt(ctx,writeDest,c.OwnerID,stats.Rows)}
+  if err==nil&&stage!=nil{err=dest.PublishStage(ctx,stage)}
+  if err==nil{
+   finishCtx,stop:=context.WithTimeout(ctx,20*time.Second)
+   err=s.finishManagedSuccess(finishCtx,c,next,stats)
+   stop()
+   if err==nil{
+    if stage!=nil&&stage.Published{
+     cleanupCtx,cleanupStop:=context.WithTimeout(context.Background(),25*time.Second)
+     if e:=dest.DropStage(cleanupCtx,stage);e!=nil{
+      log.Printf("managed %s old QA snapshot stage cleanup pending: %v",c.RunID,e)
+     }
+     cleanupStop()
+    }
     return
    }
+   // Publish may already have happened; retained stage permits manual recovery.
+   log.Printf("managed %s finish after destination verification uncertain: %v",c.RunID,err)
+   return
   }
  }
  if err==nil{return}
