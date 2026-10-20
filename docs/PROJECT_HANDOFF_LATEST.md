@@ -1,5 +1,13 @@
 # DataFlow Engine — Latest Chat Handoff
 
+## CORE-RUN-7 owner QA measured PASS — 2026-10-20
+
+- On the owner's disposable Windows QA machine, PR #131's corrected SQL Server reader and indexed fixture (tested SHA `08d23fbb2e0940d3bef9638a9fe9fe25ce59ae90`, merged main `063ad28a163a5489c61bbe3bebfda884822a3880`) ingested exactly 7,000,000 `DataFlowFixtureQA.Erp.PartTranScale7M` rows to ClickHouse `scratch` through the managed Go queue and PostgreSQL checkpoint. SQL login `qa_erp_reader` was verified SELECT-only; no ERP endpoint was used.
+- Measured full sync: 110.795 s, 63,179.80 rows/s, 700 batches. Physical target count matched source at 7,000,000 before the test's automatic scratch cleanup. Incremental replay: 0 rows written, 1.579 s, checkpoint generation 2, original target count unchanged. Entire Go test: 177.20 s PASS.
+- Owner explicitly allowed a 2 GiB C: minimum for this benchmark. Workspace, Docker Desktop disk, Go caches, temp and evidence were on E:. Independent C: watchdog was active; sampled C: minimum remained 11.65 GiB, E: minimum 2311.29 GiB. Labeled `dataflow-localqa` containers/network/volumes only. This is owner QA acceptance under that disk exception, not production certification.
+- Sanitized local evidence: `qa-results/core-run7-20261020T013622Z/` (`REPORT.md`, `benchmark-result.json`, `seed_result.log`, `actual_benchmark.log`, `docker_stats.csv`, `host_disk.tsv`). PR #131 exact-head CI jobs all PASS. Post-merge main `063ad28` CI [39354817402](https://github.com/dinhvansh/dataflow-engine/actions/runs/39354817402), SQL read-only [39354817389](https://github.com/dinhvansh/dataflow-engine/actions/runs/39354817389), and QA contract [39354817436](https://github.com/dinhvansh/dataflow-engine/actions/runs/39354817436) PASS.
+- This PASS covers the specified 7m initial ingestion and zero-row replay. Full 7m dbt/DQ materialization, 7m crash injection/fencing and publish/rollback remain NOT_RUN and require separate gates. Earlier BLOCKED attempts in this handoff are historical, superseded for the ingestion/replay gate only.
+
 **Snapshot:** 2026-10-19 · `main@f90f7afbc66c9a22515b8722a1bb3ad96ad3c85f` after merged #121, **7/7 exact-head hosted Actions PASS** (Core real operator E2E, worker SIGKILL, API/network fault, Go/Web, SQL Server read-only and QA contract). The one-shot owner-local QA runner is **READY but has NEVER been executed on the owner's machine**. CORE-RUN-7 7m deferred/unmeasured; parallel/IF-ELSE and production security OPEN/NO-GO. Recheck live GitHub main/PR/Actions before any changes.
 
 ## OWNER-LOCAL ONE-SHOT READY — PR #121 QA hardening merged (2026-10-19)

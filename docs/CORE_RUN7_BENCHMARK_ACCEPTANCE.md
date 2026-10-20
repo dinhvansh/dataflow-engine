@@ -1,5 +1,11 @@
 # CORE-RUN-7 — real 7,000,000-row performance / incremental replay acceptance
 
+## Owner QA result — 2026-10-20
+
+The owner-authorized Windows QA exception permits a **2 GiB C: floor** for this run when the Docker virtual disk, workspace, Go caches, temporary files and evidence are on E:, the labeled disposable services are verified, and a C: watchdog stops only those QA containers if the floor is reached. The normal 16 GiB workspace/Docker guard remains the default. Invoke the exception only with `DATAFLOW_QA_MIN_FREE_BYTES=2147483648 DATAFLOW_QA_ALLOW_LOW_DISK=YES_I_ACCEPT_NONCERTIFYING_LOW_DISK` alongside the 7m seed opt-in. This is a hardware-specific QA exception, not production sizing.
+
+The corrected reader/fixture from PR #131 was measured on the owner's disposable QA machine: 7,000,000 rows physically counted in ClickHouse in 110.795 s (63,179.80 rows/s), 0 replay writes in 1.579 s, checkpoint generation 2 and original 7m rows unchanged. Minimum sampled C: free was 11.65 GiB, E: free 2311.29 GiB. Local sanitized evidence: `qa-results/core-run7-20261020T013622Z/` (report, benchmark result, seed/test logs, Docker CPU/RAM/I/O and disk samples). This is **PASS for this document's ingestion/replay gate under the owner exception**. The separate 7m dbt/DQ/fault/publish work and production certification remain open.
+
 **State after CORE-RUN-6B hosted acceptance #107: executable benchmark, owner-machine execution NOT YET evidenced.** The prior 7m SQL fixture seeder and Go real managed-ingestion benchmark have been hardened to require **two verified SQL Server→ClickHouse+PostgreSQL runs**: initial 7,000,000 source rows and a second incremental run with 0 new rows, 0 duplicate rows and checkpoint generation 2. A skipped test or green PR CI does not mean the 7m performance gate passed.
 
 ## Executable opt-in on OWNED disposable QA machine
