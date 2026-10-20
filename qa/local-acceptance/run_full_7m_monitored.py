@@ -23,7 +23,8 @@ assert subprocess.check_output(['docker','context','show'],text=True).strip() ==
 assert shutil.disk_usage('E:/').free >= 16*1024**3
 assert shutil.disk_usage('C:/').free > 2.2*1024**3
 out = Path(os.environ['DATAFLOW_7M_EVIDENCE'])
-out.mkdir(parents=True,exist_ok=False)
+resume = os.environ.get('DATAFLOW_7M_RESUME_PIPELINE') == 'true'
+out.mkdir(parents=True,exist_ok=resume)
 secret_values = [v for k,v in os.environ.items() if v and any(s in k for s in ('PASSWORD','TOKEN','KEY_B64','DSN'))]
 def safe(s):
     for value in secret_values:
@@ -39,7 +40,7 @@ sha=command(['git','rev-parse','HEAD'])
 stop=threading.Event()
 blocked=threading.Event()
 def monitor():
-    with (out/'resources.jsonl').open('w') as log:
+    with (out/'resources.jsonl').open('a' if resume else 'w') as log:
         while not stop.is_set():
             try:
                 cfree=shutil.disk_usage('C:/').free
@@ -59,12 +60,13 @@ def monitor():
             stop.wait(10)
 thread=threading.Thread(target=monitor,daemon=True);thread.start()
 matrix={stage:'NOT_RUN' for stage in ('ingestion_benchmark','operator_build','pipeline_and_fault')}
+if resume and (out/'test-matrix.json').exists():
+    matrix.update(json.loads((out/'test-matrix.json').read_text()))
 bash='C:/Program Files/Git/bin/bash.exe'
-steps=[('ingestion_benchmark',[bash,'-lc','bash deploy/local-qa/run-core-7m.sh']),
-       ('operator_build',[bash,'-lc',
-        'qa_ca=$(mktemp deploy/local-qa/.qa-build-ca.XXXXXXXX); trap \'rm -f "$qa_ca"\' EXIT; '
-        'cp "$CODEX_PROXY_CERT" "$qa_ca"; export CODEX_PROXY_CERT="$qa_ca"; '
-        'cd ../.. && docker compose --project-name dataflow-localqa --env-file .env.qa.local '
+steps=[] if resume else [('ingestion_benchmark',[bash,'-lc','bash deploy/local-qa/run-core-7m.sh'])]
+steps += [('operator_build',[bash,'-lc',
+        'export CODEX_PROXY_CERT=$(cygpath -w "$CODEX_PROXY_CERT"); '
+        'docker compose --project-name dataflow-localqa --env-file .env.qa.local '
         '-f deploy/local-qa/compose.qa.yml --profile operator up -d --build --wait dbt-worker api web']),
        ('pipeline_and_fault',['python','-m','pytest','qa/browser/test_core_seven_million_live.py','-v','-s','--tb=short'])]
 try:
