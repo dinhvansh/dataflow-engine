@@ -241,7 +241,7 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
    physical,e:=cl.Query(ctx,"SELECT count() FROM "+dest)
    if e!=nil||strings.TrimSpace(physical)!=strconv.Itoa(want){t.Fatalf("target %s count %q err=%v",dest,physical,e)}
    if i==2{
-    actual,readErr:=cl.Query(ctx,"SELECT TotalAmount FROM "+dest+" FINAL WHERE OrderID=1001 LIMIT 1")
+    actual,readErr:=cl.Query(ctx,"SELECT toFloat64(TotalAmount) FROM "+dest+" FINAL WHERE OrderID=1001 LIMIT 1")
     if readErr!=nil||strings.TrimSpace(actual)!="12.5"{t.Fatalf("typed mapping not visible: %q %v",actual,readErr)}
    }
    if i==2{
