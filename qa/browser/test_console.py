@@ -1128,6 +1128,12 @@ def test_ui_local_session_login_roles_and_logout(ui):
         elif method == "POST":
             data = json.loads(route.request.post_data or "{}")
             role = data.get("username")
+            if (role, data.get("password")) not in {
+                ("operator", "synthetic-operator-password"),
+                ("admin", "synthetic-admin-password"),
+            }:
+                route.fulfill(status=401, body="invalid credentials")
+                return
             signed["role"] = role
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps({"authenticated": True, "role": role}))
@@ -1139,8 +1145,15 @@ def test_ui_local_session_login_roles_and_logout(ui):
     page.reload(wait_until="domcontentloaded")
     expect(page.get_by_label("DataFlow sign in")).to_be_visible()
     expect(page.get_by_label("Lab API token (shared across modules)")).to_have_count(0)
+    expect(page.get_by_label("Account")).to_have_count(0)
 
-    page.get_by_label("Account").select_option("operator")
+    page.get_by_label("Username").fill("admin")
+    page.get_by_label("Sign in password").fill("incorrect-password")
+    page.get_by_role("button", name="Sign in", exact=True).click()
+    expect(page.get_by_label("DataFlow sign in")).to_be_visible()
+    expect(page.get_by_role("alert")).to_contain_text("Incorrect login")
+
+    page.get_by_label("Username").fill("operator")
     page.get_by_label("Sign in password").fill("synthetic-operator-password")
     page.get_by_role("button", name="Sign in", exact=True).click()
     page.get_by_role("button", name="Connections", exact=True).click()
@@ -1148,7 +1161,7 @@ def test_ui_local_session_login_roles_and_logout(ui):
     page.get_by_role("button", name="Sign out").click()
     expect(page.get_by_label("DataFlow sign in")).to_be_visible()
 
-    page.get_by_label("Account").select_option("admin")
+    page.get_by_label("Username").fill("admin")
     page.get_by_label("Sign in password").fill("synthetic-admin-password")
     page.get_by_role("button", name="Sign in", exact=True).click()
     page.get_by_role("button", name="Connections", exact=True).click()
