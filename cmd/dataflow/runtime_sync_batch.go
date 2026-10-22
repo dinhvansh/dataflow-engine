@@ -38,21 +38,37 @@ func safeQADestination(alias,id string)(string,error){
  if !clickhouse.ValidQARawTarget("scratch",name){return "",errors.New("unsafe QA table name")}
  return name,nil
 }
+// normalizeBatchIdentity preserves the legacy default but permits a full
+// snapshot without a rowversion. Incremental needs an actual rowversion.
+func normalizeBatchIdentity(in labStreamInput)labStreamInput{
+ if in.SourceKeyColumn==""{in.SourceKeyColumn="SysRowID"}
+ if in.SourceCursorColumn==""&&in.SourceKeyColumn=="SysRowID"{in.SourceCursorColumn="SysRevID"}
+ return in
+}
 func validBatchStream(in labStreamInput)bool{
- return (in.Mode=="incremental_rowversion"||in.Mode=="full_refresh")&&
+ in=normalizeBatchIdentity(in)
+ if in.SourceKeyColumn==""||len(in.SourceKeyColumn)>128||len(in.SourceCursorColumn)>128{return false}
+ if (in.Mode=="incremental_rowversion"||in.Mode=="full_then_incremental")&&in.SourceCursorColumn==""{return false}
+ chosen:=make(map[string]bool)
+ for _,x:=range in.SelectedColumns{chosen[x]=true}
+ if !chosen[in.SourceKeyColumn]|| (in.SourceCursorColumn!=""&&!chosen[in.SourceCursorColumn]){return false}
+ return (in.Mode=="incremental_rowversion"||in.Mode=="full_refresh"||in.Mode=="full_then_incremental")&&
   in.TargetDatabase=="scratch"&&qaAlias.MatchString(in.TargetTable)&&
   len(in.SourceSchema)>0&&len(in.SourceTable)>0&&
   in.BatchSize>=100&&in.BatchSize<=100000&&in.Workers>=1&&in.Workers<=32&&
-  in.QueueCapacity>=1&&in.QueueCapacity<=100&&len(in.SelectedColumns)>=2&&len(in.SelectedColumns)<=256
+  in.QueueCapacity>=1&&in.QueueCapacity<=100&&len(in.SelectedColumns)>=1&&len(in.SelectedColumns)<=256
 }
 func verifyQASourceTable(ctx context.Context,db *sql.DB,item labStreamInput)error{
  // Identifier syntax must be checked before passing through SQL Server
  // catalog validation; no arbitrary or qualified SQL is accepted.
  cols,e:=sqlserver.DiscoverColumns(ctx,db,item.SourceSchema,item.SourceTable)
  if e!=nil||len(cols)==0{return errors.New("table metadata unavailable")}
- if _,e=sqlserver.BuildRowVersionProjection(cols,item.SelectedColumns);e!=nil{return errors.New("invalid key/cursor or selected columns")}
- ok,e:=sqlserver.HasUniqueSysRowID(ctx,db,item.SourceSchema,item.SourceTable)
- if e!=nil||!ok{return errors.New("SysRowID requires a single-column unique index")}
+ item=normalizeBatchIdentity(item)
+ if _,e=sqlserver.BuildMappedProjection(cols,item.SelectedColumns,item.SourceKeyColumn,item.SourceCursorColumn);e!=nil{
+  return fmt.Errorf("invalid key/cursor or selected columns: %w",e)
+ }
+ ok,e:=sqlserver.HasUniqueSourceKey(ctx,db,item.SourceSchema,item.SourceTable,item.SourceKeyColumn)
+ if e!=nil||!ok{return errors.New("source key requires a non-null single-column unique index")}
  var read,insert,update,del,alter sql.NullInt64
  object:=item.SourceSchema+"."+item.SourceTable
  e=db.QueryRowContext(ctx,`SELECT
@@ -124,7 +140,8 @@ func(s *server)qaBatchSetupAPI(w http.ResponseWriter,r *http.Request){
   Destination string `json:"destination"`
  }
  created:=make([]result,0,len(input.Streams))
- for _,item:=range input.Streams{
+ for _,original:=range input.Streams{
+  item:=normalizeBatchIdentity(original)
   if !validBatchStream(item){http.Error(w,"invalid sync mode, target alias, columns or performance bounds",422);return}
   key:=item.SourceSchema+"."+item.SourceTable
   if seen[key]{http.Error(w,"duplicate table in batch",422);return}
@@ -138,10 +155,11 @@ func(s *server)qaBatchSetupAPI(w http.ResponseWriter,r *http.Request){
   // Entire batch is one PostgreSQL transaction. A single bad item rolls it
   // all back. Physical destination tables are created by the worker ON RUN.
   _,e=tx.Exec(ctx,`INSERT INTO sync_streams(id,source_schema,source_table,target_database,
-  target_table,batch_size,workers,queue_capacity,selected_columns,sync_mode)
-  VALUES($1::uuid,$2,$3,'scratch',$4,$5,$6,$7,$8,$9)`,
+  target_table,batch_size,workers,queue_capacity,selected_columns,sync_mode,
+  source_key_column,source_cursor_column)
+  VALUES($1::uuid,$2,$3,'scratch',$4,$5,$6,$7,$8,$9,$10,$11)`,
   streamID,item.SourceSchema,item.SourceTable,dest,item.BatchSize,item.Workers,
-  item.QueueCapacity,item.SelectedColumns,item.Mode)
+  item.QueueCapacity,item.SelectedColumns,item.Mode,item.SourceKeyColumn,item.SourceCursorColumn)
   if e!=nil{http.Error(w,"stream already exists or config rejected",409);return}
   if _,e=tx.Exec(ctx,`INSERT INTO sync_checkpoints(stream_id) VALUES($1::uuid)`,streamID);e!=nil{
    http.Error(w,"checkpoint unavailable",503);return
