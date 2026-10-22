@@ -3,6 +3,7 @@ package main
 import (
  "context"
  "database/sql/driver"
+ "encoding/json"
  "errors"
  "fmt"
  "io"
@@ -261,16 +262,28 @@ func(s *server)runClaimedManaged(parent context.Context,c managedClaim){
  defer func(){cancel();<-done}()
  stats:=engine.Stats{}
  var cfg managedStream
- var syncMode string
+ var syncMode,destLayout string
+ var mappingBytes []byte
  err:=s.pg.QueryRow(ctx,`SELECT source_schema,source_table,target_database,target_table,
-    batch_size,workers,queue_capacity,selected_columns,sync_mode,source_key_column,source_cursor_column FROM sync_streams WHERE id=$1::uuid`,
+    batch_size,workers,queue_capacity,selected_columns,sync_mode,source_key_column,source_cursor_column,
+    destination_layout,destination_mapping FROM sync_streams WHERE id=$1::uuid`,
  c.StreamID).Scan(&cfg.SourceSchema,&cfg.SourceTable,&cfg.TargetDatabase,&cfg.TargetTable,
- &cfg.BatchSize,&cfg.Workers,&cfg.QueueCapacity,&cfg.SelectedColumns,&syncMode,&cfg.SourceKeyColumn,&cfg.SourceCursorColumn)
+ &cfg.BatchSize,&cfg.Workers,&cfg.QueueCapacity,&cfg.SelectedColumns,&syncMode,&cfg.SourceKeyColumn,&cfg.SourceCursorColumn,&destLayout,&mappingBytes)
+ var typedColumns []clickhouse.TypedColumn
+ if err==nil&&destLayout=="typed"{
+  err=json.Unmarshal(mappingBytes,&typedColumns)
+ }
  if err==nil&&(
-    cfg.TargetDatabase!=scratchDatabase()||
-    (cfg.TargetTable!="dataflow_raw_events"&&!clickhouse.ValidQARawTarget(cfg.TargetDatabase,cfg.TargetTable))||
+    (destLayout!="typed"&&destLayout!="raw_event")||
+    (destLayout=="typed"&&(!approvedTypedDatabase(cfg.TargetDatabase)||
+      !validTypedColumnName(cfg.TargetTable)||cfg.TargetTable=="dataflow_raw_events"||
+      len(typedColumns)==0))||
+    (destLayout=="raw_event"&&(cfg.TargetDatabase!=scratchDatabase()||
+     (cfg.TargetTable!="dataflow_raw_events"&&!clickhouse.ValidQARawTarget(cfg.TargetDatabase,cfg.TargetTable))))||
     (syncMode!="incremental_rowversion"&&syncMode!="full_refresh"&&syncMode!="full_then_incremental")||
-    ((syncMode=="full_refresh"||syncMode=="full_then_incremental")&&(!clickhouse.ValidQARawTarget(cfg.TargetDatabase,cfg.TargetTable)||len(cfg.SelectedColumns)<1))){
+    ((syncMode=="full_refresh"||syncMode=="full_then_incremental")&&
+      (len(cfg.SelectedColumns)<1||(destLayout=="raw_event"&&
+      !clickhouse.ValidQARawTarget(cfg.TargetDatabase,cfg.TargetTable))))){
   err=errors.New("managed mode/destination is not an approved isolated QA stream")
  }
  var managedClient *http.Client
@@ -284,8 +297,19 @@ func(s *server)runClaimedManaged(parent context.Context,c managedClaim){
    Username:activeUser,Password:activePass,Client:managedClient}
   // Each user-mapped scratch table is isolated by an opaque generated suffix.
   // The shared legacy raw table is NEVER replaced by a Full Refresh.
-  if clickhouse.ValidQARawTarget(cfg.TargetDatabase,cfg.TargetTable){
+  if destLayout=="typed"{
+   td:=&clickhouse.TypedDestination{Writer:dest,StreamID:c.StreamID,RunID:c.OwnerID,
+    KeyColumn:cfg.SourceKeyColumn,CursorColumn:cfg.SourceCursorColumn,Columns:typedColumns}
+   err=td.EnsureOwned(ctx)
+  }else if clickhouse.ValidQARawTarget(cfg.TargetDatabase,cfg.TargetTable){
    err=dest.EnsureQARawTarget(ctx)
+  }
+  newEventWriter:=func(w *clickhouse.Writer)engine.Writer{
+   if destLayout=="typed"{
+    return &clickhouse.TypedDestination{Writer:w,StreamID:c.StreamID,RunID:c.OwnerID,
+     KeyColumn:cfg.SourceKeyColumn,CursorColumn:cfg.SourceCursorColumn,Columns:typedColumns}
+   }
+   return &clickhouse.EventWriter{Destination:w,StreamID:c.StreamID,RunID:c.OwnerID}
   }
   var rd engine.Reader
   var next= c.Lower
@@ -308,13 +332,13 @@ func(s *server)runClaimedManaged(parent context.Context,c managedClaim){
    // The upper boundary is captured inside Read; keep reader to obtain it.
    defer func(){_ = reader}()
    if err==nil{
-    writer:=&clickhouse.EventWriter{Destination:writeDest,StreamID:c.StreamID,RunID:c.OwnerID}
+    writer:=newEventWriter(writeDest)
     stats,err=engine.Run(ctx,engine.Config{Workers:cfg.Workers,QueueCapacity:cfg.QueueCapacity},reader,writer)
     if err==nil{next=reader.Upper}
    }
   }
   if err==nil&&(syncMode=="full_refresh"||syncMode=="full_then_incremental"){
-   writer:=&clickhouse.EventWriter{Destination:writeDest,StreamID:c.StreamID,RunID:c.OwnerID}
+   writer:=newEventWriter(writeDest)
    stats,err=engine.Run(ctx,engine.Config{Workers:cfg.Workers,QueueCapacity:cfg.QueueCapacity},rd,writer)
    if err==nil&&syncMode=="full_then_incremental"{next=rd.(*sqlserver.Reader).Boundary}
   }
