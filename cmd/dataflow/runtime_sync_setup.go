@@ -27,6 +27,8 @@ type labStreamInput struct {
  SelectedColumns []string `json:"selected_columns"`
  SourceKeyColumn string `json:"source_key_column,omitempty"`
  SourceCursorColumn string `json:"source_cursor_column,omitempty"`
+ DestinationLayout string `json:"destination_layout,omitempty"`
+ ColumnMappings []typedMappingRequest `json:"column_mappings,omitempty"`
  Mode string `json:"mode"`
  TargetDatabase string `json:"target_database"`
  TargetTable string `json:"target_table"`
