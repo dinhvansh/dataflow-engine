@@ -47,13 +47,20 @@ func normalizeBatchIdentity(in labStreamInput)labStreamInput{
 }
 func validBatchStream(in labStreamInput)bool{
  in=normalizeBatchIdentity(in)
+ layout:=in.DestinationLayout
+ if layout==""{layout="raw_event"}
+ if layout!="raw_event"&&layout!="typed"{return false}
+ if layout=="typed"{
+  if !approvedTypedDatabase(in.TargetDatabase)||!validTypedColumnName(in.TargetTable)||
+   len(in.ColumnMappings)>256||in.TargetTable=="dataflow_raw_events"{return false}
+ }else if in.TargetDatabase!="scratch"||!qaAlias.MatchString(in.TargetTable)||
+  len(in.ColumnMappings)!=0{return false}
  if in.SourceKeyColumn==""||len(in.SourceKeyColumn)>128||len(in.SourceCursorColumn)>128{return false}
  if (in.Mode=="incremental_rowversion"||in.Mode=="full_then_incremental")&&in.SourceCursorColumn==""{return false}
  chosen:=make(map[string]bool)
  for _,x:=range in.SelectedColumns{chosen[x]=true}
  if !chosen[in.SourceKeyColumn]|| (in.SourceCursorColumn!=""&&!chosen[in.SourceCursorColumn]){return false}
  return (in.Mode=="incremental_rowversion"||in.Mode=="full_refresh"||in.Mode=="full_then_incremental")&&
-  in.TargetDatabase=="scratch"&&qaAlias.MatchString(in.TargetTable)&&
   len(in.SourceSchema)>0&&len(in.SourceTable)>0&&
   in.BatchSize>=100&&in.BatchSize<=100000&&in.Workers>=1&&in.Workers<=32&&
   in.QueueCapacity>=1&&in.QueueCapacity<=100&&len(in.SelectedColumns)>=1&&len(in.SelectedColumns)<=256
@@ -117,7 +124,7 @@ func(s *server)qaBatchSetupAPI(w http.ResponseWriter,r *http.Request){
   }
  }
  if source.Kind!="source"||source.Database!="DataFlowFixtureQA"||
-    target.Kind!="destination"||target.Database!="scratch"{
+    target.Kind!="destination"||!approvedTypedDatabase(target.Database){
   http.Error(w,"QA profiles only",403);return
  }
  configured,e:=url.Parse(s.chURL)
@@ -150,16 +157,39 @@ func(s *server)qaBatchSetupAPI(w http.ResponseWriter,r *http.Request){
    http.Error(w,"source table rejected: "+e.Error(),422);return
   }
   streamID:=uuid.NewString()
-  dest,e:=safeQADestination(item.TargetTable,streamID)
-  if e!=nil{http.Error(w,"invalid scratch target",422);return}
+  layout:=item.DestinationLayout
+  if layout==""{layout="raw_event"}
+  dest:=item.TargetTable
+  mappings:=[]clickhouse.TypedColumn{}
+  if layout=="raw_event"{
+   dest,e=safeQADestination(item.TargetTable,streamID)
+   if e!=nil{http.Error(w,"invalid scratch target",422);return}
+  }else{
+   if !approvedTypedDatabase(item.TargetDatabase)||!approvedTypedDatabase(target.Database){
+    http.Error(w,"unapproved target database",403);return
+   }
+   catalog,metaErr:=sqlserver.DiscoverColumns(ctx,sourceDB,item.SourceSchema,item.SourceTable)
+   if metaErr!=nil{http.Error(w,"source metadata unavailable",422);return}
+   mappings,e=resolveTypedMappings(catalog,item.SelectedColumns,item.ColumnMappings,item.SourceKeyColumn)
+   if e!=nil{http.Error(w,"invalid typed mapping: "+e.Error(),422);return}
+   var exists bool
+   // Reject legacy or other streams even if the typed partial unique
+   // index would not cover them.
+   e=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM sync_streams
+      WHERE target_database=$1 AND target_table=$2)`,item.TargetDatabase,dest).Scan(&exists)
+   if e!=nil||exists{http.Error(w,"target already allocated to a stream",409);return}
+  }
+  mappingJSON,e:=json.Marshal(mappings)
+  if e!=nil{http.Error(w,"mapping invalid",422);return}
   // Entire batch is one PostgreSQL transaction. A single bad item rolls it
   // all back. Physical destination tables are created by the worker ON RUN.
   _,e=tx.Exec(ctx,`INSERT INTO sync_streams(id,source_schema,source_table,target_database,
   target_table,batch_size,workers,queue_capacity,selected_columns,sync_mode,
-  source_key_column,source_cursor_column)
-  VALUES($1::uuid,$2,$3,'scratch',$4,$5,$6,$7,$8,$9,$10,$11)`,
-  streamID,item.SourceSchema,item.SourceTable,dest,item.BatchSize,item.Workers,
-  item.QueueCapacity,item.SelectedColumns,item.Mode,item.SourceKeyColumn,item.SourceCursorColumn)
+  source_key_column,source_cursor_column,destination_layout,destination_mapping)
+  VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb)`,
+  streamID,item.SourceSchema,item.SourceTable,item.TargetDatabase,dest,item.BatchSize,item.Workers,
+  item.QueueCapacity,item.SelectedColumns,item.Mode,item.SourceKeyColumn,item.SourceCursorColumn,
+  layout,string(mappingJSON))
   if e!=nil{http.Error(w,"stream already exists or config rejected",409);return}
   if _,e=tx.Exec(ctx,`INSERT INTO sync_checkpoints(stream_id) VALUES($1::uuid)`,streamID);e!=nil{
    http.Error(w,"checkpoint unavailable",503);return
@@ -170,7 +200,7 @@ func(s *server)qaBatchSetupAPI(w http.ResponseWriter,r *http.Request){
    streamID,source.ID,target.ID,source.Revision,target.Revision);e!=nil{
    http.Error(w,"connection binding unavailable",503);return
   }
-  created=append(created,result{StreamID:streamID,Source:key,Mode:item.Mode,Destination:"scratch."+dest})
+  created=append(created,result{StreamID:streamID,Source:key,Mode:item.Mode,Destination:item.TargetDatabase+"."+dest})
  }
  if e=tx.Commit(ctx);e!=nil{http.Error(w,"batch commit failed",503);return}
  jsonResponse(w,201,map[string]any{"streams":created,"count":len(created)})
