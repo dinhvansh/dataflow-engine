@@ -44,7 +44,9 @@ func DependsOn(m Model)string{
  return ""
 }
 func Build(models []Model)(Graph,error){
- var g Graph
+ // Keep the JSON contract stable for empty collections. The React lineage
+ // screen iterates every field and `null` is not a valid graph collection.
+ g:=Graph{Nodes:[]Node{},Edges:[]Edge{},Order:[]string{},Problems:[]Problem{}}
  if len(models)>500{return g,errors.New("too many models for lineage (max 500)")}
  byName:=make(map[string]Model,len(models))
  for _,m:=range models{
