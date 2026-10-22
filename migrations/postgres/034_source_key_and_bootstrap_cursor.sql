@@ -8,8 +8,16 @@ ALTER TABLE sync_streams
 ALTER TABLE sync_streams DROP CONSTRAINT IF EXISTS sync_stream_mode_guard;
 ALTER TABLE sync_streams ADD CONSTRAINT sync_stream_mode_guard
  CHECK (sync_mode IN ('incremental_rowversion','full_refresh','full_then_incremental'));
-ALTER TABLE sync_streams ADD CONSTRAINT sync_source_key_column_guard
- CHECK (length(source_key_column) BETWEEN 1 AND 128);
-ALTER TABLE sync_streams ADD CONSTRAINT sync_source_cursor_column_guard
- CHECK (length(source_cursor_column) <= 128);
+DO $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='sync_streams'::regclass
+  AND conname='sync_source_key_column_guard') THEN
+  ALTER TABLE sync_streams ADD CONSTRAINT sync_source_key_column_guard
+   CHECK (length(source_key_column) BETWEEN 1 AND 128);
+ END IF;
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='sync_streams'::regclass
+  AND conname='sync_source_cursor_column_guard') THEN
+  ALTER TABLE sync_streams ADD CONSTRAINT sync_source_cursor_column_guard
+   CHECK (length(source_cursor_column) <= 128);
+ END IF;
+END $$;
 -- Existing streams preserve exact previous default key/cursor and sync mode.
