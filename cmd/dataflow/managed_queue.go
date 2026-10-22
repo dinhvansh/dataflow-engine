@@ -317,6 +317,11 @@ func(s *server)runClaimedManaged(parent context.Context,c managedClaim){
   writeDest:=dest
   if err==nil&&(syncMode=="full_refresh"||syncMode=="full_then_incremental"){
    stage,err=dest.PrepareStage(ctx,c.OwnerID)
+   if err==nil&&destLayout=="typed"{
+    td:=&clickhouse.TypedDestination{Writer:dest,StreamID:c.StreamID,RunID:c.OwnerID,
+      KeyColumn:cfg.SourceKeyColumn,CursorColumn:cfg.SourceCursorColumn,Columns:typedColumns}
+    err=td.StampStage(ctx,stage)
+   }
    if err==nil{
     writeDest=stage.Writer
     rd=&sqlserver.Reader{DB:activeDB,Schema:cfg.SourceSchema,Table:cfg.SourceTable,
