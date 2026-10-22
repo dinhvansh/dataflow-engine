@@ -201,10 +201,14 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
     SelectedColumns:[]string{"SysRowID","SysRevID","PartNum"},BatchSize:100,Workers:2,QueueCapacity:2},
    {SourceSchema:"Erp",SourceTable:"InvcHead",TargetDatabase:"scratch",TargetTable:"invoiceincremental",
     Mode:"incremental_rowversion",SelectedColumns:[]string{"SysRowID","SysRevID","InvoiceNum"},BatchSize:100,Workers:2,QueueCapacity:2},
-   {SourceSchema:"Erp",SourceTable:"CustomOrders",TargetDatabase:"scratch",TargetTable:"customorders",
+   {SourceSchema:"Erp",SourceTable:"CustomOrders",TargetDatabase:"scratch",TargetTable:"dfqa_typed_orders",
+    DestinationLayout:"typed",
+    ColumnMappings:[]typedMappingRequest{{Source:"OrderID",Target:"OrderID"},
+     {Source:"RowChanged",Target:"RowChanged"},{Source:"Amount",Target:"TotalAmount"}},
     SourceKeyColumn:"OrderID",SourceCursorColumn:"RowChanged",Mode:"full_then_incremental",
     SelectedColumns:[]string{"OrderID","RowChanged","Amount"},BatchSize:100,Workers:2,QueueCapacity:2},
-   {SourceSchema:"Erp",SourceTable:"CustomSnapshot",TargetDatabase:"scratch",TargetTable:"customsnapshot",
+   {SourceSchema:"Erp",SourceTable:"CustomSnapshot",TargetDatabase:"scratch",TargetTable:"dfqa_typed_snapshot",
+    DestinationLayout:"typed",
     SourceKeyColumn:"RecordID",Mode:"full_refresh",
     SelectedColumns:[]string{"RecordID","Description"},BatchSize:100,Workers:2,QueueCapacity:2},
  }}
@@ -236,6 +240,10 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
    if count!=expectedRun{t.Fatalf("wrong rows got %d want %d",count,expectedRun)}
    physical,e:=cl.Query(ctx,"SELECT count() FROM "+dest)
    if e!=nil||strings.TrimSpace(physical)!=strconv.Itoa(want){t.Fatalf("target %s count %q err=%v",dest,physical,e)}
+   if i==2{
+    actual,readErr:=cl.Query(ctx,"SELECT TotalAmount FROM "+dest+" FINAL WHERE OrderID=1001 LIMIT 1")
+    if readErr!=nil||strings.TrimSpace(actual)!="12.5"{t.Fatalf("typed mapping not visible: %q %v",actual,readErr)}
+   }
    if i==2{
     var afterMode string;var cursorBytes []byte
     if e=svc.pg.QueryRow(ctx,`SELECT s.sync_mode,c.lower_cursor
