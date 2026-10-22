@@ -109,6 +109,22 @@ func (d *TypedDestination) EnsureOwned(ctx context.Context)error{
  if err!=nil||actual!=comment{return errors.New("ClickHouse destination ownership/schema fingerprint rejected")}
  return nil
 }
+// StampStage ensures a stage carries the exact ownership fingerprint after
+// EXCHANGE TABLES. CREATE TABLE AS does not guarantee table comments are copied
+// across ClickHouse versions. Only the stage generated for this run may be stamped.
+func (d *TypedDestination) StampStage(ctx context.Context,stage *Staging)error{
+ if err:=d.Validate();err!=nil{return err}
+ expected,err:=stageName(d.Writer.Table,d.RunID)
+ if err!=nil||stage==nil||stage.StageTable!=expected||stage.Writer==nil||
+  stage.Writer.Database!=d.Writer.Database||stage.Writer.Table!=expected{
+  return errors.New("cannot stamp an unrelated ClickHouse stage")
+ }
+ stmt:="ALTER TABLE `"+d.Writer.Database+"`.`"+expected+"` MODIFY COMMENT '"+d.ownerComment()+"'"
+ if err=d.Writer.exec(ctx,stmt);err!=nil{return err}
+ got,err:=d.Writer.typedScalar(ctx,fmt.Sprintf("SELECT comment FROM system.tables WHERE database='%s' AND name='%s' FORMAT TabSeparated",d.Writer.Database,expected))
+ if err!=nil||got!=d.ownerComment(){return errors.New("stage ownership fingerprint could not be verified")}
+ return nil
+}
 func (d *TypedDestination) Write(ctx context.Context,b engine.Batch)error{
  if err:=d.Validate();err!=nil{return err}
  out:=engine.Batch{Sequence:b.Sequence,Rows:make([]map[string]any,0,len(b.Rows))}
