@@ -25,6 +25,9 @@ type managedStream struct {
  Workers int `json:"workers"`
  QueueCapacity int `json:"queue_capacity"`
  SelectedColumns []string `json:"selected_columns,omitempty"` // nil = all catalog columns
+ SourceKeyColumn string `json:"source_key_column,omitempty"`
+ SourceCursorColumn string `json:"source_cursor_column,omitempty"`
+ SyncMode string `json:"sync_mode,omitempty"`
  LowerCursor string `json:"lower_cursor,omitempty"`
 }
 func(s *server) streamAPI(w http.ResponseWriter,r *http.Request){
@@ -32,14 +35,14 @@ func(s *server) streamAPI(w http.ResponseWriter,r *http.Request){
  switch r.Method{
  case http.MethodGet:
   ctx,cancel:=context.WithTimeout(r.Context(),10*time.Second);defer cancel()
-  rows,err:=s.pg.Query(ctx,`SELECT s.id::text,s.source_schema,s.source_table,s.target_database,s.target_table,s.batch_size,s.workers,s.queue_capacity,s.selected_columns,encode(c.lower_cursor,'hex')
+  rows,err:=s.pg.Query(ctx,`SELECT s.id::text,s.source_schema,s.source_table,s.target_database,s.target_table,s.batch_size,s.workers,s.queue_capacity,s.selected_columns,s.source_key_column,s.source_cursor_column,s.sync_mode,encode(c.lower_cursor,'hex')
   FROM sync_streams s JOIN sync_checkpoints c ON c.stream_id=s.id ORDER BY s.created_at DESC LIMIT 100`)
   if err!=nil{http.Error(w,"cannot list streams",500);return}
   defer rows.Close()
   out:=make([]managedStream,0)
   for rows.Next(){
    var item managedStream;var hex string
-   if err=rows.Scan(&item.ID,&item.SourceSchema,&item.SourceTable,&item.TargetDatabase,&item.TargetTable,&item.BatchSize,&item.Workers,&item.QueueCapacity,&item.SelectedColumns,&hex);err!=nil{http.Error(w,"cannot scan streams",500);return}
+   if err=rows.Scan(&item.ID,&item.SourceSchema,&item.SourceTable,&item.TargetDatabase,&item.TargetTable,&item.BatchSize,&item.Workers,&item.QueueCapacity,&item.SelectedColumns,&item.SourceKeyColumn,&item.SourceCursorColumn,&item.SyncMode,&hex);err!=nil{http.Error(w,"cannot scan streams",500);return}
    item.LowerCursor="0x"+hex;out=append(out,item)
   }
   if err=rows.Err();err!=nil{http.Error(w,"cannot fetch streams",500);return}
