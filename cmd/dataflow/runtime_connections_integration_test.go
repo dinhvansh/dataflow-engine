@@ -87,7 +87,7 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
  raw,e:=os.ReadFile(filepath.Join("..","..","migrations","postgres","031_connection_runtime_profiles.sql"))
  if e!=nil{t.Fatal(e)}
  if _,e=svc.pg.Exec(ctx,string(raw));e!=nil{t.Fatalf("isolated migration unavailable: %v",e)}
- for _,name:=range []string{"032_sync_stream_selected_columns.sql","033_qa_stream_modes_destinations.sql","034_source_key_and_bootstrap_cursor.sql"}{
+ for _,name:=range []string{"032_sync_stream_selected_columns.sql","033_qa_stream_modes_destinations.sql","034_source_key_and_bootstrap_cursor.sql","035_typed_destinations.sql"}{
   sqlText,readErr:=os.ReadFile(filepath.Join("..","..","migrations","postgres",name))
   if readErr!=nil{t.Fatal(readErr)}
   if _,e=svc.pg.Exec(ctx,string(sqlText));e!=nil{t.Fatalf("isolated migration %s unavailable: %v",name,e)}
