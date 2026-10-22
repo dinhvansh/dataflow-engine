@@ -7,6 +7,7 @@ import {labQABatchSyncApi,labSyncSetupApi,managedApi,
 
 type Props={token:string;adminToken:string;profiles:LabRuntimeConnection[];onCreated:()=>void};
 const tableAlias=/^[a-z][a-z0-9_]{0,29}$/;
+const targetIdentifier=/^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 function defaultAlias(schema:string,table:string){
  const v=(schema+"_"+table).toLowerCase().replace(/[^a-z0-9_]/g,"_").slice(0,30);
  return /^[a-z]/.test(v)?v:"table_"+v.slice(0,24);
@@ -24,6 +25,9 @@ export function RuntimeBatchSyncWizard({token,adminToken,profiles,onCreated}:Pro
  const requiredCols=[keyColumn,...(cursorColumn?[cursorColumn]:[])];
  const[mode,setMode]=useState<QABatchStream["mode"]>("incremental_rowversion");
  const[alias,setAlias]=useState("part");
+ const[layout,setLayout]=useState<"raw_event"|"typed">("raw_event");
+ const[targetDatabase,setTargetDatabase]=useState("scratch");
+ const[targetNames,setTargetNames]=useState<Record<string,string>>({});
  const[batchSize,setBatchSize]=useState(10000);
  const[workers,setWorkers]=useState(2);
  const[queueSize,setQueueSize]=useState(4);
@@ -33,7 +37,7 @@ export function RuntimeBatchSyncWizard({token,adminToken,profiles,onCreated}:Pro
  const[busy,setBusy]=useState("");
  const[error,setError]=useState("");
  const[notice,setNotice]=useState("");
- const clearInspect=()=>{setTable("");setColumns([]);setSelected([]);setTables([]);setResults([]);setQueue([]);setRuns({});setKeyColumn("SysRowID");setCursorColumn("SysRevID")};
+ const clearInspect=()=>{setTargetNames({});setTable("");setColumns([]);setSelected([]);setTables([]);setResults([]);setQueue([]);setRuns({});setKeyColumn("SysRowID");setCursorColumn("SysRevID")};
  useEffect(()=>{setSourceID("");setTargetID("");setSchema("Erp");clearInspect()},[token,adminToken]);
  const task=async(name:string,action:()=>Promise<void>)=>{
   setBusy(name);setError("");setNotice("");
@@ -50,20 +54,28 @@ export function RuntimeBatchSyncWizard({token,adminToken,profiles,onCreated}:Pro
   setKeyColumn(key.name);setCursorColumn(cursor?.name??"");
   if(!cursor)setMode("full_refresh");
   setColumns(found.columns);setSelected(found.columns.map(c=>c.name));
+  setTargetNames(Object.fromEntries(found.columns.map(c=>[c.name,c.name])));
   setAlias(defaultAlias(schema,table));
  });
  const addToBatch=()=>{
   setError("");setNotice("");
   if(queue.length>=10||!sourceID||!targetID||!table||!columns.length||
    !keyColumn||!requiredCols.every(c=>selected.includes(c))||
-   (mode!=="full_refresh"&&!cursorColumn)||!tableAlias.test(alias)||
+   (mode!=="full_refresh"&&!cursorColumn)||
+   (layout==="raw_event"?!tableAlias.test(alias):
+    !targetIdentifier.test(alias)||!targetIdentifier.test(targetDatabase)||
+    selected.some(s=>!targetIdentifier.test(targetNames[s]??s)))||
    batchSize<100||batchSize>100000||workers<1||workers>32||
    queueSize<1||queueSize>100){setError("Check selections, alias and runtime limits.");return}
   if(queue.some(q=>q.source_schema===schema&&q.source_table===table)){
    setError("This source table is already in the batch.");return
   }
   setQueue(q=>[...q,{source_schema:schema,source_table:table,
-   target_database:"scratch",target_table:alias,
+   target_database:layout==="raw_event"?"scratch":targetDatabase,target_table:alias,
+   destination_layout:layout,
+   column_mappings:layout==="typed"?columns.filter(c=>selected.includes(c.name)).map(c=>({
+    source:c.name,target:targetNames[c.name]??c.name
+   })):undefined,
    selected_columns:columns.filter(c=>selected.includes(c.name)).map(c=>c.name),
    source_key_column:keyColumn,source_cursor_column:cursorColumn,
    mode,batch_size:batchSize,workers,queue_capacity:queueSize}]);
@@ -181,12 +193,37 @@ export function RuntimeBatchSyncWizard({token,adminToken,profiles,onCreated}:Pro
       <option value="full_then_incremental" disabled={!cursorColumn}>Full once → Incremental · same snapshot boundary</option>
      </select>
     </label>
-    <label className="text-xs space-y-1">Destination table alias
-     <input className="field" aria-label="Batch target alias" value={alias} onChange={e=>setAlias(e.target.value)} maxLength={30} placeholder="parttran"/>
+ 
+   </div>
+   <div className="grid gap-2 md:grid-cols-3">
+    <label className="text-xs space-y-1">Destination layout
+     <select className="field" aria-label="Batch destination layout" value={layout}
+       onChange={e=>{setLayout(e.target.value as "raw_event"|"typed");setAlias(defaultAlias(schema,table));}}>
+      <option value="raw_event">QA raw events · generated table</option>
+      <option value="typed">Typed columns · explicit owned table</option>
+     </select>
+    </label>
+    {layout==="typed"&&<label className="text-xs space-y-1">Target database (admin allowlisted)
+     <input className="field" aria-label="Batch target database" value={targetDatabase}
+       maxLength={64} onChange={e=>setTargetDatabase(e.target.value)}/>
+    </label>}
+    <label className="text-xs space-y-1">{layout==="typed"?"Destination table":"Destination table alias"}
+     <input className="field" aria-label="Batch target alias" value={alias}
+       maxLength={layout==="typed"?64:30} onChange={e=>setAlias(e.target.value)}/>
     </label>
    </div>
+   {layout==="typed"&&<div className="space-y-2 border rounded p-3">
+    <p className="font-semibold text-xs">Source → ClickHouse typed column mapping</p>
+    <p className="text-xs muted">Types are inferred and verified by the server. Existing unowned tables cannot be overwritten. For incremental current rows query with FINAL.</p>
+    {columns.filter(c=>selected.includes(c.name)).map(col=><label key={col.name} className="grid grid-cols-2 gap-2 items-center text-xs">
+     <span className="font-mono">{col.name} · {col.sql_type}</span>
+     <input className="field" aria-label={"Target column "+col.name}
+       value={targetNames[col.name]??col.name} maxLength={64}
+       onChange={e=>setTargetNames(prev=>({...prev,[col.name]:e.target.value}))}/>
+    </label>)}
+   </div>}
    <p className="muted text-xs">Custom key must be non-null, single-column UNIQUE; incremental needs a native rowversion. The server verifies both against SQL catalog.</p>
-   <p className="muted text-xs">Physical destination is generated as scratch.dfqa_&lt;alias&gt;_&lt;12-character ID&gt; to avoid overwriting other tables. Full Refresh only replaces this isolated table via staging + EXCHANGE; incremental appends events. Source is SELECT-only.</p>
+   <p className="muted text-xs">Raw-event destinations get private scratch.dfqa_ names; typed destinations use the requested allowlisted database/table and own them with immutable mapping identity. Full Refresh uses staging + EXCHANGE; Incremental uses versioned ReplacingMergeTree (query FINAL for current rows). Source is SELECT-only.</p>
    <div className="grid gap-2 sm:grid-cols-3">
     {([["Batch size",batchSize,setBatchSize,100,100000],["Workers",workers,setWorkers,1,32],["Queue",queueSize,setQueueSize,1,100]] as const).map(([name,value,setter,min,max])=>
      <label key={name} className="text-xs space-y-1">{name}<input className="field" type="number" min={min} max={max} value={value} onChange={e=>setter(Number(e.target.value))}/></label>)}
@@ -196,7 +233,7 @@ export function RuntimeBatchSyncWizard({token,adminToken,profiles,onCreated}:Pro
   {queue.length>0&&<div className="space-y-2">
    <p className="text-xs font-semibold">Draft streams ({queue.length}/10) — no writes yet</p>
    {queue.map((s,i)=><div key={s.source_schema+"."+s.source_table} className="flex items-center justify-between gap-2 border rounded p-2 text-xs">
-    <span>{s.source_schema}.{s.source_table} → {s.target_table} · {s.mode} · {s.selected_columns.length} columns</span>
+    <span>{s.source_schema}.{s.source_table} → {s.target_database}.{s.target_table} ({s.destination_layout??"raw_event"}) · {s.mode} · {s.selected_columns.length} columns</span>
     <Button type="button" size="sm" variant="outline" onClick={()=>setQueue(list=>list.filter((_,j)=>j!==i))}><Trash2 size={13}/>Remove</Button>
    </div>)}
    <Button type="button" disabled={!!busy||!sourceID||!targetID} onClick={save}><Save size={15}/>Save & Bind {queue.length} streams</Button>
