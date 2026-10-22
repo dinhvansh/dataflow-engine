@@ -77,7 +77,7 @@ func (d *TypedDestination) ownerComment()string{
  h:=sha256.Sum256(append([]byte(d.KeyColumn+"|"+d.CursorColumn+"|"),data...))
  return "dataflow-owned:"+d.StreamID+":"+hex.EncodeToString(h[:12])
 }
-func (w *Writer) scalar(ctx context.Context,query string)(string,error){
+func (w *Writer) typedScalar(ctx context.Context,query string)(string,error){
  u,err:=url.Parse(strings.TrimRight(w.Endpoint,"/"));if err!=nil{return "",err}
  q:=u.Query();q.Set("query",query);u.RawQuery=q.Encode()
  req,err:=http.NewRequestWithContext(ctx,http.MethodPost,u.String(),nil);if err!=nil{return "",err}
@@ -96,7 +96,7 @@ func (d *TypedDestination) EnsureOwned(ctx context.Context)error{
  // CREATE IF NOT EXISTS. Unknown existing tables are never adopted.
  comment:=d.ownerComment()
  lookup:=fmt.Sprintf("SELECT comment FROM system.tables WHERE database='%s' AND name='%s' FORMAT TabSeparated",w.Database,w.Table)
- existing,err:=w.scalar(ctx,lookup);if err!=nil{return err}
+ existing,err:=w.typedScalar(ctx,lookup);if err!=nil{return err}
  if existing!=""&&existing!=comment{return errors.New("destination exists but is not owned by this immutable mapping")}
  defs:=make([]string,0,len(d.Columns)+5)
  for _,m:=range d.Columns{defs=append(defs,"`"+m.Target+"` "+m.CHType)}
@@ -105,7 +105,7 @@ func (d *TypedDestination) EnsureOwned(ctx context.Context)error{
  stmt:="CREATE TABLE IF NOT EXISTS `"+w.Database+"`.`"+w.Table+"` ("+
   strings.Join(defs,",")+") ENGINE=ReplacingMergeTree(_df_version) ORDER BY (_df_key) COMMENT '"+comment+"'"
  if err=w.exec(ctx,stmt);err!=nil{return err}
- actual,err:=w.scalar(ctx,lookup)
+ actual,err:=w.typedScalar(ctx,lookup)
  if err!=nil||actual!=comment{return errors.New("ClickHouse destination ownership/schema fingerprint rejected")}
  return nil
 }
