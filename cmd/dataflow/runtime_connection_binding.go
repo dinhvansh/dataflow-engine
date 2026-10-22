@@ -42,7 +42,7 @@ func(s *server)runtimeForManagedStream(ctx context.Context,streamID string)(*sql
  target,targetPass,e:=s.readRuntimeProfile(ctx,targetID)
  if e!=nil{return nil,"","","",keep,errUnsafeLabConnection}
  if source.Driver!="sqlserver"||source.Kind!="source"||source.Database!="DataFlowFixtureQA"||
- target.Driver!="clickhouse"||target.Kind!="destination"||target.Database!="scratch"{
+ target.Driver!="clickhouse"||target.Kind!="destination"||!approvedTypedDatabase(target.Database){
   return nil,"","","",keep,errUnsafeLabConnection
  }
  if source.Revision!=sourceRev||target.Revision!=targetRev||
