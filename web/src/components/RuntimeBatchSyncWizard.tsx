@@ -6,7 +6,6 @@ import {labQABatchSyncApi,labSyncSetupApi,managedApi,
  type QABatchStream,type QABatchResult,type ManagedRun} from "../lib/api";
 
 type Props={token:string;adminToken:string;profiles:LabRuntimeConnection[];onCreated:()=>void};
-const reqCols=["SysRowID","SysRevID"];
 const tableAlias=/^[a-z][a-z0-9_]{0,29}$/;
 function defaultAlias(schema:string,table:string){
  const v=(schema+"_"+table).toLowerCase().replace(/[^a-z0-9_]/g,"_").slice(0,30);
@@ -20,6 +19,9 @@ export function RuntimeBatchSyncWizard({token,adminToken,profiles,onCreated}:Pro
  const[tables,setTables]=useState<TableInfo[]>([]);
  const[columns,setColumns]=useState<ColumnInfo[]>([]);
  const[selected,setSelected]=useState<string[]>([]);
+ const[keyColumn,setKeyColumn]=useState("SysRowID");
+ const[cursorColumn,setCursorColumn]=useState("SysRevID");
+ const requiredCols=[keyColumn,...(cursorColumn?[cursorColumn]:[])];
  const[mode,setMode]=useState<QABatchStream["mode"]>("incremental_rowversion");
  const[alias,setAlias]=useState("part");
  const[batchSize,setBatchSize]=useState(10000);
@@ -31,7 +33,7 @@ export function RuntimeBatchSyncWizard({token,adminToken,profiles,onCreated}:Pro
  const[busy,setBusy]=useState("");
  const[error,setError]=useState("");
  const[notice,setNotice]=useState("");
- const clearInspect=()=>{setTable("");setColumns([]);setSelected([]);setTables([]);setResults([]);setQueue([]);setRuns({})};
+ const clearInspect=()=>{setTable("");setColumns([]);setSelected([]);setTables([]);setResults([]);setQueue([]);setRuns({});setKeyColumn("SysRowID");setCursorColumn("SysRevID")};
  useEffect(()=>{setSourceID("");setTargetID("");setSchema("Erp");clearInspect()},[token,adminToken]);
  const task=async(name:string,action:()=>Promise<void>)=>{
   setBusy(name);setError("");setNotice("");
@@ -40,16 +42,21 @@ export function RuntimeBatchSyncWizard({token,adminToken,profiles,onCreated}:Pro
  };
  const inspect=()=>task("inspect",async()=>{
   const found=await labSyncSetupApi.columns(sourceID,schema,table,token,adminToken);
-  const key=found.columns.find(c=>c.name==="SysRowID"&&c.sql_type.toLowerCase()==="uniqueidentifier");
-  const cursor=found.columns.find(c=>c.name==="SysRevID"&&c.cursor_candidate);
-  if(!key||!cursor)throw Error("QA raw-event modes require SysRowID(uniqueidentifier) and SysRevID(rowversion).");
+  const key=found.columns.find(c=>c.name==="SysRowID")??
+   found.columns.find(c=>c.primary_key)??found.columns[0];
+  const cursor=found.columns.find(c=>c.name==="SysRevID"&&c.cursor_candidate)??
+   found.columns.find(c=>c.cursor_candidate);
+  if(!key)throw Error("Source has no visible columns.");
+  setKeyColumn(key.name);setCursorColumn(cursor?.name??"");
+  if(!cursor)setMode("full_refresh");
   setColumns(found.columns);setSelected(found.columns.map(c=>c.name));
   setAlias(defaultAlias(schema,table));
  });
  const addToBatch=()=>{
   setError("");setNotice("");
   if(queue.length>=10||!sourceID||!targetID||!table||!columns.length||
-   !reqCols.every(c=>selected.includes(c))||!tableAlias.test(alias)||
+   !keyColumn||!requiredCols.every(c=>selected.includes(c))||
+   (mode!=="full_refresh"&&!cursorColumn)||!tableAlias.test(alias)||
    batchSize<100||batchSize>100000||workers<1||workers>32||
    queueSize<1||queueSize>100){setError("Check selections, alias and runtime limits.");return}
   if(queue.some(q=>q.source_schema===schema&&q.source_table===table)){
@@ -58,6 +65,7 @@ export function RuntimeBatchSyncWizard({token,adminToken,profiles,onCreated}:Pro
   setQueue(q=>[...q,{source_schema:schema,source_table:table,
    target_database:"scratch",target_table:alias,
    selected_columns:columns.filter(c=>selected.includes(c.name)).map(c=>c.name),
+   source_key_column:keyColumn,source_cursor_column:cursorColumn,
    mode,batch_size:batchSize,workers,queue_capacity:queueSize}]);
   setTable("");setColumns([]);setSelected([]);setNotice("Added to draft batch (no database writes yet).");
  };
@@ -144,24 +152,40 @@ export function RuntimeBatchSyncWizard({token,adminToken,profiles,onCreated}:Pro
      <Button type="button" size="sm" variant="outline" onClick={()=>setSelected(columns.map(c=>c.name))}>Select all</Button></div>
     <div className="max-h-44 overflow-y-auto border rounded" role="group" aria-label="Batch column selection">
      {columns.map(c=><label key={c.name} className="flex gap-2 items-center text-xs p-2 border-b">
-      <input aria-label={"Batch column "+c.name} type="checkbox" checked={selected.includes(c.name)} disabled={reqCols.includes(c.name)}
+      <input aria-label={"Batch column "+c.name} type="checkbox" checked={selected.includes(c.name)} disabled={requiredCols.includes(c.name)}
        onChange={e=>setSelected(v=>e.target.checked?[...v,c.name]:v.filter(n=>n!==c.name))}/>
       <span className="flex-1 font-mono">{c.name}</span><span className="muted">{c.sql_type}</span>
-      {reqCols.includes(c.name)&&<span className="df-text-accent">required</span>}
+      {requiredCols.includes(c.name)&&<span className="df-text-accent">required</span>}
      </label>)}
     </div>
    </div>
    <div className="grid gap-2 md:grid-cols-2">
+    <label className="text-xs space-y-1">Source UNIQUE key
+     <select className="field" aria-label="Batch source key" value={keyColumn} onChange={e=>{
+      setKeyColumn(e.target.value);setSelected(v=>v.includes(e.target.value)?v:[...v,e.target.value]);
+     }}>{columns.map(c=><option value={c.name} key={c.name}>{c.name} ({c.sql_type})</option>)}</select>
+    </label>
+    <label className="text-xs space-y-1">Source RowVersion cursor
+     <select className="field" aria-label="Batch source cursor" value={cursorColumn} onChange={e=>{
+      setCursorColumn(e.target.value);
+      if(e.target.value)setSelected(v=>v.includes(e.target.value)?v:[...v,e.target.value]);
+     }}>
+      <option value="">None · Full only</option>
+      {columns.filter(c=>c.cursor_candidate).map(c=><option value={c.name} key={c.name}>{c.name}</option>)}
+     </select>
+    </label>
     <label className="text-xs space-y-1">Sync Mode
      <select className="field" aria-label="Batch sync mode" value={mode} onChange={e=>setMode(e.target.value as QABatchStream["mode"])}>
       <option value="incremental_rowversion">Incremental · RowVersion</option>
       <option value="full_refresh">Full Refresh · Atomic snapshot replace</option>
+      <option value="full_then_incremental" disabled={!cursorColumn}>Full once → Incremental · same snapshot boundary</option>
      </select>
     </label>
     <label className="text-xs space-y-1">Destination table alias
      <input className="field" aria-label="Batch target alias" value={alias} onChange={e=>setAlias(e.target.value)} maxLength={30} placeholder="parttran"/>
     </label>
    </div>
+   <p className="muted text-xs">Custom key must be non-null, single-column UNIQUE; incremental needs a native rowversion. The server verifies both against SQL catalog.</p>
    <p className="muted text-xs">Physical destination is generated as scratch.dfqa_&lt;alias&gt;_&lt;12-character ID&gt; to avoid overwriting other tables. Full Refresh only replaces this isolated table via staging + EXCHANGE; incremental appends events. Source is SELECT-only.</p>
    <div className="grid gap-2 sm:grid-cols-3">
     {([["Batch size",batchSize,setBatchSize,100,100000],["Workers",workers,setWorkers,1,32],["Queue",queueSize,setQueueSize,1,100]] as const).map(([name,value,setter,min,max])=>
@@ -197,6 +221,6 @@ export function RuntimeBatchSyncWizard({token,adminToken,profiles,onCreated}:Pro
   </div>}
   {notice&&<p role="status" className="df-text-success text-xs">{notice}</p>}
   {error&&<p role="alert" className="df-text-error text-xs">{error}</p>}
-  <p className="muted text-xs">QA modes require source SysRowID and SysRevID. Full Refresh does not establish an Incremental checkpoint; modes cannot be changed on an existing Stream. Not production-certified.</p>
+  <p className="muted text-xs">Incremental requires a unique source key and a native rowversion cursor. Full → Incremental is an opt-in one-time bootstrap with a guarded checkpoint. Ordinary Full Refresh alone does not establish an Incremental cursor. Not production-certified.</p>
  </section>
 }
