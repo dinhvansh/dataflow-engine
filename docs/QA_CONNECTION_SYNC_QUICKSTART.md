@@ -108,9 +108,17 @@ rows may repeat before merges; no delete capture is claimed.
 
 ### Local owner acceptance (one pass)
 
-After an exact-head CI green result on the feature PR, run the normal
-`DATAFLOW_LIVE_QA_OPT_IN=true bash deploy/local-qa/one-pass-sync-qa.sh`
-on an isolated QA host. It applies migrations **031..035** without dropping
+After an exact-head CI green result on feature PR #143, switch to the
+**feature branch** (the unmerged `main` does not contain these features):
+
+```bash
+git fetch origin feat/typed-dest-handoff-custom-cursor-20261022
+git switch feat/typed-dest-handoff-custom-cursor-20261022
+git pull --ff-only origin feat/typed-dest-handoff-custom-cursor-20261022
+DATAFLOW_LIVE_QA_OPT_IN=true bash deploy/local-qa/one-pass-sync-qa.sh
+```
+
+Run this only on an isolated QA host, not company ERP. It applies migrations **031..035** without dropping
 volumes, tests real disposable `CustomOrders` (key `OrderID`, cursor
 `RowChanged`) and `CustomSnapshot` (key `RecordID`, full-only), and
 checks owned typed ClickHouse targets. Never point the QA env at company ERP.
