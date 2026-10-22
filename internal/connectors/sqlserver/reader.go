@@ -11,6 +11,7 @@ import(
 
  _ "github.com/microsoft/go-mssqldb"
  "github.com/dinhvansh/dataflow-engine/internal/engine"
+ "github.com/dinhvansh/dataflow-engine/internal/cursor"
 )
 var identifier=regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 func quote(s string)(string,error){if !identifier.MatchString(s){return "",fmt.Errorf("invalid identifier %q",s)};return "["+s+"]",nil}
@@ -37,6 +38,9 @@ func normalizeValue(v any, databaseType string) any {
 type Reader struct{
  DB *sql.DB
  Schema,Table string
+ KeyColumn,CursorColumn string // mapped source identity/version; empty cursor means snapshot-only
+ CaptureBoundary bool // bootstrap: safe next RowVersion lower bound from same SNAPSHOT transaction
+ Boundary cursor.RowVersion // valid only after committed Read
  BatchSize int
  Columns []string // nil = legacy SELECT *; selected projections validated from catalog
  Snapshot bool
@@ -56,10 +60,20 @@ func(r *Reader)Read(ctx context.Context,emit func(engine.Batch)error)error{
   defer tx.Rollback()
  }
  projection:="*"
+ if r.CaptureBoundary{
+  if tx==nil||r.CursorColumn==""{return errors.New("bootstrap boundary requires SNAPSHOT and a rowversion cursor")}
+  var raw []byte
+  if err=tx.QueryRowContext(ctx,"SELECT CONVERT(binary(8),MIN_ACTIVE_ROWVERSION())").Scan(&raw);err!=nil{return fmt.Errorf("cannot capture consistent snapshot boundary: %w",err)}
+  r.Boundary,err=cursor.FromBytes(raw);if err!=nil{return err}
+ }
  if len(r.Columns)>0{
   catalog,e:=DiscoverColumns(ctx,r.DB,r.Schema,r.Table)
   if e!=nil{return fmt.Errorf("full source metadata unavailable: %w",e)}
-  projection,e=BuildRowVersionProjection(catalog,r.Columns)
+  if r.KeyColumn==""&&r.CursorColumn==""{
+   projection,e=BuildRowVersionProjection(catalog,r.Columns)
+  }else{
+   projection,e=BuildMappedProjection(catalog,r.Columns,r.KeyColumn,r.CursorColumn)
+  }
   if e!=nil{return fmt.Errorf("full selected fields invalid: %w",e)}
  }
  var rows *sql.Rows
