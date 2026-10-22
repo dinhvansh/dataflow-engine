@@ -105,7 +105,7 @@ func validRuntimeProfile(p createRuntimeConnection)bool{
   strings.ContainsAny(p.Name,"\r\n\x00")||strings.ContainsAny(p.Username,"\r\n\x00")||
   !approvedRuntimeEndpoint(p.Driver,p.Host,p.Port){return false}
  if p.Driver=="sqlserver"{return p.Database=="DataFlowFixtureQA" && p.Username=="qa_erp_reader"}
- return p.Driver=="clickhouse" && p.Database=="scratch"
+ return p.Driver=="clickhouse" && approvedTypedDatabase(p.Database)
 }
 func decodeRuntimeJSON(w http.ResponseWriter,r *http.Request,target any)error{
  r.Body=http.MaxBytesReader(w,r.Body,8192)
@@ -193,7 +193,7 @@ func checkLabSQLSource(ctx context.Context,db *sql.DB)bool{
  insert.Valid&&insert.Int64==0&&update.Valid&&update.Int64==0&&del.Valid&&del.Int64==0&&alter.Valid&&alter.Int64==0
 }
 func checkLabCH(ctx context.Context,p runtimeConnection,password string)bool{
- if p.Driver!="clickhouse"||p.Database!="scratch"||!approvedRuntimeEndpoint(p.Driver,p.Host,p.Port){return false}
+ if p.Driver!="clickhouse"||!approvedTypedDatabase(p.Database)||!approvedRuntimeEndpoint(p.Driver,p.Host,p.Port){return false}
  scheme:="https"
  if os.Getenv("DATAFLOW_QA_CLICKHOUSE_ALLOW_HTTP")=="true"{scheme="http"}
  endpoint:=scheme+"://"+net.JoinHostPort(p.Host,strconv.Itoa(p.Port))+"/"
