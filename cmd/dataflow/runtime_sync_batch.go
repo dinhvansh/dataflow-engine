@@ -41,8 +41,10 @@ func safeQADestination(alias,id string)(string,error){
 // normalizeBatchIdentity preserves the legacy default but permits a full
 // snapshot without a rowversion. Incremental needs an actual rowversion.
 func normalizeBatchIdentity(in labStreamInput)labStreamInput{
- if in.SourceKeyColumn==""{in.SourceKeyColumn="SysRowID"}
- if in.SourceCursorColumn==""&&in.SourceKeyColumn=="SysRowID"{in.SourceCursorColumn="SysRevID"}
+ if in.SourceKeyColumn==""{
+  in.SourceKeyColumn="SysRowID"
+  if in.SourceCursorColumn==""{in.SourceCursorColumn="SysRevID"}
+ }
  return in
 }
 func validBatchStream(in labStreamInput)bool{
