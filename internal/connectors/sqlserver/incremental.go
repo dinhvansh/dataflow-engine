@@ -18,6 +18,7 @@ import (
 type RowVersionReader struct {
  DB *sql.DB
  Schema,Table string
+ KeyColumn,CursorColumn string // optional custom UNIQUE key and rowversion source columns
  BatchSize int
  Columns []string // nil: preserve legacy all-column projection
  Lower cursor.RowVersion
@@ -27,11 +28,13 @@ type RowVersionReader struct {
 func (r *RowVersionReader) projection(ctx context.Context)(string,error){
  cols,err:=DiscoverColumns(ctx,r.DB,r.Schema,r.Table)
  if err!=nil{return "",err}
- projection,err:=BuildRowVersionProjection(cols,r.Columns)
+ key:=r.KeyColumn;if key==""{key="SysRowID"}
+ version:=r.CursorColumn;if version==""{version="SysRevID"}
+ projection,err:=BuildMappedProjection(cols,r.Columns,key,version)
  if err!=nil{return "",err}
- unique,err:=HasUniqueSysRowID(ctx,r.DB,r.Schema,r.Table)
+ unique,err:=HasUniqueSourceKey(ctx,r.DB,r.Schema,r.Table,key)
  if err!=nil{return "",fmt.Errorf("source unique index inspection: %w",err)}
- if !unique{return "",errors.New("SysRowID requires a declared unique single-key index for deterministic incremental pagination")}
+ if !unique{return "",errors.New("source key requires a declared unique single-column index for deterministic incremental pagination")}
  return projection,nil
 }
 
@@ -108,7 +111,9 @@ func(r *RowVersionReader)Read(ctx context.Context,emit func(engine.Batch)error)e
  var afterID string
  hasAfter:=false
  for {
-  query,err:=BuildRowVersionPageQuery(r.Schema,r.Table,projection,hasAfter);if err!=nil{return err}
+  key:=r.KeyColumn;if key==""{key="SysRowID"}
+  version:=r.CursorColumn;if version==""{version="SysRevID"}
+  query,err:=BuildMappedPageQuery(r.Schema,r.Table,projection,key,version,hasAfter);if err!=nil{return err}
   pageLower:=r.Lower
   if hasAfter{pageLower=afterRev}
   args:=[]any{r.BatchSize,pageLower.Bytes(),upper.Bytes()}
