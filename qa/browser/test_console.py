@@ -1311,3 +1311,47 @@ def test_qa_batch_full_refresh_custom_dest_and_multistream_save(ui):
         "abcdabcd-abcd-4bcd-8bcd-000000000001",
         "abcdabcd-abcd-4bcd-8bcd-000000000002",
     }
+
+
+def test_guided_pipeline_interactive_ux_prototype_browser(browser):
+    """Real UI-only smoke: no API request, synthetic data, no production write."""
+    page = browser.new_page(viewport={"width": 1440, "height": 1000}, accept_downloads=True)
+    api_calls = []
+    exceptions = []
+    page.on("request", lambda req: api_calls.append(req.url) if "/api/" in req.url else None)
+    page.on("pageerror", lambda err: exceptions.append(str(err)))
+    page.goto(BASE + "/prototypes/flow-builder/", wait_until="domcontentloaded")
+    expect(page.get_by_role("heading", name="Thiết lập luồng dữ liệu")).to_be_visible()
+    expect(page.get_by_text("dữ liệu mẫu", exact=False).first).to_be_visible()
+
+    # Source metadata and sync-mode eligibility are visible without credentials.
+    page.locator('[data-action="table"][data-value="CustomSnapshot"]').click()
+    expect(page.locator('input[data-sync-mode][value="full_then_incremental"]')).to_be_disabled()
+    page.locator('[data-action="table"][data-value="CustomOrders"]').click()
+    expect(page.locator('input[data-sync-mode][value="full_then_incremental"]')).to_be_checked()
+
+    # Source → Transform; real in-browser preview must drop cancelled orders.
+    page.locator('[data-action="next"]').click()
+    expect(page.get_by_role("heading", name="Biến đổi dữ liệu")).to_be_visible()
+    page.locator('[data-action="add-op"][data-value="filter"]').click()
+    expect(page.get_by_text("Lọc dữ liệu", exact=True)).to_be_visible()
+    expect(page.locator(".metric").nth(1)).to_contain_text("4")
+
+    # Transform → typed ClickHouse mapping, including editable output alias.
+    page.locator('[data-action="next"]').click()
+    expect(page.get_by_role("heading", name="Chọn nơi lưu dữ liệu")).to_be_visible()
+    page.get_by_label("Destination column Amount").fill("Revenue")
+    page.get_by_label("Destination column Amount").press("Tab")
+    expect(page.get_by_label("Destination column Amount")).to_have_value("Revenue")
+
+    # Review/Simulate is explicit that no backend work occurred.
+    page.locator('[data-action="next"]').click()
+    expect(page.get_by_role("heading", name="Kiểm tra trước khi chạy")).to_be_visible()
+    page.locator('[data-action="simulate"]').click()
+    expect(page.get_by_text("Mô phỏng hoàn tất", exact=False).first).to_be_visible(timeout=10_000)
+    with page.expect_download() as dl:
+        page.locator('[data-action="export"]').first.click()
+    assert dl.value.suggested_filename == "dataflow-pipeline-ux-blueprint.json"
+    assert not api_calls, f"Prototype unexpectedly called backend: {api_calls}"
+    assert not exceptions, f"Uncaught browser errors: {exceptions}"
+    page.close()
