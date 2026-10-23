@@ -61,7 +61,8 @@ func coreRealFixture(t *testing.T)(context.Context,*server,func()){
  }
  for _,name:=range []string{"001_bootstrap.sql","002_sync_checkpoint.sql",
   "003_managed_runs.sql","004_stream_tuning.sql","009_managed_queue.sql",
-   "032_sync_stream_selected_columns.sql","033_qa_stream_modes_destinations.sql"}{
+   "032_sync_stream_selected_columns.sql","033_qa_stream_modes_destinations.sql",
+   "034_source_key_and_bootstrap_cursor.sql","035_typed_destinations.sql"}{
   raw,e:=os.ReadFile(filepath.Join("..","..","migrations","postgres",name))
   if e!=nil{pg.Close();cancel();t.Fatal(e)}
   if _,e=pg.Exec(ctx,string(raw));e!=nil{pg.Close();cancel();t.Fatalf("PG migration %s: %v",name,e)}

@@ -87,6 +87,12 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
  raw,e:=os.ReadFile(filepath.Join("..","..","migrations","postgres","031_connection_runtime_profiles.sql"))
  if e!=nil{t.Fatal(e)}
  if _,e=svc.pg.Exec(ctx,string(raw));e!=nil{t.Fatalf("isolated migration unavailable: %v",e)}
+ for _,name:=range []string{"032_sync_stream_selected_columns.sql","033_qa_stream_modes_destinations.sql","034_source_key_and_bootstrap_cursor.sql","035_typed_destinations.sql"}{
+  sqlText,readErr:=os.ReadFile(filepath.Join("..","..","migrations","postgres",name))
+  if readErr!=nil{t.Fatal(readErr)}
+  if _,e=svc.pg.Exec(ctx,string(sqlText));e!=nil{t.Fatalf("isolated migration %s unavailable: %v",name,e)}
+ }
+
  var createdIDs []string
  var createdStreamID string
  var batchIDs []string
@@ -195,13 +201,23 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
     SelectedColumns:[]string{"SysRowID","SysRevID","PartNum"},BatchSize:100,Workers:2,QueueCapacity:2},
    {SourceSchema:"Erp",SourceTable:"InvcHead",TargetDatabase:"scratch",TargetTable:"invoiceincremental",
     Mode:"incremental_rowversion",SelectedColumns:[]string{"SysRowID","SysRevID","InvoiceNum"},BatchSize:100,Workers:2,QueueCapacity:2},
+   {SourceSchema:"Erp",SourceTable:"CustomOrders",TargetDatabase:"scratch",TargetTable:"dfqa_typed_orders",
+    DestinationLayout:"typed",
+    ColumnMappings:[]typedMappingRequest{{Source:"OrderID",Target:"OrderID"},
+     {Source:"RowChanged",Target:"RowChanged"},{Source:"Amount",Target:"TotalAmount"}},
+    SourceKeyColumn:"OrderID",SourceCursorColumn:"RowChanged",Mode:"full_then_incremental",
+    SelectedColumns:[]string{"OrderID","RowChanged","Amount"},BatchSize:100,Workers:2,QueueCapacity:2},
+   {SourceSchema:"Erp",SourceTable:"CustomSnapshot",TargetDatabase:"scratch",TargetTable:"dfqa_typed_snapshot",
+    DestinationLayout:"typed",
+    SourceKeyColumn:"RecordID",Mode:"full_refresh",
+    SelectedColumns:[]string{"RecordID","Description"},BatchSize:100,Workers:2,QueueCapacity:2},
  }}
  bad:=batch;bad.Streams=[]labStreamInput{batch.Streams[0],batch.Streams[0]}
  status,_,_=do("POST","/api/v1/connections/runtime/streams/batch",bad)
  if status!=422{t.Fatalf("duplicate batch allowed: %d",status)}
  status,created,_:=do("POST","/api/v1/connections/runtime/streams/batch",batch)
- if status!=201||created["count"]!=float64(2){t.Fatalf("batch config failed: %d %v",status,created)}
- items,ok:=created["streams"].([]any);if !ok||len(items)!=2{t.Fatalf("missing batch streams %v",created)}
+ if status!=201||created["count"]!=float64(4){t.Fatalf("batch config failed: %d %v",status,created)}
+ items,ok:=created["streams"].([]any);if !ok||len(items)!=4{t.Fatalf("missing batch streams %v",created)}
  cl:=safetable.Client{Endpoint:svc.chURL,User:chUser,Password:chPass}
  for i,record:=range items{
   row:=record.(map[string]any)
@@ -210,7 +226,7 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
   batchIDs=append(batchIDs,id);batchTables=append(batchTables,strings.TrimPrefix(dest,"scratch."))
   var mode string
   if e=svc.pg.QueryRow(ctx,"SELECT sync_mode FROM sync_streams WHERE id=$1::uuid",id).Scan(&mode);e!=nil||mode!=batch.Streams[i].Mode{t.Fatalf("mode %q err=%v",mode,e)}
-  repetitions:=1;if i==0{repetitions=2}
+  repetitions:=1;if i==0||i==2{repetitions=2}
   for n:=0;n<repetitions;n++{
    var runID string
    if e=svc.pg.QueryRow(ctx,"INSERT INTO managed_runs(stream_id,status) VALUES($1::uuid,'queued') RETURNING id::text",id).Scan(&runID);e!=nil{t.Fatal(e)}
@@ -218,10 +234,26 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
    svc.runClaimedManaged(ctx,claim)
    var state string;var count int
    if e=svc.pg.QueryRow(ctx,"SELECT status,rows_written FROM managed_runs WHERE id=$1::uuid",runID).Scan(&state,&count);e!=nil||state!="succeeded"{t.Fatalf("sync failed mode=%s state=%s count=%d err=%v",mode,state,count,e)}
-   want:=200;if i==1{want=100}
-   if count!=want{t.Fatalf("wrong rows got %d want %d",count,want)}
+   want:=200;if i==1{want=100};if i>=2{want=2}
+   expectedRun:=want
+   if i==2&&n==1{expectedRun=0}
+   if count!=expectedRun{t.Fatalf("wrong rows got %d want %d",count,expectedRun)}
    physical,e:=cl.Query(ctx,"SELECT count() FROM "+dest)
    if e!=nil||strings.TrimSpace(physical)!=strconv.Itoa(want){t.Fatalf("target %s count %q err=%v",dest,physical,e)}
+   if i==2{
+    actual,readErr:=cl.Query(ctx,"SELECT toFloat64(TotalAmount) FROM "+dest+" FINAL WHERE OrderID=1001 LIMIT 1")
+    if readErr!=nil||strings.TrimSpace(actual)!="12.5"{t.Fatalf("typed mapping not visible: %q %v",actual,readErr)}
+   }
+   if i==2{
+    var afterMode string;var cursorBytes []byte
+    if e=svc.pg.QueryRow(ctx,`SELECT s.sync_mode,c.lower_cursor
+      FROM sync_streams s JOIN sync_checkpoints c ON c.stream_id=s.id
+      WHERE s.id=$1::uuid`,id).Scan(&afterMode,&cursorBytes);e!=nil||
+      afterMode!="incremental_rowversion"||len(cursorBytes)!=8||
+      bytes.Equal(cursorBytes,make([]byte,8)){
+     t.Fatalf("bootstrap failed to persist captured cursor and promote mode: %v",e)
+    }
+   }
   }
  }
 

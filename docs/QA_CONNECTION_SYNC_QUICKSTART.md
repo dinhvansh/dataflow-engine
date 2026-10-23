@@ -67,3 +67,61 @@ After two saved and **verified** QA profiles are available, use **Airbyte-style 
 The **legacy single-table wizard** still supports one Incremental Stream at a time into `scratch.dataflow_raw_events`. The **new batch wizard** supports Full Refresh and Incremental RowVersion for up to 10 tables with generated isolated `scratch` raw-event destinations. This is **NOT typed SQL→ClickHouse column mapping, arbitrary databases, full-source table support without SysRowID/SysRevID, CDC physical deletes, or production IdP/Vault/TLS certification**. New destinations do not automatically feed the Core dbt model path that expects the shared raw-events table. Owner-local acceptance is still required.
 
 No re-benchmark of 7 million rows is required to evaluate this connection/configuration slice. Local acceptance should use small fixture tables and respect disk/CPU/RAM preflight.
+
+## Experimental mapped-source and bootstrap work (feature branch only)
+
+Migration 034 adds `source_key_column` and `source_cursor_column` to isolated stream metadata. Custom identity requires an unfiltered non-null single-column UNIQUE index with a supported key type; incremental still requires a SQL Server native rowversion column (possibly named differently). A `full_then_incremental` stream captures MIN_ACTIVE_ROWVERSION inside the SAME SQL SNAPSHOT transaction as its full data, then advances its checkpoint and flips to `incremental_rowversion` together only after ClickHouse stage/count verification. It does not capture physical deletes or generic datetime updates. This feature is not an unrestricted production destination writer.
+
+
+## QA-ready typed destination and generic source mapping (PR #143)
+
+The batch wizard now offers **Raw events** and **Typed destination**. In Typed
+mode, enter a ClickHouse database/table name and the destination column name
+for each selected SQL source field; the server derives bounded ClickHouse
+types from verified SQL Server metadata. The metadata/target reservation is
+atomic in PostgreSQL. Typed tables are created only if absent or if their
+DataFlow stream-specific schema ownership fingerprint matches; unrelated
+tables are NEVER adopted, truncated, exchanged, or dropped.
+
+For an additional pre-provisioned QA ClickHouse database, an administrator
+must set `DATAFLOW_QA_CLICKHOUSE_DATABASE_ALLOWLIST=scratch,other_qa`,
+ensure the target connection is verified, and separately grant the
+ClickHouse user only the target schema permissions required by staging.
+The default allowlist is `scratch`. No database is created automatically;
+this opt-in is **not** approval to run against production.
+
+**Full → Incremental**: choose `Full once → Incremental` and a native SQL
+Server rowversion column. The same SNAPSHOT transaction captures
+`MIN_ACTIVE_ROWVERSION()` before reading the full source. After the
+entire ClickHouse stage is verified and published, PostgreSQL commits the
+checkpoint and changes the stored mode in the same guarded transaction.
+Crash/lease fences remain mandatory. Restart from a failed or unfinished
+bootstrap is not a manual mode flip.
+
+**No SysRowID/SysRevID required**: choose a non-null, uniquely indexed
+key column. Full-only works without any native rowversion; incremental and
+automatic handoff require a native rowversion column under *any name*.
+Datetime-based cursor, change tracking, hard deletes and composite unique
+keys are not implemented. Typed incremental data uses ReplacingMergeTree:
+query with `FINAL` to obtain one current row per key. Physical event
+rows may repeat before merges; no delete capture is claimed.
+
+### Local owner acceptance (one pass)
+
+After an exact-head CI green result on feature PR #143, switch to the
+**feature branch** (the unmerged `main` does not contain these features):
+
+```bash
+git fetch origin feat/typed-dest-handoff-custom-cursor-20261022
+git switch feat/typed-dest-handoff-custom-cursor-20261022
+git pull --ff-only origin feat/typed-dest-handoff-custom-cursor-20261022
+DATAFLOW_LIVE_QA_OPT_IN=true bash deploy/local-qa/one-pass-sync-qa.sh
+```
+
+Run this only on an isolated QA host, not company ERP. It applies migrations **031..035** without dropping
+volumes, tests real disposable `CustomOrders` (key `OrderID`, cursor
+`RowChanged`) and `CustomSnapshot` (key `RecordID`, full-only), and
+checks owned typed ClickHouse targets. Never point the QA env at company ERP.
+
+Reject unsupported types, unowned tables, unexpected DB grants or a
+partial Full/Incremental transition; do not call those successful tests.

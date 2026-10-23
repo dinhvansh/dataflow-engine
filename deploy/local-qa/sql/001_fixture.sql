@@ -21,6 +21,20 @@ IF OBJECT_ID(N'Erp.InvcHead') IS NULL
 CREATE TABLE Erp.InvcHead(Company nvarchar(8) NOT NULL,InvoiceNum int NOT NULL,InvoiceDate date NOT NULL,CustomerName nvarchar(100) NULL,SysRowID uniqueidentifier NOT NULL,SysRevID rowversion NOT NULL,CONSTRAINT PK_InvcHead PRIMARY KEY(Company,InvoiceNum),CONSTRAINT UQ_InvcHead_SysRowID UNIQUE(SysRowID));
 IF OBJECT_ID(N'Erp.InvcDtl') IS NULL
 CREATE TABLE Erp.InvcDtl(Company nvarchar(8) NOT NULL,InvoiceNum int NOT NULL,InvoiceLine int NOT NULL,PartNum nvarchar(50) NOT NULL,OrderQty decimal(18,6) NULL,UnitPrice decimal(18,4) NULL,SysRowID uniqueidentifier NOT NULL,SysRevID rowversion NOT NULL,CONSTRAINT PK_InvcDtl PRIMARY KEY(Company,InvoiceNum,InvoiceLine),CONSTRAINT UQ_InvcDtl_SysRowID UNIQUE(SysRowID));
+-- Generic SQL source fixtures: unique key names and optional rowversion.
+IF OBJECT_ID(N'Erp.CustomOrders') IS NULL
+CREATE TABLE Erp.CustomOrders(
+ OrderID bigint NOT NULL CONSTRAINT PK_CustomOrders PRIMARY KEY,
+ Amount decimal(18,2) NOT NULL,
+ RowChanged rowversion NOT NULL);
+IF OBJECT_ID(N'Erp.CustomSnapshot') IS NULL
+CREATE TABLE Erp.CustomSnapshot(
+ RecordID bigint NOT NULL CONSTRAINT PK_CustomSnapshot PRIMARY KEY,
+ Description nvarchar(80) NOT NULL);
+IF NOT EXISTS (SELECT 1 FROM Erp.CustomOrders)
+ INSERT INTO Erp.CustomOrders(OrderID,Amount) VALUES (1001,12.5),(1002,18.25);
+IF NOT EXISTS (SELECT 1 FROM Erp.CustomSnapshot)
+ INSERT INTO Erp.CustomSnapshot(RecordID,Description) VALUES (1,N'First'),(2,N'Second');
 IF OBJECT_ID(N'qa.fixture_manifest') IS NULL CREATE TABLE qa.fixture_manifest(dataset nvarchar(30) PRIMARY KEY,expected_rows bigint NOT NULL,seed_version int NOT NULL,created_at datetime2 NOT NULL DEFAULT sysdatetime());
 GO
 IF NOT EXISTS(SELECT 1 FROM sys.sql_logins WHERE name=N'qa_seed_admin') EXEC(N'CREATE LOGIN qa_seed_admin WITH PASSWORD='''+'$(SeedPassword)'+''', CHECK_POLICY=OFF');

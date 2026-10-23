@@ -29,7 +29,7 @@ func TestManagedQueueIntegration(t *testing.T){
  targetTable:=fmt.Sprintf("dataflow_raw_events_%d",time.Now().UnixNano())
  for _,migration:=range []string{
   "001_bootstrap.sql","002_sync_checkpoint.sql","003_managed_runs.sql","004_stream_tuning.sql","009_managed_queue.sql",
-  "032_sync_stream_selected_columns.sql","033_qa_stream_modes_destinations.sql",
+  "032_sync_stream_selected_columns.sql","033_qa_stream_modes_destinations.sql","034_source_key_and_bootstrap_cursor.sql","035_typed_destinations.sql",
  }{
   raw,readErr:=os.ReadFile(filepath.Join("..","..","migrations","postgres",migration));if readErr!=nil{t.Fatal(readErr)}
   if _,err=pool.Exec(ctx,string(raw));err!=nil{t.Fatalf("migration %s failed: %v",migration,err)}

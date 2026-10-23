@@ -23,7 +23,7 @@ export DATAFLOW_LIVE_API_TOKEN="${DATAFLOW_API_TOKEN:?private QA API token missi
 compose=(docker compose --project-name dataflow-localqa --env-file .env.qa.local -f deploy/local-qa/compose.qa.yml)
 # Preserved QA PostgreSQL volumes do not rerun init scripts.
 # Apply additive migrations; no reset, no unrelated Docker mutation.
-for migration in 031_connection_runtime_profiles.sql 032_sync_stream_selected_columns.sql 033_qa_stream_modes_destinations.sql; do
+for migration in 031_connection_runtime_profiles.sql 032_sync_stream_selected_columns.sql 033_qa_stream_modes_destinations.sql 034_source_key_and_bootstrap_cursor.sql 035_typed_destinations.sql; do
  "${compose[@]}" exec -T postgres psql -v ON_ERROR_STOP=1 -U dataflow_qa -d dataflow_qa -f "/docker-entrypoint-initdb.d/$migration" >/dev/null
 done
 # Trusted CA bundle for reproducible builds, matching existing QA launcher.

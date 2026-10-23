@@ -1,5 +1,16 @@
 # DataFlow Engine — Latest Chat Handoff
 
+## 2026-10-22 — Three requested Sync features implemented on PR #143 (owner QA pending)
+
+- **Branch:** `feat/typed-dest-handoff-custom-cursor-20261022`. **PR [#143](https://github.com/dinhvansh/dataflow-engine/pull/143)**; DO NOT merge until 7/7 exact-head Actions green. `main` remains unchanged so the owner can test the existing release independently.
+- **Destination:** choose admin-allowlisted ClickHouse database, a specific new/previously DataFlow-owned table, and per-column SQL→ClickHouse typed mapping through `RuntimeBatchSyncWizard`. Server resolves SQL types from catalog and stores immutable map in migration 035. Unknown existing tables never adopted; typed Full uses verified stage and EXCHANGE; typed Incremental uses ReplacingMergeTree and FINAL for logical current rows.
+- **Full → Incremental:** new `full_then_incremental` mode snapshots data and captures `MIN_ACTIVE_ROWVERSION()` in the same SQL Server SNAPSHOT transaction; only after stage/count verification does the fenced PostgreSQL success transaction commit checkpoint and promote mode.
+- **Generic source key:** selectable non-null, single-column UNIQUE key, source rowversion column under any name. Full-only supports no RowVersion. Datetime cursors, composite keys, physical deletes and source CDC are separate future scope, NOT delivered by this PR.
+- **QA:** migration 034/035, isolated SQL fixture `CustomOrders` / `CustomSnapshot`, typed identity/ownership negative tests and real disposable SQL Server/PG/CH E2E added. Updated one-pass command in `docs/QA_CONNECTION_SYNC_QUICKSTART.md`. Owner-local QA not executed by this assistant. Exact-head CI must be checked again on PR head before marking ready; no production certification.
+- **Security:** `DataFlowFixtureQA` reader strictly SELECT-only; verified local profiles; ClickHouse target database allowlist defaults `scratch`; no unowned tables adopted or modified; no ERP writes. Issue [#144](https://github.com/dinhvansh/dataflow-engine/issues/144) tracks production hardening, not permission to bypass sandbox.
+- **Post-merge requirement:** update docs with merged SHA and separately check post-merge main CI. User tests local via the one-pass command before production readiness is discussed.
+
+
 ## One-pass owner QA readiness hardening — 2026-10-20
 
 - Separate PR (check status before calling done): repair a local launch blocker where port preflight rejected the QA stack's own running loopback ports; accepts **only** exact Docker label + running container + expected container/host port binding, refuses foreign ports and wrong labels. Initial source remains isolated `DataFlowFixtureQA` and SQL account strictly SELECT-only.

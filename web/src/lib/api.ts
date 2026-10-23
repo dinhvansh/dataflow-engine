@@ -196,7 +196,11 @@ export const labSyncSetupApi={
 };
 export type QABatchStream={
  source_schema:string;source_table:string;selected_columns:string[];
- mode:"incremental_rowversion"|"full_refresh";target_database:"scratch";target_table:string;
+ mode:"incremental_rowversion"|"full_refresh"|"full_then_incremental";
+ target_database:string;target_table:string;
+ destination_layout?:"raw_event"|"typed";
+ column_mappings?:{source:string;target:string}[];
+ source_key_column?:string;source_cursor_column?:string;
  batch_size:number;workers:number;queue_capacity:number
 };
 export type QABatchResult={stream_id:string;source:string;mode:string;destination:string};
