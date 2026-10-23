@@ -1311,3 +1311,62 @@ def test_qa_batch_full_refresh_custom_dest_and_multistream_save(ui):
         "abcdabcd-abcd-4bcd-8bcd-000000000001",
         "abcdabcd-abcd-4bcd-8bcd-000000000002",
     }
+
+
+def test_guided_pipeline_interactive_ux_prototype_browser(browser):
+    """Separate Sync→RAW and RAW→Transform→MART with zero backend API calls."""
+    page = browser.new_page(viewport={"width": 1440, "height": 1000}, accept_downloads=True)
+    api_calls = []
+    exceptions = []
+    page.on("request", lambda req: api_calls.append(req.url) if "/api/" in req.url else None)
+    page.on("pageerror", lambda err: exceptions.append(str(err)))
+    page.goto(BASE + "/prototypes/flow-builder/index.html", wait_until="domcontentloaded")
+    expect(page.get_by_role("heading", name="Đồng bộ dữ liệu · Sync")).to_be_visible()
+
+    # Transform is an independent workspace: before Sync, no RAW input exists.
+    page.locator('.workspace-tab[data-value="transform"]').click()
+    expect(page.get_by_text("Chưa có bảng RAW nào.", exact=False)).to_be_visible()
+    page.locator('.workspace-tab[data-value="sync"]').click()
+
+    # SQL Source: generic unique key + native RowVersion are explicit.
+    page.locator('[data-action="source"][data-value="snapshot"]').click()
+    expect(page.locator('input[name="sync-mode"][value="full_then_incremental"]')).to_be_disabled()
+    page.locator('[data-action="source"][data-value="orders"]').click()
+    expect(page.locator('input[name="sync-mode"][value="full_then_incremental"]')).to_be_checked()
+
+    # Sync has its own Destination and Run. It does NOT ask for Transform models.
+    page.locator('[data-action="next"]').click()
+    expect(page.get_by_role("heading", name="ClickHouse RAW · đích đồng bộ")).to_be_visible()
+    assert not page.locator('[data-action="op-add"]').count()
+    page.locator('[data-action="next"]').click()
+    expect(page.get_by_role("heading", name="Kiểm tra và chạy Sync")).to_be_visible()
+    page.locator('[data-action="run-sync"]').click()
+    expect(page.get_by_text("Đã Sync thành công (mô phỏng).", exact=False)).to_be_visible(timeout=10_000)
+
+    # A finished Sync creates a synthetic RAW fixture available to the
+    # separate Transform workflow without re-running Source/Extract.
+    page.locator('.workspace-tab[data-value="transform"]').click()
+    expect(page.get_by_role("heading", name="Xử lý dữ liệu · Transform")).to_be_visible()
+    expect(page.get_by_text("scratch.raw_orders", exact=False).first).to_be_visible()
+    page.locator('[data-action="next"]').click()
+    expect(page.get_by_role("heading", name="Transform · thiết kế mô hình")).to_be_visible()
+    page.locator('[data-action="op-add"][data-value="filter"]').click()
+    expect(page.locator(".metric").nth(1)).to_contain_text("4")
+
+    # Typed MART column mapping exists only in the Transform workflow.
+    page.locator('[data-action="next"]').click()
+    expect(page.get_by_role("heading", name="Lưu kết quả · MART")).to_be_visible()
+    page.get_by_label("MART column Amount").fill("Revenue")
+    page.get_by_label("MART column Amount").press("Tab")
+    expect(page.get_by_label("MART column Amount")).to_have_value("Revenue")
+
+    page.locator('[data-action="next"]').click()
+    expect(page.get_by_role("heading", name="Kiểm tra & chạy Transform")).to_be_visible()
+    page.locator('[data-action="run-transform"]').click()
+    expect(page.get_by_text("Đã mô phỏng Transform thành công.", exact=False)).to_be_visible(timeout=10_000)
+    with page.expect_download() as dl:
+        page.locator('[data-action="export"]').first.click()
+    assert dl.value.suggested_filename == "dataflow-transform-prototype.json"
+    assert not api_calls, f"Prototype unexpectedly called backend: {api_calls}"
+    assert not exceptions, f"Uncaught browser errors: {exceptions}"
+    page.close()
