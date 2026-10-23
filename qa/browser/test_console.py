@@ -1320,7 +1320,7 @@ def test_guided_pipeline_interactive_ux_prototype_browser(browser):
     exceptions = []
     page.on("request", lambda req: api_calls.append(req.url) if "/api/" in req.url else None)
     page.on("pageerror", lambda err: exceptions.append(str(err)))
-    page.goto(BASE + "/prototypes/flow-builder/", wait_until="domcontentloaded")
+    page.goto(BASE + "/prototypes/flow-builder/index.html", wait_until="domcontentloaded")
     expect(page.get_by_role("heading", name="Thiết lập luồng dữ liệu")).to_be_visible()
     expect(page.get_by_text("dữ liệu mẫu", exact=False).first).to_be_visible()
 
