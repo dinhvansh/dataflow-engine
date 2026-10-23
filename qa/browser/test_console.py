@@ -530,7 +530,14 @@ def test_ui11_connector_hub_catalog_and_route_preview_only(ui):
     expect(page.get_by_text("Connector Hub", exact=True)).to_be_visible()
     expect(page.get_by_role("tab", name=re.compile("Sources"))).to_have_attribute("aria-selected", "true")
 
-    page.get_by_label("Search connectors").fill("mysql")
+    search = page.get_by_label("Search connectors")
+    assert search.evaluate("""input => {
+        const icon = input.parentElement.querySelector(".hub-search-icon");
+        const textStart = input.getBoundingClientRect().left +
+            parseFloat(getComputedStyle(input).paddingLeft);
+        return textStart - icon.getBoundingClientRect().right >= 8;
+    }""")
+    search.fill("mysql")
     expect(page.get_by_text("MySQL / MariaDB", exact=True)).to_be_visible()
     expect(page.get_by_text("Microsoft SQL Server", exact=True)).not_to_be_visible()
     page.get_by_role("button", name="Clear connector search").click()
@@ -1119,6 +1126,7 @@ def test_ui_local_session_login_roles_and_logout(ui):
     """UI-only check: real credential/session RBAC is covered by Go tests."""
     page, _ = ui
     signed = {"role": None}
+    runtime_calls = []
 
     def session_api(route):
         method = route.request.method
@@ -1142,6 +1150,23 @@ def test_ui_local_session_login_roles_and_logout(ui):
             route.fulfill(status=204, body="")
 
     page.route("**/api/v1/auth/session", session_api)
+    def runtime_api(route):
+        runtime_calls.append((signed["role"], route.request.method))
+        if signed["role"] != "admin":
+            route.fulfill(status=403, body="admin permission required")
+            return
+        route.fulfill(status=200, content_type="application/json", body=json.dumps({
+            "profiles": [
+                {"id": "11111111-1111-4111-8111-111111111111", "name": "QA SQL Server",
+                 "driver": "sqlserver", "database": "DataFlowFixtureQA",
+                 "status": "verified", "revision": 2},
+                {"id": "22222222-2222-4222-8222-222222222222", "name": "QA ClickHouse",
+                 "driver": "clickhouse", "database": "scratch",
+                 "status": "verified", "revision": 2},
+            ]
+        }))
+
+    page.route("**/api/v1/connections/runtime", runtime_api)
     page.reload(wait_until="domcontentloaded")
     expect(page.get_by_label("DataFlow sign in")).to_be_visible()
     expect(page.get_by_label("Lab API token (shared across modules)")).to_have_count(0)
@@ -1158,6 +1183,11 @@ def test_ui_local_session_login_roles_and_logout(ui):
     page.get_by_role("button", name="Sign in", exact=True).click()
     page.get_by_role("button", name="Connections", exact=True).click()
     expect(page.get_by_label("Live lab connection manager")).to_have_count(0)
+    expect(page.get_by_label("Saved connections access")).to_contain_text(
+        "Saved QA connections require Administrator access")
+    expect(page.get_by_label("Configured connection inventory")).to_contain_text(
+        "Uses your signed-in QA session.")
+    assert runtime_calls == []
     page.get_by_role("button", name="Sign out").click()
     expect(page.get_by_label("DataFlow sign in")).to_be_visible()
 
@@ -1166,6 +1196,11 @@ def test_ui_local_session_login_roles_and_logout(ui):
     page.get_by_role("button", name="Sign in", exact=True).click()
     page.get_by_role("button", name="Connections", exact=True).click()
     expect(page.get_by_label("Live lab connection manager")).to_be_visible()
+    expect(page.get_by_label("Saved connections access")).to_have_count(0)
+    expect(page.get_by_label("Saved QA profiles")).to_contain_text("QA SQL Server")
+    expect(page.get_by_label("Saved QA profiles")).to_contain_text("QA ClickHouse")
+    assert runtime_calls and all(role == "admin" and method == "GET"
+                                 for role, method in runtime_calls)
     expect(page.get_by_label("Live connection admin credential")).to_have_count(0)
     expect(page.get_by_label("Lab API token (shared across modules)")).to_have_count(0)
 
