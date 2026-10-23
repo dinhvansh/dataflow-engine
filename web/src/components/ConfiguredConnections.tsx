@@ -34,11 +34,11 @@ export function ConfiguredConnections({token,onTokenChange}:{token:string;onToke
   <div className="flex flex-wrap items-start justify-between gap-3">
    <div><p className="hub-eyebrow mb-2">CONNECTION MANAGER / V3.1</p>
     <h3 className="flex items-center gap-2 text-lg font-semibold"><ShieldCheck size={18}/>Server configuration inventory</h3>
-    <p className="muted mt-1 max-w-3xl text-xs leading-5">Authenticated read-only view of backend-configured SQL Server, ClickHouse and internal PostgreSQL slots. A configured slot is not a live connection test. No credentials, DSN or hostnames are returned.</p>
+    <p className="muted mt-1 max-w-3xl text-xs leading-5">Read-only inventory of backend-configured SQL Server, ClickHouse and internal PostgreSQL slots. These slots are separate from saved QA connection profiles. No credentials, DSN or hostnames are returned.</p>
    </div>
    <span className="df-pipeline-stat">INVENTORY ONLY</span>
   </div>
-  <div className="flex flex-wrap items-center gap-3"><p className="muted text-xs">Uses the shared in-memory Lab API token from the header.</p><Button type="button" variant="outline" disabled={!token||loading} onClick={()=>{void refresh();}} aria-label="Refresh configured connections"><RefreshCw size={15}/>{loading?"Loading…":"Load inventory"}</Button></div>
+  <div className="flex flex-wrap items-center gap-3"><p className="muted text-xs">{token==="session"?"Uses your signed-in QA session.":"Uses the in-memory Lab API token from the header."}</p><Button type="button" variant="outline" disabled={!token||loading} onClick={()=>{void refresh();}} aria-label="Refresh configured connections"><RefreshCw size={15}/>{loading?"Loading…":"Load inventory"}</Button></div>
   {!token&&<p className="muted text-xs" role="status">Enter an API token to read server-managed connections.</p>}
   {error&&<p role="alert" className="rounded border df-border-error df-bg-error-soft p-3 text-xs df-text-error">{error}</p>}
   {items&&<div className="grid gap-3 md:grid-cols-3">
@@ -56,6 +56,6 @@ export function ConfiguredConnections({token,onTokenChange}:{token:string;onToke
     </article>;
    })}
   </div>}
-  {items&&<p className="muted text-xs" role="status">{items.length} server slots listed. Live checks cover only preconfigured isolated QA services. Independent credentials, new connection profiles and pipeline binding remain unavailable.</p>}
+  {items&&<p className="muted text-xs" role="status">{items.length} server slots listed. Saved QA profiles are available in the Administrator connection panel.</p>}
  </section>;
 }
