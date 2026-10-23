@@ -12,15 +12,12 @@
     <aside class="side">
       <div class="brand"><div class="brand-icon">D<span>F</span></div><div><strong>DataFlow</strong><small>DATA PLATFORM</small></div></div>
       <div class="nav-label">WORKSPACE</div>
-      <nav aria-label="Prototype navigation">
-        <button class="navlink selected" type="button" data-action="step" data-value="0"><span class="nav-icon">◇</span> Pipeline Builder <span class="nav-current">NEW</span></button>
-        <button class="navlink" type="button" data-action="step" data-value="0"><span class="nav-icon">▤</span> Data Sources</button>
-        <button class="navlink" type="button" data-action="step" data-value="1"><span class="nav-icon">⧉</span> Transform Studio</button>
-        <button class="navlink" type="button" data-action="step" data-value="2"><span class="nav-icon">▣</span> Destinations</button>
-        <button class="navlink" type="button" data-action="step" data-value="3"><span class="nav-icon">▹</span> Preview & Run</button>
+      <nav aria-label="Prototype workspaces">
+        <button class="navlink selected" type="button" data-action="workspace" data-value="sync"><span class="nav-icon">⇄</span> Sync Pipeline <span class="nav-current">01</span></button>
+        <button class="navlink" type="button" data-action="workspace" data-value="transform"><span class="nav-icon">⧉</span> Transform Pipeline <span class="nav-current">02</span></button>
       </nav>
       <div class="nav-label space-top">ENVIRONMENT</div>
-      <div class="env-panel"><span class="pulse"></span><div><strong>Isolated QA</strong><small>Sample data · no API calls</small></div></div>
+      <div class="env-panel"><span class="pulse"></span><div><strong>Isolated QA</strong><small>Demo data · no API calls</small></div></div>
       <div class="sidebar-bottom">
         <div class="tip-icon">?</div>
         <strong>Prototype UX v1</strong>
@@ -30,17 +27,17 @@
     </aside>
     <div class="main-area">
       <header class="topbar">
-        <div class="crumb">Workspace <span>/</span> Data Engineering <span>/</span> <b>Pipeline Builder</b></div>
+        <div class="crumb">Workspace <span>/</span> Data Engineering <span>/</span> <b>Sync & Transform</b></div>
         <div class="top-actions"><span class="prototype-pill">● INTERACTIVE PROTOTYPE</span><button type="button" class="icon-button" id="theme-toggle" data-action="theme" title="Chuyển Light/Dark" aria-label="Chuyển giao diện sáng/tối">◐</button><button type="button" class="btn btn-soft" data-action="save">Lưu bản nháp</button></div>
       </header>
       <main class="main-content">
         <div class="page-heading">
-          <div><div class="eyebrow">BUILD A DATA PIPELINE</div><h1>Thiết lập luồng dữ liệu</h1><p>Đi từng bước từ nguồn dữ liệu, xử lý, đến nơi lưu. Không cần viết SQL.</p></div>
+          <div><div class="eyebrow">INDEPENDENT DATA WORKFLOWS</div><h1 id="workspace-title">Đồng bộ dữ liệu · Sync</h1><p id="workspace-subtitle">Bước 1: lấy dữ liệu về ClickHouse RAW. Không cần tạo Transform.</p></div>
           <button type="button" class="btn btn-outline reset-header" data-action="reset">↺ Làm lại</button>
         </div>
-        <div class="notice"><span class="notice-mark">i</span><div><b>Đây là bản thiết kế tương tác, không phải màn hình vận hành thật.</b> Tất cả kết nối, dòng dữ liệu và kết quả chạy đều là dữ liệu mẫu. Nút “Mô phỏng chạy” không ghi vào SQL Server hoặc ClickHouse.</div></div>
-        <section class="stepper" aria-label="Các bước xây dựng pipeline" id="stepper"></section>
-        <section class="flow-overview" aria-label="Sơ đồ luồng dữ liệu"><div class="flow-title"><span>PIPELINE OVERVIEW</span><span id="flow-state" class="muted-mini">Chưa chạy</span></div><div class="flow-lane" id="flow-diagram"></div></section>
+        <div class="notice"><span class="notice-mark">i</span><div><b>Đây là bản thiết kế tương tác, không phải màn hình vận hành thật.</b> Hai pipeline chạy độc lập. Tất cả kết nối và kết quả đều là dữ liệu mẫu. Không có request tới SQL Server hoặc ClickHouse.</div></div>
+        <section class="workspace-switch" aria-label="Chọn quy trình"><button type="button" class="workspace-tab active" data-action="workspace" data-value="sync"><span class="ws-number">01</span><span><strong>Sync Pipeline</strong><small>SQL Server → ClickHouse RAW</small></span></button><button type="button" class="workspace-tab" data-action="workspace" data-value="transform"><span class="ws-number">02</span><span><strong>Transform Pipeline</strong><small>RAW → dbt / SQL → MART</small></span></button></section><section class="stepper" aria-label="Các bước của quy trình đang chọn" id="stepper"></section>
+        <section class="flow-overview" aria-label="Sơ đồ luồng dữ liệu"><div class="flow-title"><span>WORKFLOW OVERVIEW</span><span id="flow-state" class="muted-mini">Chưa chạy</span></div><div class="flow-lane" id="flow-diagram"></div></section>
         <div class="workspace-grid"><section class="work-card" id="stage" aria-live="polite"></section><aside class="help-card" id="context"></aside></div>
         <div class="bottom-controls" id="footer-controls"></div>
         <footer class="app-footer">DataFlow Engine · Frontend-only UX prototype · Giữ nguyên backend, API và dữ liệu QA của dự án.</footer>
