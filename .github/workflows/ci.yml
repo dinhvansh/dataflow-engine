@@ -31,6 +31,8 @@ jobs:
         run: bash deploy/local-qa/preflight_owned_ports_test.sh
       - name: QA disk guard regression (no Docker teardown)
         run: bash deploy/local-qa/check-disk-capacity_test.sh
+      - name: QA API runtime-stage proxy CA regression
+        run: bash deploy/local-qa/dockerfile_proxy_ca_test.sh
       - name: Go unit and race tests
         run: go test -race ./...
       - run: go vet ./...

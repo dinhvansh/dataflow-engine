@@ -146,7 +146,10 @@ def ui(browser, request):
     context = browser.new_context(viewport={"width": 1440, "height": 1000})
     context.tracing.start(screenshots=True, snapshots=True, sources=True)
     page = context.new_page()
-    page.goto(BASE, wait_until="networkidle")
+    # The console intentionally polls /healthz, so Playwright's networkidle
+    # state is never a valid readiness signal for the real application.
+    page.goto(BASE, wait_until="domcontentloaded")
+    page.get_by_role("navigation", name="Main navigation").wait_for()
     yield page
     page.screenshot(path=str(ARTIFACTS / (request.node.name + ".png")), full_page=True)
     trace = ARTIFACTS / (request.node.name + ".zip")
@@ -219,13 +222,19 @@ def test_live_ui06_incremental_publish_rollback(ui):
     }
     for label, value in labels.items():
         ui.get_by_label(label).fill(value)
-    ui.on("dialog", lambda dialog: dialog.accept())
     ui.get_by_role("button", name="Build Delta Staging", exact=False).click()
     expect(ui.get_by_text("ready", exact=True)).to_be_visible(timeout=60_000)
     ui.get_by_role("button", name="Approve & Publish + Cursor", exact=False).click()
+    expect(ui.get_by_role("dialog", name="Confirm incremental publish")).to_be_visible()
+    ui.get_by_role("button", name="Cancel").click()
+    expect(ui.get_by_text("ready", exact=True)).to_be_visible()
+    ui.get_by_role("button", name="Approve & Publish + Cursor", exact=False).click()
+    ui.get_by_role("button", name="Confirm publish").click()
     expect(ui.get_by_text("published", exact=True)).to_be_visible(timeout=60_000)
     assert ch(f"SELECT count(),sum(Amount) FROM scratch.{TARGET} FORMAT TSV") == "2\t50"
     ui.get_by_role("button", name="Rollback Data + Cursor", exact=False).click()
+    expect(ui.get_by_role("dialog", name="Confirm incremental rollback")).to_be_visible()
+    ui.get_by_role("button", name="Confirm rollback").click()
     expect(ui.get_by_text("rolled_back", exact=True)).to_be_visible(timeout=60_000)
     assert ch(f"SELECT count(),sum(Amount) FROM scratch.{TARGET} FORMAT TSV") == "1\t10"
     assert pg_scalar("SELECT state FROM incremental_runs WHERE target_name='" + TARGET + "' ORDER BY created_at DESC LIMIT 1") == "rolled_back"

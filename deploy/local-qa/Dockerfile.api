@@ -7,7 +7,8 @@ COPY . .
 RUN CGO_ENABLED=0 go build -buildvcs=false -trimpath -o /out/dataflow ./cmd/dataflow
 
 FROM alpine:3.21
-RUN apk add --no-cache ca-certificates && adduser -D -u 10001 dataflow
+RUN --mount=type=secret,id=proxy_ca,target=/etc/ssl/cert.pem,required=true \
+    apk add --no-cache ca-certificates && adduser -D -u 10001 dataflow
 COPY --from=build /out/dataflow /usr/local/bin/dataflow
 USER 10001:10001
 EXPOSE 8080

@@ -1,5 +1,13 @@
 package lineage
-import ("reflect";"testing")
+import ("encoding/json";"reflect";"strings";"testing")
+func TestLineageEmptyCollectionsMarshalAsArrays(t *testing.T){
+ g,err:=Build(nil);if err!=nil{t.Fatal(err)}
+ raw,err:=json.Marshal(g);if err!=nil{t.Fatal(err)}
+ body:=string(raw)
+ for _,field:=range []string{`"nodes":[]`,`"edges":[]`,`"model_order":[]`,`"problems":[]`}{
+  if !strings.Contains(body,field){t.Fatalf("missing array %s in %s",field,body)}
+ }
+}
 func TestLineageChainAndImpact(t *testing.T){
  g,err:=Build([]Model{
   {Name:"report",Database:"scratch",Table:"dfv_enriched",Mode:"visual"},
