@@ -47,22 +47,9 @@ function isSafeDest(){return safeId(state.database)&&safeId(state.targetTable)&&
  new Set(Object.values(destinationMapping()).map(function(s){return s.toLowerCase();})).size===Object.keys(destinationMapping()).length;}
 function colType(c){var origin=getTable().columns.find(function(x){return x[0]===c;});if(origin)return origin[1];if(c.toLowerCase().indexOf("total")>=0||c.toLowerCase().indexOf("amount")>=0||c.toLowerCase().indexOf("price")>=0||c.toLowerCase().indexOf("cost")>=0)return "decimal(18,2)";return "nvarchar"; }
 function destinationMapping(){var cols=listColumns(outputRows());var map={};cols.forEach(function(c){map[c]=state.mapping[c]===undefined?c:state.mapping[c];});return map;}
-function executeOps(){var rows=originalRows();state.ops.forEach(function(op){
- if(!op.enabled)return;
- var col=op.column;
- if(op.kind==="filter"){rows=rows.filter(function(r){var v=r[col];if(op.compare==="greater")return Number(v)>Number(op.value);if(op.compare==="contains")return String(v===undefined?"":v).toLowerCase().includes(String(op.value).toLowerCase());return String(v)===String(op.value);});}
- if(op.kind==="rename"){rows=rows.map(function(r){var t=Object.assign({},r);if(col in t&&op.alias&&op.alias!==col){t[op.alias]=t[col];delete t[col];}return t;});}
- if(op.kind==="calculate"){rows=rows.map(function(r){var t=Object.assign({},r);if(op.alias)t[op.alias]=Number((Number(r[col]||0)*Number(op.value||0)).toFixed(2));return t;});}
- if(op.kind==="sort"){rows=rows.slice().sort(function(a,b){var av=a[col],bv=b[col],result=(typeof av==="number"&&typeof bv==="number")?av-bv:String(av).localeCompare(String(bv));return op.direction==="desc"?-result:result;});}
- if(op.kind==="limit"){rows=rows.slice(0,Math.max(1,Math.min(1000,Number(op.value)||1)));}
- if(op.kind==="select"){var names=String(op.columns||"").split(",").map(function(x){return x.trim();}).filter(Boolean);if(names.length)rows=rows.map(function(r){var t={};names.forEach(function(k){if(k in r)t[k]=r[k];});return t;});}
- if(op.kind==="aggregate"){var groups={};rows.forEach(function(r){var key=String(r[col]);if(!groups[key])groups[key]={count:0,sum:0,value:r[col]};groups[key].count++;groups[key].sum+=Number(r[op.measure]||0);});rows=Object.keys(groups).map(function(k){var t={};t[col]=groups[k].value;t[op.alias||"TotalAmount"]=Number(groups[k].sum.toFixed(2));t["RowCount"]=groups[k].count;return t;});}
- });return rows;}
-function outputRows(){return executeOps();}
-function columnsForCurrentStep(index){var rows=originalRows();state.ops.slice(0,index).filter(function(op){return op.enabled;}).forEach(function(op){var dummy=state.ops;state.ops=[op];rows=executeOpsPreview(rows,op);state.ops=dummy;});return listColumns(rows);}
-function executeOpsPreview(rows,op){var original=originalRows;/* no side effects: scope this op to current rows */
- var s=state.ops;var savedSelected=state.selected;var inRows=rows.map(function(r){return Object.assign({},r);});
- state.ops=[];var kind=op.kind;
+function columnsForCurrentStep(index){var rows=originalRows();state.ops.slice(0,index).filter(function(op){return op.enabled;}).forEach(function(op){rows=executeOpsPreview(rows,op);});return listColumns(rows);}
+function executeOpsPreview(rows,op){var inRows=rows.map(function(r){return Object.assign({},r);});
+ var kind=op.kind;
  if(kind==="filter")return inRows.filter(function(r){if(op.compare==="greater")return Number(r[op.column])>Number(op.value);if(op.compare==="contains")return String(r[op.column]).toLowerCase().includes(String(op.value).toLowerCase());return String(r[op.column])===String(op.value);});
  if(kind==="rename")return inRows.map(function(r){if(!(op.column in r)||!op.alias||op.column===op.alias)return r;var t=Object.assign({},r);t[op.alias]=t[op.column];delete t[op.column];return t;});
  if(kind==="calculate")return inRows.map(function(r){var t=Object.assign({},r);t[op.alias]=Number((Number(r[op.column]||0)*Number(op.value||0)).toFixed(2));return t;});
