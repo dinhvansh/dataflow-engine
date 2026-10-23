@@ -72,7 +72,7 @@ function transformErrors(){var p=raw(),s=state.transform,e=[];if(!p)e.push("Chư
  if(s.database!=="scratch"||!validID(s.martTable))e.push("MART demo chỉ được ở scratch và tên bảng hợp lệ.");
  var names=Object.values(mapped());if(!names.every(validID)||new Set(names.map(function(n){return n.toLowerCase();})).size!==names.length)e.push("Mapping cột trùng hoặc tên không hợp lệ.");
  if(p&&columns(p.rows).length===0)e.push("RAW không có cột dữ liệu.");
- if(s.ops.some(function(op){return op.enabled&&op.kind==="aggregate";}))e.push("Cần định nghĩa grain/unique key trước khi chạy aggregation với dữ liệu thực (demo chỉ mô phỏng).");
+
  return e;
 }
 function sel(values,current,attr){return '<select '+(attr||"")+'>'+values.map(function(v){var x=Array.isArray(v)?v[0]:v,y=Array.isArray(v)?v[1]:v;return '<option value="'+E(x)+'"'+(x===current?' selected':'')+'>'+E(y)+'</option>';}).join("")+'</select>';}
@@ -167,6 +167,7 @@ function transformDesign(){
  (ops.length?ops.map(function(op,i){return '<div class="transform-row '+(!op.enabled?'disabled':'')+'"><span class="op-number">'+(i+1)+'</span><div><div class="op-head"><strong>'+E(kindNames[op.kind])+'</strong><label class="muted-copy"><input type="checkbox" data-op-enabled="'+E(op.id)+'" '+(op.enabled?'checked':'')+'> Bật</label></div><div class="op-config">'+opForm(op,i)+'</div></div><div class="op-buttons"><button type="button" title="Lên" data-action="op-up" data-value="'+E(op.id)+'" '+(!i?'disabled':'')+'>↑</button><button type="button" title="Xuống" data-action="op-down" data-value="'+E(op.id)+'" '+(i===ops.length-1?'disabled':'')+'>↓</button><button type="button" title="Xóa" data-action="op-remove" data-value="'+E(op.id)+'">×</button></div></div>';}).join(""):'<div class="empty-transform"><strong>Chưa thêm Transform nào</strong>RAW sẽ được giữ nguyên nếu m không thêm thao tác.</div>')+
  section("Preview kết quả Transform",rows.length+" rows (synthetic)")+
  grid(rows)+
+ (ops.some(function(op){return op.enabled&&op.kind==="aggregate";})?'<div class="warning-inline spaced-top">Demo cho phép preview Group By; runtime thật phải định nghĩa lại grain/unique key và DQ trước khi publish.</div>':'')+
  '<div class="key-info spaced-top">Khi triển khai thật, các bước xử lý được thực thi bởi dbt/ClickHouse sau khi Sync hoàn thành, không trong vòng lặp extract.</div>';
 }
 function transformDestination(){
@@ -258,7 +259,7 @@ function begin(which){
  var target=sync?state.sync:state.transform;target.run={index:0,done:false};render();
  var count=sync?3:4;timer=setInterval(function(){
   target.run.index++;if(target.run.index>=count){clearInterval(timer);timer=null;target.run.done=true;
-    if(sync){var s=state.sync,id=s.database+"."+s.rawTable;state.rawRegistry=state.rawRegistry.filter(function(x){return x.id!==id;});state.rawRegistry.push({id:id,sourceName:source().name,mode:s.mode,rows:syncRows()});if(!state.transform.rawId)state.transform.rawId=id;note("SYNC PASS · RAW có sẵn cho Transform (demo).");}
+    if(sync){var s=state.sync,id=s.database+"."+s.rawTable;state.rawRegistry=state.rawRegistry.filter(function(x){return x.id!==id;});state.rawRegistry.push({id:id,sourceName:source().name,mode:s.mode,rows:syncRows()});if(state.transform.rawId===id)state.transform.run=null;if(!state.transform.rawId)state.transform.rawId=id;note("SYNC PASS · RAW có sẵn cho Transform (demo).");}
     else note("TRANSFORM PASS · MART được mô phỏng, không ghi DB.");
   }render();
  },550);
