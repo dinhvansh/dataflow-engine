@@ -1,0 +1,34 @@
+.dfw-root{color:var(--console-text);background:var(--console-card);border:1px solid var(--console-border);border-radius:.6rem;padding:1.25rem}
+.dfw-note{display:block;font-size:.75rem;color:var(--console-muted)}
+.dfw-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem}
+.dfw-step{display:flex;align-items:center;gap:.45rem;min-width:0;padding:.65rem .7rem;border:1px solid var(--console-border);border-radius:.45rem;color:var(--console-muted);font-size:.78rem}
+.dfw-step b:first-child{display:grid;place-items:center;min-width:1.25rem;height:1.25rem;border:1px solid currentColor;border-radius:50%}
+.dfw-step.current{color:var(--console-accent);background:var(--console-hover);border-color:var(--console-accent)}
+.dfw-profile{display:flex;align-items:center;gap:.65rem;border:1px solid var(--console-border);padding:.85rem;margin:.55rem 0;border-radius:.4rem}
+.dfw-profile:has(input:disabled){opacity:.6}.dfw-profile span{flex:1;min-width:0}.dfw-profile strong,.dfw-profile small{display:block;overflow-wrap:anywhere}
+.dfw-profile small,.dfw-column small,.dfw-review small{font-size:.75rem;margin-top:.2rem}
+.dfw-empty,.dfw-discovery{background:var(--console-field);border:1px solid var(--console-border);padding:1rem;border-radius:.5rem}
+.dfw-alert,.dfw-warning{color:var(--console-text);border:1px solid var(--console-border);border-left:3px solid var(--console-accent);border-radius:.3rem;background:var(--console-hover);padding:.65rem .8rem;overflow-wrap:anywhere}
+.dfw-streams{display:grid;gap:.8rem;max-height:680px;overflow:auto;padding-right:.15rem}
+.dfw-stream{padding:.85rem;border:1px solid var(--console-border);border-radius:.5rem;background:var(--console-card);display:grid;gap:.6rem}
+.dfw-stream-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.65rem;align-items:end}
+.dfw-stream-fields label{display:block;font-size:.75rem;min-width:0;color:var(--console-muted)}
+.dfw-stream-fields .field{margin-top:.25rem}
+.dfw-review{display:flex;justify-content:space-between;align-items:center;gap:.9rem;padding:.75rem;border:1px solid var(--console-border);border-radius:.4rem;overflow-wrap:anywhere}
+.dfw-review>div{min-width:0}.dfw-review small{display:block}
+.dfw-modal-backdrop{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.66);display:grid;place-items:center;padding:1rem}
+.dfw-modal{width:min(1180px,94vw);height:88vh;display:flex;flex-direction:column;min-height:0;background:var(--console-card);color:var(--console-text);border:1px solid var(--console-border);border-radius:.55rem;box-shadow:var(--console-shadow)}
+.dfw-modal-head,.dfw-modal-foot{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1.1rem}
+.dfw-modal-head{border-bottom:1px solid var(--console-border)}.dfw-modal-foot{border-top:1px solid var(--console-border)}
+.dfw-modal-tools{padding:.85rem 1.1rem;display:grid;gap:.65rem;border-bottom:1px solid var(--console-border)}
+.dfw-modal-tools>label{max-width:390px}.dfw-chips{display:flex;flex-wrap:wrap;gap:.45rem}
+.dfw-chip{color:var(--console-muted);background:var(--console-field);border:1px solid var(--console-border);padding:.35rem .65rem;border-radius:999px;font-size:.78rem}
+.dfw-chip.active{color:var(--console-accent);border-color:var(--console-accent)}
+.dfw-modal-scroll{min-height:0;flex:1;overflow-y:auto;padding:1.1rem}
+.dfw-column-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem}
+.dfw-column{display:flex;align-items:center;gap:.6rem;min-width:0;padding:.6rem;border:1px solid var(--console-border);border-radius:.35rem}
+.dfw-colname{flex:1;min-width:0;font-size:.82rem;overflow-wrap:anywhere}.dfw-colname small{display:block}
+.dfw-locked{font-size:.68rem;color:var(--console-muted);background:var(--console-hover);border:1px solid var(--console-border);padding:.15rem .3rem;border-radius:.3rem}
+.dfw-column input:disabled{opacity:.7}
+@media(max-width:990px){.dfw-stream-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.dfw-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.dfw-column-grid{grid-template-columns:1fr}.dfw-stream-fields{grid-template-columns:1fr}.dfw-modal-backdrop{padding:0}.dfw-modal{width:94vw}.dfw-review{align-items:start;flex-direction:column}}
