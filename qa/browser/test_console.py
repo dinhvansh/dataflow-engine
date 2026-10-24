@@ -530,20 +530,21 @@ def test_ui11_connector_hub_catalog_and_route_preview_only(ui):
     expect(page.get_by_text("Connector Hub", exact=True)).to_be_visible()
     expect(page.get_by_role("tab", name=re.compile("Sources"))).to_have_attribute("aria-selected", "true")
 
-    page.get_by_label("Search connectors").fill("mysql")
-    expect(page.get_by_text("MySQL / MariaDB", exact=True)).to_be_visible()
-    expect(page.get_by_text("Microsoft SQL Server", exact=True)).not_to_be_visible()
-    page.get_by_role("button", name="Clear connector search").click()
-    expect(page.get_by_text("Microsoft SQL Server", exact=True)).to_be_visible()
+    source_catalog = page.get_by_label("Source catalog")
+    source_catalog.get_by_label("Search connectors").fill("mysql")
+    expect(source_catalog.get_by_text("MySQL / MariaDB", exact=True)).to_be_visible()
+    expect(source_catalog.get_by_text("Microsoft SQL Server", exact=True)).not_to_be_visible()
+    source_catalog.get_by_role("button", name="Clear connector search").click()
+    expect(source_catalog.get_by_text("Microsoft SQL Server", exact=True)).to_be_visible()
 
-    page.get_by_role("button", name="Planned", exact=True).click()
-    expect(page.get_by_text("Microsoft SQL Server", exact=True)).not_to_be_visible()
-    page.get_by_role("button", name="Available", exact=True).click()
-    expect(page.get_by_text("Microsoft SQL Server", exact=True)).to_be_visible()
+    source_catalog.get_by_role("button", name="Planned", exact=True).click()
+    expect(source_catalog.get_by_text("Microsoft SQL Server", exact=True)).not_to_be_visible()
+    source_catalog.get_by_role("button", name="Available", exact=True).click()
+    expect(source_catalog.get_by_text("Microsoft SQL Server", exact=True)).to_be_visible()
 
     page.get_by_role("tab", name=re.compile("Destinations")).click()
-    expect(page.get_by_text("ClickHouse", exact=True)).to_be_visible()
-    page.get_by_role("tab", name=re.compile("Data routes")).click()
+    expect(page.get_by_label("Destination catalog").get_by_text("ClickHouse", exact=True)).to_be_visible()
+    page.get_by_role("tab", name="Connections", exact=True).click()
     expect(page.get_by_text("Supported underlying path", exact=False)).to_be_visible()
     page.get_by_label("Route source").select_option("mysql")
     expect(page.get_by_text("Planned route", exact=False)).to_be_visible()
@@ -953,6 +954,7 @@ def test_ui25_connection_inventory_requires_token_and_never_exposes_secrets(ui):
     """Authenticated GET-only configuration inventory; no live network test or credential leak."""
     page, state = ui
     page.get_by_role("button", name="Connections", exact=True).click()
+    page.get_by_role("tab", name="Connections", exact=True).click()
     inventory = page.get_by_label("Configured connection inventory")
     expect(inventory).to_be_visible()
     load = page.get_by_role("button", name="Refresh configured connections")
@@ -985,6 +987,7 @@ def test_ui26_connection_draft_registry_admin_only_metadata(ui):
     """Draft registry persists names only; it cannot dial, bind or execute."""
     page, state = ui
     page.get_by_role("button", name="Connections", exact=True).click()
+    page.get_by_role("tab", name="Connections", exact=True).click()
     panel = page.get_by_label("Connection draft registry", exact=True)
     expect(panel).to_be_visible()
     admin = page.get_by_label("Connection registry admin token")

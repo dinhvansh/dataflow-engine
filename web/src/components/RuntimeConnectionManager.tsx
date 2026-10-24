@@ -1,4 +1,4 @@
-import {useState} from "react";
+import {useEffect,useState} from "react";
 import {CheckCircle2,Database,KeyRound,Link2,Plus,RefreshCw,ShieldAlert,TestTube2} from "lucide-react";
 import {labRuntimeConnectionsApi,managedApi,type LabRuntimeConnection,type LabRuntimeInput,type ManagedStream} from "../lib/api";
 import {Button} from "./ui/button";
@@ -8,9 +8,14 @@ import {RuntimeBatchSyncWizard} from "./RuntimeBatchSyncWizard";
 // QA-only: authenticated profile operations are handled by the Go backend.
 // Credential values never appear in API GET payloads, URL or localStorage.
 // The owner must configure exact approved endpoints and encryption key server-side.
-export function RuntimeConnectionManager({token,sessionAdmin=false}:{token:string;sessionAdmin?:boolean}){
+type WizardQAState={profiles:LabRuntimeConnection[];adminToken:string};
+export function RuntimeConnectionManager({token,sessionAdmin=false,onQAState,refreshKey=0,showLegacyWizards=true}:{
+ token:string;sessionAdmin?:boolean;onQAState?:(state:WizardQAState)=>void;
+ refreshKey?:number;showLegacyWizards?:boolean;
+}){
  const[adminToken,setAdminToken]=useState(sessionAdmin?"session":"");
  const[profiles,setProfiles]=useState<LabRuntimeConnection[]>([]);
+ useEffect(()=>{onQAState?.({profiles,adminToken})},[profiles,adminToken,onQAState]);
  const[streams,setStreams]=useState<ManagedStream[]>([]);
  const[loaded,setLoaded]=useState(false);
  const[busy,setBusy]=useState("");
@@ -30,6 +35,7 @@ export function RuntimeConnectionManager({token,sessionAdmin=false}:{token:strin
   }catch{setProfiles([]);setLoaded(false);setError("Lab runtime manager unavailable. Check admin permission, migrations, backend feature flags and approved endpoints.");}
   finally{setBusy("");}
  };
+ useEffect(()=>{if(refreshKey>0&&loaded&&token&&adminToken)void reload()},[refreshKey]);
  const create=async()=>{
   if(!token||!adminToken||!form.password)return;
   setBusy("save");setError("");setNotice("");
@@ -105,8 +111,10 @@ export function RuntimeConnectionManager({token,sessionAdmin=false}:{token:strin
      </div>)}
     </div>
    </div>
-   <RuntimeBatchSyncWizard token={token} adminToken={adminToken} profiles={profiles} onCreated={()=>void reload()}/>
-   <RuntimeSyncSetupWizard token={token} adminToken={adminToken} profiles={profiles} onCreated={()=>void reload()}/>
+   {showLegacyWizards&&<>
+    <RuntimeBatchSyncWizard token={token} adminToken={adminToken} profiles={profiles} onCreated={()=>void reload()}/>
+    <RuntimeSyncSetupWizard token={token} adminToken={adminToken} profiles={profiles} onCreated={()=>void reload()}/>
+   </>}
    <div className="rounded-md border p-3 space-y-3">
     <h4 className="font-semibold text-sm flex items-center gap-2"><Link2 size={16}/> Bind verified connections to scratch pipeline</h4>
     <div className="grid gap-2 md:grid-cols-3">

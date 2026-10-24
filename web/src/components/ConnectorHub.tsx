@@ -46,44 +46,56 @@ function StatusBadge({available}:{available:boolean}){
 function Metric({label,value,detail,icon:Icon}:{label:string;value:number;detail:string;icon:typeof Database}){
  return <Card className="hub-metric"><CardHeader className="pb-2"><CardDescription className="flex items-center gap-2"><Icon size={15}/>{label}</CardDescription><CardTitle className="text-2xl tabular-nums">{value.toString().padStart(2,"0")}</CardTitle></CardHeader><CardContent className="muted text-xs">{detail}</CardContent></Card>;
 }
+import {useEffect,type ReactNode} from "react";
+import {ConnectorHubShellV2} from "./ConnectorHubShellV2";
+import {ConnectionWizardV2} from "./ConnectionWizardV2";
+import {managedApi,type LabRuntimeConnection,type ManagedStream} from "../lib/api";
+
+function RunningConnectionsPanel({token}:{token:string}){
+ const[streams,setStreams]=useState<ManagedStream[]|null>(null);
+ const[error,setError]=useState("");
+ const[loading,setLoading]=useState(false);
+ const load=async()=>{
+  if(!token){setStreams(null);setError("Cần phiên đăng nhập hợp lệ.");return}
+  setLoading(true);setError("");
+  try{const response=await managedApi.list(token);setStreams(response.streams)}
+  catch(e){setStreams(null);setError("Không tải được streams từ API: "+String(e))}
+  finally{setLoading(false)}
+ };
+ useEffect(()=>{void load()},[token]);
+ return <div className="hub-workspace rounded-lg border p-4 space-y-3">
+  <div className="flex flex-wrap justify-between items-center gap-2">
+   <h3 className="font-semibold">Connections / Managed streams</h3>
+   <Button type="button" variant="outline" size="sm" disabled={loading} onClick={()=>void load()}>Làm mới</Button>
+  </div>
+  <p className="muted text-xs">API managed streams trả danh sách cấu hình, không trả trạng thái kết nối đang chạy. Không suy diễn trạng thái online.</p>
+  {error&&<p role="alert" className="df-text-error text-xs">{error}</p>}
+  {!error&&streams===null&&<p className="muted text-xs">{loading?"Đang tải…":"Chưa có dữ liệu"}</p>}
+  {!error&&streams?.length===0&&<p className="muted text-xs">API trả về danh sách trống.</p>}
+  {streams?.map(s=><div key={s.id} className="rounded-md border p-3 text-xs">
+   <strong>{s.source_schema}.{s.source_table}</strong><p className="muted">→ {s.target_database}.{s.target_table}</p>
+   <p className="muted">Stream ID: {s.id} · Trạng thái runtime: API chưa cung cấp</p>
+  </div>)}
+ </div>;
+}
+
 export function ConnectorHub({token,onTokenChange,sessionRole}:{token:string;onTokenChange:(value:string)=>void;sessionRole?:"operator"|"admin"|null}){
- const[tab,setTab]=useState<"sources"|"destinations"|"routes">("sources");
  const[query,setQuery]=useState("");
  const[filter,setFilter]=useState<"all"|Capability>("all");
  const[showExplorer,setShowExplorer]=useState(true);
  const[selectedSource,setSelectedSource]=useState("sqlserver");
  const[selectedTarget,setSelectedTarget]=useState("clickhouse");
+ const[qaState,setQAState]=useState<{profiles:LabRuntimeConnection[];adminToken:string}>({profiles:[],adminToken:""});
+ const[refreshKey,setRefreshKey]=useState(0);
  const sources=catalog.filter(c=>c.kind==="source");
  const targets=catalog.filter(c=>c.kind==="destination");
- const filtered=useMemo(()=>catalog.filter(c=>(tab==="destinations"?c.kind==="destination":c.kind==="source")&&(filter==="all"||c.capability===filter)&&(c.name+" "+c.type+" "+c.description+" "+c.mode).toLowerCase().includes(query.trim().toLowerCase())),[tab,query,filter]);
  const source=catalog.find(c=>c.id===selectedSource)!;
  const target=catalog.find(c=>c.id===selectedTarget)!;
  const supported=selectedSource===supportedRoute.source&&selectedTarget===supportedRoute.target;
- const pickTab=(next:typeof tab)=>{setTab(next);setQuery("");setFilter("all")};
- return <div className="space-y-5">
-  <section className="hub-hero space-y-5 rounded-lg border p-5 sm:p-6" aria-label="Connector Hub overview">
-   <div className="flex flex-wrap items-start justify-between gap-4">
-    <div className="max-w-3xl">
-     <p className="hub-eyebrow mb-2">CONNECTIVITY / CATALOG 01</p>
-     <h2 className="flex items-center gap-3 text-2xl font-bold tracking-tight"><span className="hub-hero-symbol"><Network size={21}/></span><span>Connector Hub</span></h2>
-     <p className="muted mt-2 max-w-2xl text-sm leading-relaxed">Design for many sources and destinations. Today, SQL Server → ClickHouse is the only existing engine path; other adapters are future slots, not live connections.</p>
-    </div>
-    <Badge variant="neutral"><Info size={13}/> UI catalog · no credentials saved</Badge>
-   </div>
-   <div className="grid gap-3 sm:grid-cols-3">
-    <Metric label="Source adapters" value={sources.length} detail="1 limited source currently available" icon={Server}/>
-    <Metric label="Destinations" value={targets.length} detail="1 scratch-only writer available" icon={Database}/>
-    <Metric label="Underlying paths" value={1} detail="SQL Server → ClickHouse · test only" icon={Workflow}/>
-   </div>
-  </section>
-  <ConfiguredConnections token={token} onTokenChange={onTokenChange}/>
-  {sessionRole!=="operator"&&<ConnectionDraftRegistry token={token} sessionAdmin={sessionRole==="admin"}/>}
-  {sessionRole!=="operator"&&<RuntimeConnectionManager token={token} sessionAdmin={sessionRole==="admin"}/>}
-  <section className="hub-workspace space-y-4">
-   <div className="hub-tabs flex flex-wrap gap-1 rounded-lg border p-1" role="tablist" aria-label="Connector catalog sections">
-    {([{id:"sources",label:"Sources",count:sources.length},{id:"destinations",label:"Destinations",count:targets.length},{id:"routes",label:"Data routes",count:1}] as const).map(section=><button type="button" key={section.id} role="tab" aria-selected={tab===section.id} className={`hub-tab inline-flex items-center gap-2 rounded px-4 py-2.5 text-sm font-semibold ${tab===section.id?"is-active":""}`} onClick={()=>pickTab(section.id)}>{section.label}<span className="hub-tab-count text-[10px] tabular-nums">{section.count.toString().padStart(2,"0")}</span></button>)}
-   </div>
-   {tab!=="routes"&&<>
+ const catalogView=(tab:"sources"|"destinations"):ReactNode=>{
+  const filtered=catalog.filter(c=>(tab==="sources"?c.kind==="source":c.kind==="destination")&&
+    (filter==="all"||c.capability===filter)&&(c.name+" "+c.type+" "+c.description+" "+c.mode).toLowerCase().includes(query.trim().toLowerCase()));
+  return <div className="space-y-4">
     <div className="hub-filter-panel flex flex-col gap-3 rounded-lg border p-4 lg:flex-row lg:items-end lg:justify-between">
      <div className="space-y-2 lg:min-w-[340px] lg:flex-1">
       <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{tab==="sources"?"Source connector catalog":"Destination connector catalog"}</h3><span className="muted hub-mono text-[11px]">{filtered.length} MATCHING</span></div>
@@ -97,17 +109,14 @@ export function ConnectorHub({token,onTokenChange,sessionRole}:{token:string;onT
       <div className="flex flex-wrap items-start gap-3"><div className="hub-icon-tile flex h-11 w-11 shrink-0 items-center justify-center rounded-md"><Icon size={21}/></div><div className="min-w-[150px] flex-1 space-y-1"><h4 className="text-sm font-bold">{item.name}</h4><p className="muted text-xs">{item.type} · {item.mode}</p></div><StatusBadge available={available}/></div>
       <p className="muted min-h-[42px] text-sm leading-relaxed">{item.description}</p>
       <div className="hub-card-footer flex flex-wrap items-center justify-between gap-3 border-t pt-3"><span className="muted text-xs">{available?"Uses existing backend configuration":"No connection configuration exists"}</span>
-       {item.id==="sqlserver"?<Button type="button" size="sm" variant="outline" aria-expanded={showExplorer} onClick={()=>setShowExplorer(p=>!p)}>{showExplorer?"Hide explorer":"Open live explorer"}<ArrowRight size={14}/></Button>:item.id==="clickhouse"?<span className="hub-available-caption flex items-center gap-1 text-xs font-medium"><ShieldCheck size={15}/>Scratch writer available</span>:<span className="muted flex items-center gap-1 text-xs"><LockKeyhole size={14}/>Not configurable yet</span>}
+       {item.id==="sqlserver"?<Button type="button" size="sm" variant="outline" aria-expanded={showExplorer} onClick={()=>setShowExplorer(p=>!p)}>{showExplorer?"Hide explorer":"Open live explorer"}<ArrowRight size={14}/></Button>:item.id==="clickhouse"?<span className="hub-available-caption flex items-center gap-1 text-xs font-medium"><ShieldCheck size={15}/>Scratch writer available</span>:<span className="muted flex items-center gap-1 text-xs">Not configurable yet</span>}
       </div>
      </article>})}</div>:<div className="hub-empty rounded-lg border p-8 text-center"><Search className="muted mx-auto mb-3" size={25}/><p className="font-semibold">No matching connectors</p><p className="muted mt-1 text-sm">Try another keyword or availability filter.</p><Button type="button" variant="outline" size="sm" className="mt-4" onClick={()=>{setQuery("");setFilter("all")}}>Reset filters</Button></div>}
-    {tab==="sources"&&showExplorer&&<div className="hub-explorer-wrap rounded-lg border p-3 sm:p-4" aria-label="Existing SQL Server Explorer">
-      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm font-semibold"><ShieldCheck size={17} className="hub-accent"/>Existing SQL Server Explorer <Badge variant="neutral">BACKEND-CONFIGURED DSN</Badge></div>
-      <SourceExplorer token={token} onTokenChange={onTokenChange}/>
-     </div>}
-   </>}
-   {tab==="routes"&&<div className="space-y-4">
+  </div>;
+ };
+ const routePreview=<>
     <div className="hub-route-panel rounded-lg border p-4 sm:p-6">
-     <div className="mb-5 flex flex-wrap items-start justify-between gap-2"><div><p className="hub-eyebrow mb-2">ROUTING / CONCEPT ONLY</p><h3 className="text-lg font-bold">Source → Destination</h3><p className="muted mt-1 text-sm">Select an adapter pair to preview its support status. No route or job is created.</p></div><Badge variant="neutral"><LockKeyhole size={12}/> Read-only preview</Badge></div>
+     <div className="mb-5 flex flex-wrap items-start justify-between gap-2"><div><p className="hub-eyebrow mb-2">ROUTING / CONCEPT ONLY</p><h3 className="text-lg font-bold">Source → Destination</h3><p className="muted mt-1 text-sm">Select an adapter pair to preview its support status. No route or job is created.</p></div><Badge variant="neutral"> Read-only preview</Badge></div>
      <div className="hub-route-grid grid gap-3 sm:grid-cols-[minmax(0,1fr)_72px_minmax(0,1fr)] sm:items-center">
       <label className="hub-route-endpoint space-y-2 rounded-lg border p-4"><span className="hub-eyebrow">SOURCE / FROM</span><div className="flex items-center gap-2"><Database size={18} className="hub-accent"/><span className="text-sm font-semibold">Data origin</span></div><select aria-label="Route source" className="field" value={selectedSource} onChange={e=>setSelectedSource(e.target.value)}>{sources.map(x=><option key={x.id} value={x.id}>{x.name}{x.capability==="planned"?" (planned)":""}</option>)}</select><StatusBadge available={source.capability==="available"}/></label>
       <div className="hub-route-arrow flex items-center justify-center"><ArrowRight size={27} className="hidden sm:block"/><ArrowDown size={27} className="sm:hidden"/></div>
@@ -115,8 +124,27 @@ export function ConnectorHub({token,onTokenChange,sessionRole}:{token:string;onT
      </div>
      <div className={`hub-route-message mt-5 rounded-md border p-4 ${supported?"supported":"planned"}`} role="status"><div className="flex items-center gap-2 font-semibold">{supported?<CheckCircle2 size={17}/>:<Clock3 size={17}/>} {supported?"Supported underlying path · test only":"Planned route · execution unavailable"}</div><p className="muted mt-1 text-xs leading-relaxed">{supported?"This is the existing single SQL Server backend DSN to scratch ClickHouse. Multiple source/destination instances are not supported. Configure actual allowed syncs in Sync Jobs.":"This pairing is a visual preview only. No secrets, connectors, streams or destination jobs are saved."}</p></div>
     </div>
+ </>;
+ const roadmap=<>
     <div className="hub-workflow-rail rounded-lg border p-5"><div className="mb-4 flex items-center gap-2 font-semibold"><Box size={18} className="hub-accent"/>Connector architecture roadmap</div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{definitions.map((x,i)=><div key={x.id} className="hub-roadmap-step rounded-md border p-3"><div className="hub-eyebrow">STAGE {String(i+1).padStart(2,"0")}</div><h4 className="mt-2 text-sm font-semibold">{x.label}</h4><p className="muted mt-1 text-xs">{x.detail}</p></div>)}</div><p className="muted mt-4 text-xs">All future stages require independent backend APIs, permissions and QA. The current UI does not provision them.</p></div>
-   </div>}
-  </section>
- </div>;
+ </>;
+ return <ConnectorHubShellV2
+   sessionRole={sessionRole}
+   liveQAManager={<RuntimeConnectionManager token={token} sessionAdmin={sessionRole==="admin"}
+     refreshKey={refreshKey} onQAState={setQAState}/>}
+   wizard={go=><ConnectionWizardV2 token={token} adminToken={qaState.adminToken}
+     profiles={qaState.profiles} onGoToTab={go} onCreated={()=>setRefreshKey(n=>n+1)}/>}
+   runningConnections={<RunningConnectionsPanel token={token}/>}
+   configuredConnections={<ConfiguredConnections token={token} onTokenChange={onTokenChange}/>}
+   draftRegistry={<ConnectionDraftRegistry token={token} sessionAdmin={sessionRole==="admin"}/>}
+   routePreview={routePreview} roadmap={roadmap}
+   sourceCatalog={catalogView("sources")} destinationCatalog={catalogView("destinations")}
+   sourceExplorer={showExplorer?<div className="hub-explorer-wrap rounded-lg border p-3 sm:p-4" aria-label="Existing SQL Server Explorer">
+     <div className="mb-3 flex flex-wrap items-center gap-2 text-sm font-semibold">
+      <ShieldCheck size={17} className="hub-accent"/>Existing SQL Server Explorer
+      <Badge variant="neutral">BACKEND-CONFIGURED DSN</Badge>
+     </div>
+     <SourceExplorer token={token} onTokenChange={onTokenChange}/>
+    </div>:<Button type="button" variant="outline" onClick={()=>setShowExplorer(true)}>Mở SourceExplorer</Button>}
+ />;
 }
