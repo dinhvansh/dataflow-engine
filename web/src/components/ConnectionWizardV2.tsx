@@ -69,7 +69,7 @@ export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTa
  const run=async(id:string)=>{setRuns(old=>({...old,[id]:{error:"Đang gửi Run…"}}));try{const result=await managedApi.run(id,token);setRuns(old=>({...old,[id]:{run:result}}))}catch(e){setRuns(old=>({...old,[id]:{error:errorText(e)}}))}};
  useEffect(()=>{const active=Object.entries(runs).filter(([,x])=>x.run&&["queued","running"].includes(x.run.status));if(!active.length)return;
   let cancelled=false;const handle=window.setInterval(()=>{void Promise.all(active.map(async([id,x])=>{try{const next=await managedApi.status(x.run!.run_id,token);if(!cancelled)setRuns(old=>({...old,[id]:{run:next}}))}catch(e){if(!cancelled)setRuns(old=>({...old,[id]:{run:x.run,error:"Polling lỗi: "+errorText(e)}}))}}))},4000);
-  return()=>{cancelled=true;window.clearInterval(handle)},[runs,token]);
+  return()=>{cancelled=true;window.clearInterval(handle)}},[runs,token]);
  const choices=(driver:"sqlserver"|"clickhouse")=>profiles.filter(p=>p.driver===driver);
  const cursorSelect=(r:Row)=><><select className="field" value={r.cursor} aria-label={"Cursor "+r.name} onChange={e=>changeCursor(r,e.target.value)}><option value="">Không có</option>
   {r.columns.filter(c=>nativeCursor(c)||dateCursor(c)).map(c=><option key={c.name} value={c.name} disabled={!nativeCursor(c)}>{c.name} ({c.sql_type}){dateCursor(c)?" · API chưa hỗ trợ":""}</option>)}</select>
