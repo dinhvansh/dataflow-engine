@@ -29,18 +29,18 @@ export function ConnectorHubShellV2(props:ConnectorHubShellV2Props){
   </div>
   <div id="dfh-panel-connections" className="dfh-content" role="tabpanel" aria-labelledby="dfh-tab-connections" hidden={tab!=="connections"}>
    {props.sessionRole!=="operator"&&<section aria-label="Wizard tạo connection">{props.wizard(go)}</section>}
-   <section aria-label="Connections đang chạy">{props.runningConnections}</section>
+   {tab==="connections"&&<section aria-label="Connections đang chạy">{props.runningConnections}</section>}
    <section aria-label="Configured connections">{props.configuredConnections}</section>
    {props.sessionRole!=="operator"&&<section aria-label="Draft registry">{props.draftRegistry}</section>}
    <section aria-label="Route preview">{props.routePreview}</section>
    <section aria-label="Roadmap">{props.roadmap}</section>
   </div>
   <div id="dfh-panel-sources" className="dfh-content" role="tabpanel" aria-labelledby="dfh-tab-sources" hidden={tab!=="sources"}>
-   <section aria-label="Source catalog">{props.sourceCatalog}</section>
-   <section aria-label="SourceExplorer">{props.sourceExplorer}</section>
+   {tab==="sources"&&<section aria-label="Source catalog">{props.sourceCatalog}</section>}
+   {tab==="sources"&&<section aria-label="SourceExplorer">{props.sourceExplorer}</section>}
   </div>
   <div id="dfh-panel-destinations" className="dfh-content" role="tabpanel" aria-labelledby="dfh-tab-destinations" hidden={tab!=="destinations"}>
-   <section aria-label="Destination catalog">{props.destinationCatalog}</section>
+   {tab==="destinations"&&<section aria-label="Destination catalog">{props.destinationCatalog}</section>}
   </div>
  </div>;
 }
