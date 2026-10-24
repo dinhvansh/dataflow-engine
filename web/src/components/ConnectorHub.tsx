@@ -131,7 +131,7 @@ export function ConnectorHub({token,onTokenChange,sessionRole}:{token:string;onT
  return <ConnectorHubShellV2
    sessionRole={sessionRole}
    liveQAManager={<RuntimeConnectionManager token={token} sessionAdmin={sessionRole==="admin"}
-     showLegacyWizards={false} refreshKey={refreshKey} onQAState={setQAState}/>}
+     refreshKey={refreshKey} onQAState={setQAState}/>}
    wizard={go=><ConnectionWizardV2 token={token} adminToken={qaState.adminToken}
      profiles={qaState.profiles} onGoToTab={go} onCreated={()=>setRefreshKey(n=>n+1)}/>}
    runningConnections={<RunningConnectionsPanel token={token}/>}
