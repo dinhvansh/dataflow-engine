@@ -1,0 +1,8 @@
+.dfh-shell{display:grid;gap:1rem;color:var(--console-text)}
+.dfh-heading{display:grid;gap:.3rem}.dfh-heading h2{font-size:1.45rem;font-weight:700}.dfh-heading p{font-size:.84rem;color:var(--console-muted)}
+.dfh-tabs{display:flex;flex-wrap:wrap;gap:.35rem;padding:.35rem;border:1px solid var(--console-border);border-radius:.5rem;background:var(--console-card)}
+.dfh-tab{font-size:.85rem;color:var(--console-muted);padding:.6rem .9rem;border-radius:.35rem}
+.dfh-tab.current{background:var(--console-hover);color:var(--console-accent);font-weight:700}
+.dfh-tab:focus-visible{outline:2px solid var(--console-accent);outline-offset:2px}
+.dfh-content{display:grid;gap:1rem;min-width:0}.dfh-content[hidden]{display:none}
+.dfh-content>section{min-width:0}
