@@ -1,4 +1,4 @@
-import {useEffect,useState} from "react";
+import {useCallback,useEffect,useState} from "react";
 import {CheckCircle2,Database,KeyRound,Link2,Plus,RefreshCw,ShieldAlert,TestTube2} from "lucide-react";
 import {labRuntimeConnectionsApi,managedApi,type LabRuntimeConnection,type LabRuntimeInput,type ManagedStream} from "../lib/api";
 import {Button} from "./ui/button";
@@ -26,7 +26,7 @@ export function RuntimeConnectionManager({token,sessionAdmin=false,onQAState,ref
  const[sourceID,setSourceID]=useState("");
  const[targetID,setTargetID]=useState("");
  const modify=<K extends keyof LabRuntimeInput>(key:K,value:LabRuntimeInput[K])=>setForm(p=>({...p,[key]:value}));
- const reload=async()=>{
+ const reload=useCallback(async()=>{
   if(!token||!adminToken)return;
   setBusy("load");setError("");setNotice("");
   try{
@@ -34,7 +34,8 @@ export function RuntimeConnectionManager({token,sessionAdmin=false,onQAState,ref
    setProfiles(p.profiles);setStreams(s.streams);setLoaded(true);
   }catch{setProfiles([]);setLoaded(false);setError("Lab runtime manager unavailable. Check admin permission, migrations, backend feature flags and approved endpoints.");}
   finally{setBusy("");}
- };
+ },[token,adminToken]);
+ useEffect(()=>{if(sessionAdmin&&token&&adminToken)void reload()},[sessionAdmin,reload,token,adminToken]);
  useEffect(()=>{if(refreshKey>0&&loaded&&token&&adminToken)void reload()},[refreshKey]);
  const create=async()=>{
   if(!token||!adminToken||!form.password)return;
@@ -101,7 +102,7 @@ export function RuntimeConnectionManager({token,sessionAdmin=false,onQAState,ref
      <label className="block text-xs space-y-1">Password<input className="field" aria-label="Live connection password" type="password" autoComplete="new-password" value={form.password} onChange={e=>modify("password",e.target.value)}/></label>
      <Button type="button" disabled={!!busy||!form.name.trim()||!form.host||!form.password} onClick={()=>void create()}><Plus size={15}/>{busy==="save"?"Saving…":"Save encrypted draft"}</Button>
     </div>
-    <div className="space-y-3 rounded-md border p-3">
+    <div className="space-y-3 rounded-md border p-3" aria-label="Saved QA profiles">
      <h4 className="font-semibold text-sm">Saved profiles ({profiles.length})</h4>
      {profiles.length===0&&<p className="muted text-xs">No saved connections.</p>}
      {profiles.map(p=><div key={p.id} className="rounded border p-3 space-y-2">
