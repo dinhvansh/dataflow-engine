@@ -24,8 +24,9 @@ jobs:
           bash -n deploy/local-qa/verify-reset-scope.sh
           grep -q 'dataflow-localqa-net' deploy/local-qa/verify-reset-scope.sh
           grep -q 'name: dataflow-localqa-net' deploy/local-qa/compose.qa.yml
-          python3 -m py_compile qa/local-acceptance/v8b/report.py
+          python3 -m py_compile qa/local-acceptance/v8b/report.py qa/local-acceptance/v8b/run_mock_browser.py qa/local-acceptance/v8b/test_reset_postcondition.py
           python3 -m unittest discover -s qa/local-acceptance/v8b -p test_reset_scope_guard.py -v
+          python3 -m unittest discover -s qa/local-acceptance/v8b -p test_reset_postcondition.py -v
       - name: Refuse unapproved local execution even without Docker
         run: |
           set +e

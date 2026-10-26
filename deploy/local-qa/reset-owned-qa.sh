@@ -9,4 +9,12 @@ root=$(cd "$here/../.." && pwd)
 cd "$root"
 docker compose --project-name dataflow-localqa --env-file .env.qa.local \
  -f deploy/local-qa/compose.qa.yml --profile operator down --volumes
+remaining_containers=$(docker ps -aq --filter label=com.docker.compose.project=dataflow-localqa)
+remaining_volumes=$(docker volume ls --format '{{.Name}}' --filter label=com.docker.compose.project=dataflow-localqa)
+remaining_networks=$(docker network ls --format '{{.Name}}' --filter label=com.docker.compose.project=dataflow-localqa)
+if [[ -n "$remaining_containers" || -n "$remaining_volumes" || -n "$remaining_networks" ]]; then
+ echo "BLOCKED: QA reset incomplete; disposable project resources remain" >&2
+ echo "Containers: $remaining_containers; volumes: $remaining_volumes; networks: $remaining_networks" >&2
+ exit 1
+fi
 echo "PASS: reset only verified owned dataflow-localqa Docker Compose resources"

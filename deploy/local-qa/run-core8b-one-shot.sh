@@ -82,19 +82,19 @@ case_run(){
  echo "PASS $id ($elapsed sec)"
 }
 fresh(){
- "$here/reset-owned-qa.sh"
- "$here/up.sh"
- "$here/verify-isolation.sh"
+ "$here/reset-owned-qa.sh" || return $?
+ "$here/up.sh" || return $?
+ "$here/verify-isolation.sh" || return $?
 }
 case_run STATIC-SAFETY "$here/verify-reset-scope.sh"
 # Verify the fail-closed Docker reset behavior with a FAKE Docker binary.
 # No real network/volume can be changed by these negative safety tests.
-case_run STATIC-RESET-NEGATIVE python3 qa/local-acceptance/v8b/test_reset_scope_guard.py
+case_run STATIC-RESET-NEGATIVE bash -c 'python3 qa/local-acceptance/v8b/test_reset_scope_guard.py && python3 qa/local-acceptance/v8b/test_reset_postcondition.py'
 # Verify the canonical evidence schema before any test can modify QA volumes.
 case_run STATIC-EVIDENCE-CONTRACT python3 qa/local-acceptance/verify_core_final_evidence.py --contract
 case_run STATIC-GO bash -c 'go test -race ./... && go vet ./... && go build ./cmd/...'
 case_run STATIC-WEB bash -c 'cd web && npm ci --ignore-scripts && npm run build'
-case_run UI-MOCK python3 -m pytest qa/browser/test_console.py -q
+case_run UI-MOCK python3 qa/local-acceptance/v8b/run_mock_browser.py
 case_run PREP-8B fresh
 case_run CORE-8B-E2E env DATAFLOW_LIVE_QA_OPT_IN=true "$here/run-core-operator.sh"
 case_run PREP-CLAIM fresh
