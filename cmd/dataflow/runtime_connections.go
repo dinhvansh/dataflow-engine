@@ -152,7 +152,9 @@ func (s *server) runtimeProfilesAPI(w http.ResponseWriter,r *http.Request){
     Scan(&p.ID,&p.Name,&p.Driver,&p.Kind,&p.Host,&p.Port,&p.Database,&p.Username,&p.Status,&p.Revision,&p.CheckedAt)
   if e!=nil{http.Error(w,"cannot save profile (duplicate or unavailable)",409);return}
   w.Header().Set("Content-Type","application/json");w.WriteHeader(201);_ = json.NewEncoder(w).Encode(p)
- default:http.Error(w,"GET or POST required",405)
+ case http.MethodPatch:s.updateRuntimeProfile(w,r,ctx)
+ case http.MethodDelete:s.revokeRuntimeProfile(w,r,ctx)
+ default:http.Error(w,"GET, POST, PATCH or DELETE required",405)
  }
 }
 func (s *server) readRuntimeProfile(ctx context.Context,id string)(runtimeConnection,string,error){
@@ -216,6 +218,7 @@ func (s *server) runtimeTestAPI(w http.ResponseWriter,r *http.Request){
  ctx,cancel:=context.WithTimeout(r.Context(),6*time.Second);defer cancel()
  p,secret,e:=s.readRuntimeProfile(ctx,input.ID)
  if e!=nil{http.Error(w,"profile unavailable",404);return}
+ if p.Status=="revoked"{http.Error(w,"profile revoked",409);return}
  passed:=false
  if p.Driver=="sqlserver"{
   db,e:=openLabSQLServer(ctx,p,secret);if e==nil{passed=checkLabSQLSource(ctx,db);db.Close()}
@@ -223,10 +226,11 @@ func (s *server) runtimeTestAPI(w http.ResponseWriter,r *http.Request){
  // Every re-test invalidates previous binding snapshots, including failures.
  // Never let an old successful status survive a failed credential check.
  status:="draft";if passed{status="verified"}
- _,e=s.pg.Exec(ctx,`UPDATE connection_runtime_profiles SET
+ tag,e:=s.pg.Exec(ctx,`UPDATE connection_runtime_profiles SET
  status=$2,checked_at=CASE WHEN $2='verified' THEN now() ELSE NULL END,
- revision=revision+1 WHERE id=$1::uuid AND status IN ('draft','verified')`,p.ID,status)
+ revision=revision+1 WHERE id=$1::uuid AND revision=$3 AND status IN ('draft','verified')`,p.ID,status,p.Revision)
  if e!=nil{http.Error(w,"test evidence persistence unavailable",503);return}
+ if tag.RowsAffected()!=1{http.Error(w,"profile changed during test",409);return}
  w.Header().Set("Content-Type","application/json")
  _ = json.NewEncoder(w).Encode(map[string]any{"id":p.ID,"passed":passed,"tested_at":time.Now().UTC().Format(time.RFC3339)})
 }

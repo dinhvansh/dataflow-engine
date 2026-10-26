@@ -87,7 +87,7 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
  raw,e:=os.ReadFile(filepath.Join("..","..","migrations","postgres","031_connection_runtime_profiles.sql"))
  if e!=nil{t.Fatal(e)}
  if _,e=svc.pg.Exec(ctx,string(raw));e!=nil{t.Fatalf("isolated migration unavailable: %v",e)}
- for _,name:=range []string{"032_sync_stream_selected_columns.sql","033_qa_stream_modes_destinations.sql","034_source_key_and_bootstrap_cursor.sql","035_typed_destinations.sql"}{
+ for _,name:=range []string{"032_sync_stream_selected_columns.sql","033_qa_stream_modes_destinations.sql","034_source_key_and_bootstrap_cursor.sql","035_typed_destinations.sql","036_runtime_profile_revocation.sql"}{
   sqlText,readErr:=os.ReadFile(filepath.Join("..","..","migrations","postgres",name))
   if readErr!=nil{t.Fatal(readErr)}
   if _,e=svc.pg.Exec(ctx,string(sqlText));e!=nil{t.Fatalf("isolated migration %s unavailable: %v",name,e)}
@@ -188,6 +188,12 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
  createdStreamID=streamID
  status,resp,_:=do(http.MethodPost,"/api/v1/connections/runtime/bind",connectionBindingInput{StreamID:streamID,SourceID:sourceID,TargetID:targetID})
  if status!=200||resp["bound"]!=true{t.Fatalf("binding refused in isolated QA")}
+ var activeRunID string;var activeRevision int64
+ if e=svc.pg.QueryRow(ctx,`SELECT revision FROM connection_runtime_profiles WHERE id=$1::uuid`,sourceID).Scan(&activeRevision);e!=nil{t.Fatal(e)}
+ if e=svc.pg.QueryRow(ctx,`INSERT INTO managed_runs(stream_id,status) VALUES($1::uuid,'queued') RETURNING id::text`,streamID).Scan(&activeRunID);e!=nil{t.Fatal(e)}
+ status,_,_=do(http.MethodDelete,"/api/v1/connections/runtime",revokeRuntimeConnection{ID:sourceID,Revision:activeRevision})
+ if status!=409{t.Fatalf("active bound profile revoked: %d",status)}
+ if _,e=svc.pg.Exec(ctx,`DELETE FROM managed_runs WHERE id=$1::uuid`,activeRunID);e!=nil{t.Fatal(e)}
  db,endpoint,user,pass,release,e:=svc.runtimeForManagedStream(ctx,streamID)
  if e!=nil{t.Fatal("worker failed to load saved verified binding")}
  defer release()
@@ -256,5 +262,24 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
    }
   }
  }
+ var sourceRevision int64
+ if e=svc.pg.QueryRow(ctx,`SELECT revision FROM connection_runtime_profiles WHERE id=$1::uuid`,sourceID).Scan(&sourceRevision);e!=nil{t.Fatal(e)}
+ change:=changeRuntimeConnection{ID:sourceID,Revision:sourceRevision,Name:sourcePayload.Name,
+  Host:sqlHost,Port:srcPort,Database:"DataFlowFixtureQA",Username:sqlUser}
+ status,updated,body:=do(http.MethodPatch,"/api/v1/connections/runtime",change)
+ if status!=200||updated["status"]!="draft"||strings.Contains(body,sqlPass){t.Fatalf("edit did not invalidate verification or leaked credential: %d",status)}
+ status,_,_=do(http.MethodPatch,"/api/v1/connections/runtime",change)
+ if status!=409{t.Fatalf("stale edit accepted: %d",status)}
+ if _,_,_,_,releaseAfter,e:=svc.runtimeForManagedStream(ctx,streamID);e==nil{releaseAfter();t.Fatal("stale bound revision allowed after edit")}
+ status,tested,_:=do(http.MethodPost,"/api/v1/connections/runtime/test",map[string]string{"id":sourceID})
+ if status!=200||tested["passed"]!=true{t.Fatalf("retest after edit failed: %d",status)}
+ if _,_,_,_,releaseAfter,e:=svc.runtimeForManagedStream(ctx,streamID);e==nil{releaseAfter();t.Fatal("old binding silently revived after retest")}
+ var revokeRevision int64
+ if e=svc.pg.QueryRow(ctx,`SELECT revision FROM connection_runtime_profiles WHERE id=$1::uuid`,sourceID).Scan(&revokeRevision);e!=nil{t.Fatal(e)}
+ status,_,_=do(http.MethodDelete,"/api/v1/connections/runtime",revokeRuntimeConnection{ID:sourceID,Revision:revokeRevision})
+ if status!=204{t.Fatalf("revocation failed: %d",status)}
+ status,_,_=do(http.MethodPost,"/api/v1/connections/runtime/test",map[string]string{"id":sourceID})
+ if status!=409{t.Fatalf("revoked source re-tested: %d",status)}
+ if _,_,_,_,releaseAfter,e:=svc.runtimeForManagedStream(ctx,streamID);e==nil{releaseAfter();t.Fatal("revoked source allowed at worker")}
 
 }
