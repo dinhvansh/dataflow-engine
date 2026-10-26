@@ -82,9 +82,9 @@ case_run(){
  echo "PASS $id ($elapsed sec)"
 }
 fresh(){
- "$here/reset-owned-qa.sh"
- "$here/up.sh"
- "$here/verify-isolation.sh"
+ "$here/reset-owned-qa.sh" || return $?
+ "$here/up.sh" || return $?
+ "$here/verify-isolation.sh" || return $?
 }
 case_run STATIC-SAFETY "$here/verify-reset-scope.sh"
 # Verify the fail-closed Docker reset behavior with a FAKE Docker binary.
