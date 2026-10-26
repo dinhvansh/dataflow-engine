@@ -99,7 +99,7 @@ export function ConnectorHub({token,onTokenChange,sessionRole}:{token:string;onT
     <div className="hub-filter-panel flex flex-col gap-3 rounded-lg border p-4 lg:flex-row lg:items-end lg:justify-between">
      <div className="space-y-2 lg:min-w-[340px] lg:flex-1">
       <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{tab==="sources"?"Source connector catalog":"Destination connector catalog"}</h3><span className="muted hub-mono text-[11px]">{filtered.length} MATCHING</span></div>
-      <label className="relative block"><Search size={16} className="hub-search-icon absolute left-3 top-3"/><input aria-label="Search connectors" className="field pl-10 pr-9" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search adapters, modes, storage…"/>{query&&<button type="button" className="hub-clear-search absolute right-2 top-2 rounded p-1" aria-label="Clear connector search" onClick={()=>setQuery("")}><X size={14}/></button>}</label>
+      <label className="relative block"><Search size={16} className="hub-search-icon" aria-hidden="true"/><input aria-label="Search connectors" className="field hub-search-field" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search adapters, modes, storage…"/>{query&&<button type="button" className="hub-clear-search absolute right-2 top-2 rounded p-1" aria-label="Clear connector search" onClick={()=>setQuery("")}><X size={14}/></button>}</label>
      </div>
      <div className="hub-filter-controls flex flex-wrap gap-2" role="group" aria-label="Connector availability filter">
       {([{id:"all",label:"All"},{id:"available",label:"Available"},{id:"planned",label:"Planned"}] as const).map(item=><button type="button" key={item.id} aria-pressed={filter===item.id} className={`hub-filter rounded border px-3 py-2 text-xs font-semibold ${filter===item.id?"is-active":""}`} onClick={()=>setFilter(item.id)}>{item.label}</button>)}
@@ -135,7 +135,7 @@ export function ConnectorHub({token,onTokenChange,sessionRole}:{token:string;onT
    wizard={go=><ConnectionWizardV2 token={token} adminToken={qaState.adminToken}
      profiles={qaState.profiles} onGoToTab={go} onCreated={()=>setRefreshKey(n=>n+1)}/>}
    runningConnections={<RunningConnectionsPanel token={token}/>}
-   configuredConnections={<ConfiguredConnections token={token} onTokenChange={onTokenChange}/>}
+   configuredConnections={<>{sessionRole==="operator"&&<section className="hub-workspace rounded-lg border p-4 sm:p-5" aria-label="Saved connections access"><h3 className="text-sm font-semibold">Saved QA connections require Administrator access</h3><p className="muted mt-2 text-xs leading-5">Signed in as Operator. Saved SQL Server and ClickHouse connection profiles are Administrator-managed; the connector catalog is not a saved connection list. Use Sync Jobs or Pipelines for approved, already bound streams.</p></section>}<ConfiguredConnections token={token} onTokenChange={onTokenChange}/></>}
    draftRegistry={<ConnectionDraftRegistry token={token} sessionAdmin={sessionRole==="admin"}/>}
    routePreview={routePreview} roadmap={roadmap}
    sourceCatalog={catalogView("sources")} destinationCatalog={catalogView("destinations")}
