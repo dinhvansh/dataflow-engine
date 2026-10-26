@@ -1,0 +1,208 @@
+{
+  "verdict": "PASS-LOCAL-CORE8B",
+  "exit_code": 0,
+  "timestamp_utc": "2026-10-26T15:43:16.127558+00:00",
+  "git_sha": "1200a379a11c842c1297ecbe58bee22120567903",
+  "source": "ISOLATED_SYNTHETIC_QA",
+  "counts": {
+    "PASS": 17,
+    "FAIL": 0,
+    "BLOCKED": 0,
+    "NOT_RUN": 0
+  },
+  "cases": [
+    {
+      "id": "STATIC-SAFETY",
+      "status": "PASS",
+      "elapsed_s": "10.316",
+      "evidence": "logs/STATIC-SAFETY.log"
+    },
+    {
+      "id": "STATIC-RESET-NEGATIVE",
+      "status": "PASS",
+      "elapsed_s": "0.948",
+      "evidence": "logs/STATIC-RESET-NEGATIVE.log"
+    },
+    {
+      "id": "STATIC-EVIDENCE-CONTRACT",
+      "status": "PASS",
+      "elapsed_s": "0.209",
+      "evidence": "logs/STATIC-EVIDENCE-CONTRACT.log"
+    },
+    {
+      "id": "STATIC-GO",
+      "status": "PASS",
+      "elapsed_s": "340.926",
+      "evidence": "logs/STATIC-GO.log"
+    },
+    {
+      "id": "STATIC-WEB",
+      "status": "PASS",
+      "elapsed_s": "123.522",
+      "evidence": "logs/STATIC-WEB.log"
+    },
+    {
+      "id": "UI-MOCK",
+      "status": "PASS",
+      "elapsed_s": "115.051",
+      "evidence": "logs/UI-MOCK.log"
+    },
+    {
+      "id": "PREP-8B",
+      "status": "PASS",
+      "elapsed_s": "61.025",
+      "evidence": "logs/PREP-8B.log"
+    },
+    {
+      "id": "CORE-8B-E2E",
+      "status": "PASS",
+      "elapsed_s": "221.321",
+      "evidence": "logs/CORE-8B-E2E.log"
+    },
+    {
+      "id": "PREP-CLAIM",
+      "status": "PASS",
+      "elapsed_s": "55.621",
+      "evidence": "logs/PREP-CLAIM.log"
+    },
+    {
+      "id": "CORE-6B-CLAIM",
+      "status": "PASS",
+      "elapsed_s": "87.424",
+      "evidence": "logs/CORE-6B-CLAIM.log"
+    },
+    {
+      "id": "PREP-DQ",
+      "status": "PASS",
+      "elapsed_s": "53.814",
+      "evidence": "logs/PREP-DQ.log"
+    },
+    {
+      "id": "CORE-6B-DQ",
+      "status": "PASS",
+      "elapsed_s": "130.324",
+      "evidence": "logs/CORE-6B-DQ.log"
+    },
+    {
+      "id": "PREP-MID-SQL",
+      "status": "PASS",
+      "elapsed_s": "51.741",
+      "evidence": "logs/PREP-MID-SQL.log"
+    },
+    {
+      "id": "CORE-6B-MID-SQL",
+      "status": "PASS",
+      "elapsed_s": "93.413",
+      "evidence": "logs/CORE-6B-MID-SQL.log"
+    },
+    {
+      "id": "PREP-NETWORK",
+      "status": "PASS",
+      "elapsed_s": "50.612",
+      "evidence": "logs/PREP-NETWORK.log"
+    },
+    {
+      "id": "CORE-6A-NETWORK",
+      "status": "PASS",
+      "elapsed_s": "164.944",
+      "evidence": "logs/CORE-6A-NETWORK.log"
+    },
+    {
+      "id": "VERIFY-EVIDENCE",
+      "status": "PASS",
+      "elapsed_s": "0.554",
+      "evidence": "logs/VERIFY-EVIDENCE.log"
+    }
+  ],
+  "log_manifest": [
+    {
+      "file": "logs/CORE-6A-NETWORK.log",
+      "sha256": "164e8029b27ef8db09c150e69c37c69b7df31792dac8e8127d1790f65ba268ea",
+      "bytes": 11565
+    },
+    {
+      "file": "logs/CORE-6B-CLAIM.log",
+      "sha256": "3513fc25433db04c8558ebe00db0ea785446e242a3a1d67f5a7a6b695d68b06d",
+      "bytes": 11549
+    },
+    {
+      "file": "logs/CORE-6B-DQ.log",
+      "sha256": "e0356f12cdc66d4050701874892c898b706e51ca0a5e1a7ec414aec59524070e",
+      "bytes": 11690
+    },
+    {
+      "file": "logs/CORE-6B-MID-SQL.log",
+      "sha256": "fb4e664b2566724c336a576b5c3eb7f8f8eea53b41dfed916708395f879e09ce",
+      "bytes": 11629
+    },
+    {
+      "file": "logs/CORE-8B-E2E.log",
+      "sha256": "f255bb458c80cea9f2d987bed84330619fd50ccd5212033d9f6fe1a3fa187200",
+      "bytes": 11897
+    },
+    {
+      "file": "logs/PREP-8B.log",
+      "sha256": "388a925496d5e01f8d569d4714c12e62975879ede74774192ed3afcfd99d4c87",
+      "bytes": 4904
+    },
+    {
+      "file": "logs/PREP-CLAIM.log",
+      "sha256": "9644361c71f3d10b1336cb896e438f44c3601a8e5ad53622b422ed7fb97ef242",
+      "bytes": 4904
+    },
+    {
+      "file": "logs/PREP-DQ.log",
+      "sha256": "226e1447a181f88356050a019f7ea113857cd3cc30f3d1a90a9c81962de617eb",
+      "bytes": 4904
+    },
+    {
+      "file": "logs/PREP-MID-SQL.log",
+      "sha256": "3af1753a46ddd509001afed92ebed2c3dcfdbe000f05f1a71b95eec3615f4f8d",
+      "bytes": 4904
+    },
+    {
+      "file": "logs/PREP-NETWORK.log",
+      "sha256": "ebce4de13e2ecc3154353b5e2039a8a8e80b24d2e17eb447dbcdd8bdefc2945b",
+      "bytes": 4904
+    },
+    {
+      "file": "logs/STATIC-EVIDENCE-CONTRACT.log",
+      "sha256": "dc4470a3899929ecbd5658244004781ad131acaa945ce86d4e1c0c8b0f045bdb",
+      "bytes": 82
+    },
+    {
+      "file": "logs/STATIC-GO.log",
+      "sha256": "4edc3fffbe2f3fecb125e8dbc640276c231dbf40f49517524e8975c666f587e5",
+      "bytes": 1429
+    },
+    {
+      "file": "logs/STATIC-RESET-NEGATIVE.log",
+      "sha256": "1b3b724ff336c1b89d3f3b8c9933d9b06ebf16dbdbea5df20e9f885c66985d98",
+      "bytes": 199
+    },
+    {
+      "file": "logs/STATIC-SAFETY.log",
+      "sha256": "f93c941b231cdb59b2374272321589773fc011b997d5d2470c3e2b327d65a3b0",
+      "bytes": 331
+    },
+    {
+      "file": "logs/STATIC-WEB.log",
+      "sha256": "7ea00bdb230b6b0b9cb66c67fbe44ef451e3ad314b8e71797f2c22ba5aa1561c",
+      "bytes": 1061
+    },
+    {
+      "file": "logs/UI-MOCK.log",
+      "sha256": "aa61af6287c371b138f0c4b8bd3519aa7c68770ec209bee4e77536fa2542f4da",
+      "bytes": 186
+    },
+    {
+      "file": "logs/VERIFY-EVIDENCE.log",
+      "sha256": "f078c6eac6f318efa376527b2380ef2caa20b15aa44ebc997bc02aa813bb6c20",
+      "bytes": 139
+    }
+  ],
+  "seven_million_benchmark": "NOT RUN BY DESIGN",
+  "real_erp_writes": "PROHIBITED",
+  "owner_signoff": "OPEN",
+  "production": "NO-GO: separate security/performance gates"
+}

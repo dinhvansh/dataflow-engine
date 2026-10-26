@@ -1,5 +1,15 @@
 # DataFlow Engine — Latest Chat Handoff
 
+## 2026-10-26 — Owner-local Core8B one-shot PASS on current main
+
+**Technical Core8B QA: PASS-LOCAL-CORE8B on `main@1200a379a11c842c1297ecbe58bee22120567903`; production: NO-GO; Issue #153: OPEN.** This supersedes the Core8B `NOT RUN` statement in the earlier checkpoint below. The repository's guarded one-shot runner finished with exit code 0 and **17 PASS / 0 FAIL / 0 BLOCKED / 0 NOT_RUN** on the owner's Windows Docker Desktop with `Ubuntu-24.04`. Sanitized [result](evidence/issue153-core8b-20261026/result.json), [matrix](evidence/issue153-core8b-20261026/matrix.tsv), [acceptance CSV](evidence/issue153-core8b-20261026/02_TEST_MATRIX.csv), and [handoff](evidence/issue153-core8b-20261026/HANDOFF_TO_CHATGPT.md) are committed; original logs, Playwright artifacts and fixture JSON remain in ignored `qa-results/local-core8b-20261026T151710Z/` and `qa-results/core-run*/` on this QA machine. The result manifest records SHA-256 hashes of every stage log.
+
+The live browser/API/SQL Server/PostgreSQL/ClickHouse/dbt test reconciled **10,000** synthetic `DataFlowFixtureQA.Erp.PartTran` source events, observed successful model flow and checkpoint generation 2, verified zero-row replay, graph version/reload/edit invariants and physical UUID rollback. Independent fresh fixtures passed post-claim worker SIGKILL/fencing (2 attempts; 0 stale writes), 6 simultaneous Core Runs (1 accepted, 5 conflicts), deliberate DQ failure with no publication, mid-SQL worker SIGKILL/rebuild of 1,600 rows, and API SIGKILL plus ClickHouse network outage/recovery. The evidence contract itself passed. The 7-million-row benchmark was **not rerun**.
+
+The three explicitly approved, labeled `dataflow-localqa_*` volumes were reset by the guarded runner for separate fixtures; the unrelated `erp-inventory-v2-postgres` stayed healthy throughout. The first attempt stopped before browser execution because a WSL-to-Windows Docker CLI bridge did not pass the CA path; a direct Core8B run then passed, and the complete one-shot passed after a temporary WSL wrapper passed the CA path and QA variables to the Windows CLI. No repository runtime code was changed for that machine-specific bridge. Keep both original failure and final PASS logs; do not treat the first attempt as a PASS.
+
+**Remaining Issue #153 gates:** local nonmock Connection Manager Add → encrypted Save → Test → Bind → Run via admin login, local primary Wizard multi-stream/typed destination UAT, 1k/10k/50k delta/recovery measurements, cross-stream compatible target reuse, source-consistent late events/physical-delete or CDC strategy, and external IdP/Vault/TLS/security/operator sign-off. Core8B PASS does not certify these or production readiness.
+
 ## 2026-10-26 — Issue #153: verified implementation and remaining acceptance
 
 **Status: PARTIAL; Issue #153 remains OPEN; production NO-GO.** Main after three sequential merges is `9b5bd8bc4828772712c455431488f05cb30bdc77`. This section supersedes older statements below about missing four-step typed/batch wiring and missing profile Edit/Revoke. Historical acceptance results remain scoped to their original commits.
