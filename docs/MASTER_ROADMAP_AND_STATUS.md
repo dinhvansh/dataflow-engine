@@ -1,5 +1,11 @@
 # DataFlow Engine — Master Roadmap, Status & Acceptance Gates
 
+## 2026-10-26 — Current owner-local Core8B technical QA result
+
+**PASS-LOCAL-CORE8B at `main@1200a379a11c842c1297ecbe58bee22120567903`; Issue #153 PARTIAL; production NO-GO.** The guarded one-shot on the owner's isolated Windows Docker QA machine completed with **17/17 stages PASS**, including Go race/vet/build, web build, browser mock, real 10,000-row browser → API → SQL Server → PostgreSQL → ClickHouse → dbt/DQ/publish/rollback, and independent claim, DQ/concurrency, mid-SQL, and network fault fixtures. The final evidence verifier passed. See [sanitized result](evidence/issue153-core8b-20261026/result.json), [case matrix](evidence/issue153-core8b-20261026/02_TEST_MATRIX.csv), and [latest handoff](PROJECT_HANDOFF_LATEST.md). The ignored local QA artifacts retain original logs, screenshots, traces and fixture JSON. Three owner-approved `dataflow-localqa_*` volumes were reset for clean fixtures; unrelated ERP inventory PostgreSQL remained healthy. The accepted 7m benchmark was not rerun.
+
+Open Issue #153 acceptance remains the Connection Manager and primary Wizard owner-login nonmock walkthrough, 1k/10k/50k delta/recovery measurements, cross-stream typed target reuse policy, source-consistent late events and physical-delete/CDC, and production IdP/Vault/TLS/security/operator sign-off. The Core8B result closes its **technical owner-local synthetic QA** gate only; it is not production approval. The earlier checkpoint below is historical and its `Core8B pending` statement is superseded by this result.
+
 ## 2026-10-26 — Issue #153 acceptance checkpoint
 
 **PARTIAL / production NO-GO.** `main@9b5bd8bc4828772712c455431488f05cb30bdc77` contains merged [#154](https://github.com/dinhvansh/dataflow-engine/pull/154), [#155](https://github.com/dinhvansh/dataflow-engine/pull/155), [#156](https://github.com/dinhvansh/dataflow-engine/pull/156) and [#157](https://github.com/dinhvansh/dataflow-engine/pull/157). The four-step Wizard is wired to real batch/typed APIs, profile Edit/Test/Revoke uses revision guards, physical typed table drift is rejected, and the verified ClickHouse destination's actual grants/database are discovered and enforced. Exact-head checks passed: #154 4/4, #155 8/8, #156 3/3, #157 5/5. Post-merge main checks passed: #154 4/4, #155 5/5, #156 3/3, #157 4/4.
