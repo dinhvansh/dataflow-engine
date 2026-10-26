@@ -184,6 +184,10 @@ export type LabStreamSetup={
  mode:"incremental_rowversion";batch_size:number;workers:number;queue_capacity:number
 };
 export const labSyncSetupApi={
+ destinations:(targetID:string,token:string,adminToken:string)=>
+  parse<{database:string;grants:{create:boolean;insert:boolean;select:boolean;drop:boolean;alter:boolean};can_create_typed:boolean;owned_tables:string[]}>(
+   fetch("/api/v1/connections/runtime/destinations?target_connection_id="+encodeURIComponent(targetID),{
+    headers:runtimeHeaders(token,adminToken)})),
  tables:(sourceID:string,schema:string,token:string,adminToken:string)=>
   parse<{tables:TableInfo[]}>(fetch("/api/v1/connections/runtime/discover?source_connection_id="+encodeURIComponent(sourceID)+"&schema="+encodeURIComponent(schema),{
    headers:runtimeHeaders(token,adminToken)})),
