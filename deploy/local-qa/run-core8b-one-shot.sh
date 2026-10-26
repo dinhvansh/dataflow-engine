@@ -94,7 +94,7 @@ case_run STATIC-RESET-NEGATIVE python3 qa/local-acceptance/v8b/test_reset_scope_
 case_run STATIC-EVIDENCE-CONTRACT python3 qa/local-acceptance/verify_core_final_evidence.py --contract
 case_run STATIC-GO bash -c 'go test -race ./... && go vet ./... && go build ./cmd/...'
 case_run STATIC-WEB bash -c 'cd web && npm ci --ignore-scripts && npm run build'
-case_run UI-MOCK python3 -m pytest qa/browser/test_console.py -q
+case_run UI-MOCK python3 qa/local-acceptance/v8b/run_mock_browser.py
 case_run PREP-8B fresh
 case_run CORE-8B-E2E env DATAFLOW_LIVE_QA_OPT_IN=true "$here/run-core-operator.sh"
 case_run PREP-CLAIM fresh
