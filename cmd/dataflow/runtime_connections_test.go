@@ -57,4 +57,10 @@ func TestRuntimeConnectionAPIRequiresIsolationAndIndependentAdmin(t *testing.T){
  t.Setenv("DATAFLOW_CONNECTION_ADMIN_TOKEN","different-admin")
  rec=httptest.NewRecorder();s.runtimeProfilesAPI(rec,req)
  if rec.Code!=http.StatusForbidden{t.Fatalf("missing independent admin denied: %d",rec.Code)}
+ for _,method:=range []string{http.MethodPatch,http.MethodDelete}{
+  mutation:=httptest.NewRequest(method,"/api/v1/connections/runtime",strings.NewReader(`{"id":"86b0483f-1c2a-45b6-8d7b-78b38ce371a4","revision":1}`))
+  mutation.Header.Set("Authorization","Bearer api-secret")
+  denied:=httptest.NewRecorder();s.runtimeProfilesAPI(denied,mutation)
+  if denied.Code!=http.StatusForbidden{t.Fatalf("%s without independent admin accepted: %d",method,denied.Code)}
+ }
 }

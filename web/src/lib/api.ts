@@ -167,7 +167,7 @@ export const corePipelineApi={
 
 export type LabRuntimeConnection={
  id:string;name:string;driver:"sqlserver"|"clickhouse";kind:"source"|"destination";
- host:string;port:number;database:string;username:string;status:"draft"|"verified";
+ host:string;port:number;database:string;username:string;status:"draft"|"verified"|"revoked";
  revision:number;checked_at?:string
 };
 export type LabRuntimeInput={
@@ -214,6 +214,12 @@ export const labRuntimeConnectionsApi={
   fetch("/api/v1/connections/runtime",{headers:runtimeHeaders(token,adminToken)})),
  create:(payload:LabRuntimeInput,token:string,adminToken:string)=>parse<LabRuntimeConnection>(
   fetch("/api/v1/connections/runtime",{method:"POST",headers:runtimeHeaders(token,adminToken),body:JSON.stringify(payload)})),
+ update:(id:string,revision:number,payload:Omit<LabRuntimeInput,"driver">,token:string,adminToken:string)=>parse<LabRuntimeConnection>(
+  fetch("/api/v1/connections/runtime",{method:"PATCH",headers:runtimeHeaders(token,adminToken),body:JSON.stringify({id,revision,...payload})})),
+ revoke:async(id:string,revision:number,token:string,adminToken:string)=>{
+  const response=await fetch("/api/v1/connections/runtime",{method:"DELETE",headers:runtimeHeaders(token,adminToken),body:JSON.stringify({id,revision})});
+  if(!response.ok)throw Error((await response.text()).slice(0,500)||`HTTP ${response.status}`);
+ },
  test:(id:string,token:string,adminToken:string)=>parse<{id:string;passed:boolean;tested_at:string}>(
   fetch("/api/v1/connections/runtime/test",{method:"POST",headers:runtimeHeaders(token,adminToken),body:JSON.stringify({id})})),
  bind:(stream_id:string,source_connection_id:string,target_connection_id:string,token:string,adminToken:string)=>parse<{bound:boolean;stream_id:string}>(

@@ -98,13 +98,29 @@ def ui(browser, request):
                             "status": "draft", "revision": 1}
                 state["runtime_connections"].append(new_item)
                 result = new_item
+            elif method == "PATCH":
+                item = next((p for p in state["runtime_connections"] if p["id"] == body.get("id")), None)
+                if not item or item["revision"] != body.get("revision") or item["status"] == "revoked":
+                    route.fulfill(status=409, body="stale profile")
+                    return
+                item.update({k: body[k] for k in ["name", "host", "port", "database", "username"]})
+                item.update(status="draft", revision=item["revision"] + 1, checked_at=None)
+                result = item
+            elif method == "DELETE":
+                item = next((p for p in state["runtime_connections"] if p["id"] == body.get("id")), None)
+                if not item or item["revision"] != body.get("revision"):
+                    route.fulfill(status=409, body="stale profile")
+                    return
+                item.update(status="revoked", revision=item["revision"] + 1, checked_at=None)
+                route.fulfill(status=204)
+                return
             else:
                 result = {"profiles": state["runtime_connections"]}
         elif path == "/api/v1/connections/runtime/test":
             for item in state["runtime_connections"]:
                 if item["id"] == body.get("id"):
                     item["status"] = "verified"
-                    item["revision"] = 2
+                    item["revision"] += 1
             result = {"id": body.get("id"), "passed": True,
                       "tested_at": "2026-10-19T10:00:00Z"}
         elif path == "/api/v1/connections/runtime/discover":
@@ -1189,6 +1205,37 @@ def test_ui_local_session_login_roles_and_logout(ui):
     expect(page.get_by_label("Saved QA profiles")).to_be_visible()
     expect(page.get_by_label("Saved QA profiles").get_by_text("No saved connections.")).to_be_visible()
     assert any(c["path"] == "/api/v1/connections/runtime" and c["method"] == "GET" for c in state["calls"])
+
+
+def test_qa_profile_edit_retest_and_revoke_from_real_manager_ui(ui):
+    page, state = ui
+    page.get_by_label("Lab API token (shared across modules)").fill(TOKEN)
+    page.get_by_role("button", name="Connections", exact=True).click()
+    manager = page.get_by_label("Live lab connection manager")
+    manager.get_by_label("Live connection admin credential").fill("synthetic-admin-token")
+    manager.get_by_role("button", name="Load connections").click()
+    manager.get_by_label("Live connection name").fill("Owned QA source")
+    manager.get_by_label("Live connection host").fill("qa-sql")
+    manager.get_by_label("Live connection password").fill("synthetic-qa-secret")
+    manager.get_by_role("button", name="Save encrypted draft").click()
+    manager.get_by_role("button", name="Test real connection").click()
+    expect(manager.get_by_text("Verified", exact=True)).to_be_visible()
+    manager.get_by_role("button", name="Edit", exact=True).click()
+    expect(manager.get_by_label("Live connection password")).to_be_empty()
+    manager.get_by_label("Live connection name").fill("Renamed QA source")
+    manager.get_by_role("button", name="Save revision").click()
+    expect(manager.get_by_text("Draft", exact=True)).to_be_visible()
+    edits = [c for c in state["calls"] if c["path"] == "/api/v1/connections/runtime" and c["method"] == "PATCH"]
+    assert len(edits) == 1 and edits[0]["body"]["revision"] == 2
+    assert edits[0]["body"]["password"] == ""
+    assert "driver" not in edits[0]["body"]
+    manager.get_by_role("button", name="Test real connection").click()
+    manager.get_by_role("button", name="Revoke", exact=True).click()
+    manager.get_by_role("button", name="Confirm revoke").click()
+    expect(manager.get_by_text("Revoked", exact=True)).to_be_visible()
+    expect(manager.get_by_role("button", name="Test real connection")).to_have_count(0)
+    revokes = [c for c in state["calls"] if c["path"] == "/api/v1/connections/runtime" and c["method"] == "DELETE"]
+    assert len(revokes) == 1 and revokes[0]["body"]["revision"] == 4
 
 
 def test_ui_airbyte_stream_columns_are_selected_and_saved(ui):
