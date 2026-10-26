@@ -20,7 +20,8 @@ SCRIPTS={
 REQUIRED_JSON={
  "CORE8B":("qa-results/core-run5/operator-result.json",
             ("graph_run_id","immutable_graph_snapshot_survives_reload",
-             "old_run_snapshot_survives_graph_edit","stale_revision_launch_no_managed_run")),
+             "old_run_snapshot_survives_graph_edit","stale_revision_launch_no_managed_run",
+             "interactive_editor_controls_qa")),
  "FAULT-API":("qa-results/core-run6/fault-result.json",()),
  "FAULT-LEASE":("qa-results/core-run6b/fencing-result.json",()),
  "DQ-NEGATIVE":("qa-results/core-run6b-dq/negative-dq-concurrency.json",()),
@@ -43,7 +44,8 @@ def contract():
    raise ValueError("Missing real QA script: "+script)
  browser=(ROOT/"qa/browser/test_core_live.py").read_text()
  for expected in ("old_run_snapshot_survives_graph_edit",
-                  "stale_revision_launch_no_managed_run"):
+                  "stale_revision_launch_no_managed_run",
+                  "interactive_editor_controls_qa"):
   if expected not in browser:
    raise ValueError("CORE8B graph revision lifecycle assertion absent")
  return {"contract":"PASS","note":"No QA run performed; this validates manifest only"}
