@@ -23,6 +23,8 @@ export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTa
  const[step,setStep]=useState<1|2|3|4>(1);
  const[sourceID,setSourceID]=useState("");const[targetID,setTargetID]=useState("");
  const[layout,setLayout]=useState<Layout>("raw_event");const[targetDatabase,setTargetDatabase]=useState("scratch");
+ const[destinationInfo,setDestinationInfo]=useState<Awaited<ReturnType<typeof labSyncSetupApi.destinations>>|null>(null);
+ const[destinationLoading,setDestinationLoading]=useState(false);const[destinationError,setDestinationError]=useState("");
  const[batchSize,setBatchSize]=useState(10000);const[workers,setWorkers]=useState(2);const[queueSize,setQueueSize]=useState(4);
  const[schema,setSchema]=useState("Erp");const[loaded,setLoaded]=useState(false);
  const[loadedAt,setLoadedAt]=useState("");const[rows,setRows]=useState<Row[]>([]);
@@ -37,7 +39,7 @@ export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTa
  const selectedRows=rows.filter(r=>r.enabled);
  const problems=selectedRows.map(r=>({name:rowId(r),error:rowProblem(r,layout)})).filter(r=>r.error);
  const targetNames=selectedRows.map(r=>r.targetTable.toLowerCase());
- const targetProblem=layout==="typed"?(!targetIdentifier.test(targetDatabase)?"Tên database đích không hợp lệ":new Set(targetNames).size!==targetNames.length?"Hai streams không thể dùng cùng bảng đích":""):"";
+ const targetProblem=!dstOk?"Destination chưa verified":destinationLoading?"Đang kiểm tra quyền ClickHouse":destinationError||!destinationInfo?destinationError||"Chưa tải quyền ClickHouse":!destinationInfo.can_create_typed?"Profile thiếu quyền CREATE/INSERT/SELECT/DROP/ALTER trên database đích":layout==="typed"?(!targetIdentifier.test(targetDatabase)||targetDatabase!==destinationInfo.database?"Database đích phải trùng profile đã verified":new Set(targetNames).size!==targetNames.length?"Hai streams không thể dùng cùng bảng đích":""):"";
  const runtimeProblem=batchSize<100||batchSize>100000||workers<1||workers>32||queueSize<1||queueSize>100?"Batch/worker/queue vượt giới hạn API":"";
  const canCreate=loaded&&selectedRows.length>0&&selectedRows.length<=10&&problems.length===0&&!targetProblem&&!runtimeProblem&&srcOk&&dstOk;
  const modal=rows.find(r=>rowId(r)===modalId);
@@ -45,6 +47,13 @@ export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTa
  const update=(id:string,fn:(r:Row)=>Row)=>setRows(old=>old.map(r=>rowId(r)===id?fn(r):r));
  const invalidate=()=>{generation.current++;setLoaded(false);setRows([]);setLoadedAt("");setModalId("");setCreated([]);setRuns({});setScheduleErrors([]);setError("")};
  useEffect(()=>{invalidate();setSourceID("");setTargetID("");setStep(1)},[token,adminToken]);
+ useEffect(()=>{let cancelled=false;setDestinationInfo(null);setDestinationError("");setDestinationLoading(!!targetID);
+  if(!targetID)return;
+  void labSyncSetupApi.destinations(targetID,token,adminToken).then(info=>{if(!cancelled){setDestinationInfo(info);setTargetDatabase(info.database)}})
+   .catch(e=>{if(!cancelled)setDestinationError("Không lấy được quyền đích: "+errorText(e))})
+   .finally(()=>{if(!cancelled)setDestinationLoading(false)});
+  return()=>{cancelled=true}
+ },[targetID,dst?.revision,dst?.status,token,adminToken]);
  useEffect(()=>{if(!modalId)return;const handler=(ev:KeyboardEvent)=>{if(ev.key==="Escape")setModalId("")};document.addEventListener("keydown",handler);return()=>document.removeEventListener("keydown",handler)},[modalId]);
  const fetchColumns=async(r:Row,seq:number,activeSource:string,activeSchema:string)=>{
   const id=rowId(r);update(id,x=>({...x,status:"loading",error:""}));
@@ -94,7 +103,8 @@ export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTa
    {!choices("clickhouse").length&&<p className="dfw-empty">Chưa có ClickHouse profile từ API.</p>}
    {choices("clickhouse").map(p=><label className="dfw-profile" key={p.id}><input type="radio" name="target-v2" checked={targetID===p.id} disabled={!verified(p)} onChange={()=>{invalidate();setTargetID(p.id)}}/><span><strong>{p.name}</strong><small>{p.database} · {p.host}:{p.port}</small></span><small>{verified(p)?"Verified":"cần Test"}</small></label>)}
    <label className="block">Kiểu destination<select className="field mt-1" aria-label="Destination layout" value={layout} onChange={e=>setLayout(e.target.value as Layout)}><option value="raw_event">RAW events · bảng riêng trong scratch</option><option value="typed">Typed columns · bảng DataFlow sở hữu</option></select></label>
-   {layout==="typed"&&<label className="block">Database đích (QA allowlist)<input className="field mt-1" aria-label="Target database" maxLength={64} value={targetDatabase} onChange={e=>setTargetDatabase(e.target.value)}/><small className="muted block">Server kiểm tra allowlist khi lưu; quyền ClickHouse và quyền sở hữu bảng được kiểm tra khi Run.</small></label>}
+   {layout==="typed"&&<label className="block">Database đích đã được cấp quyền<select className="field mt-1" aria-label="Target database" value={destinationInfo?.database||""} disabled={!destinationInfo} onChange={e=>setTargetDatabase(e.target.value)}><option value={destinationInfo?.database||""}>{destinationInfo?.database||"Chọn và kiểm tra profile trước"}</option></select><small className="muted block">Quyền được đọc từ ClickHouse bằng profile đã chọn; server kiểm tra lại khi lưu stream.</small></label>}
+   {destinationInfo&&<p className="muted text-xs" role="status">Quyền {destinationInfo.database}: {Object.entries(destinationInfo.grants).map(([name,yes])=>name+" "+(yes?"✓":"✗")).join(" · ")}. {destinationInfo.owned_tables.length} bảng DataFlow hiện có; bảng đã cấp cho stream khác không được chọn cho stream mới.</p>}
    {targetProblem&&<p role="alert" className="dfw-warning">{targetProblem}</p>}
    {onGoToTab&&<Button variant="outline" type="button" onClick={()=>onGoToTab("destinations")}>Đi tới Destinations</Button>}
   </div>}

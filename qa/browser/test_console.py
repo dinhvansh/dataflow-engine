@@ -137,6 +137,10 @@ def ui(browser, request):
                 ]}
             else:
                 result = {"tables": [{"schema": "Erp", "name": "Part"}, {"schema":"Erp","name":"InvcHead"}]}
+        elif path == "/api/v1/connections/runtime/destinations":
+            result = {"database": "scratch", "grants": {"create": True, "insert": True,
+                      "select": True, "drop": True, "alter": True},
+                      "can_create_typed": True, "owned_tables": []}
         elif path == "/api/v1/connections/runtime/streams/batch":
             result = {"count": len(body.get("streams", [])), "streams": [
                 {"stream_id": f"abcdabcd-abcd-4bcd-8bcd-{i+1:012d}",
@@ -1411,7 +1415,7 @@ def test_primary_four_step_wizard_saves_typed_mapping_and_full_to_incremental(ui
     wizard.get_by_role("button", name="Tiếp tục").click()
     wizard.locator('input[name="target-v2"]').first.check()
     wizard.get_by_label("Destination layout").select_option("typed")
-    wizard.get_by_label("Target database").fill("scratch")
+    expect(wizard.get_by_label("Target database")).to_have_value("scratch")
     wizard.get_by_role("button", name="Tiếp tục").click()
     wizard.get_by_role("button", name="Tải / làm mới schema").click()
     wizard.get_by_label("Sync mode Part").select_option("full_then_incremental")

@@ -130,6 +130,7 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
   case "/api/v1/connections/runtime/test":svc.runtimeTestAPI(rec,req)
   case "/api/v1/connections/runtime/bind":svc.runtimeBindAPI(rec,req)
   case "/api/v1/connections/runtime/discover":svc.runtimeDiscoverAPI(rec,req)
+  case "/api/v1/connections/runtime/destinations":svc.runtimeDestinationDiscoveryAPI(rec,req)
   case "/api/v1/connections/runtime/streams":svc.runtimeStreamSetupAPI(rec,req)
   case "/api/v1/connections/runtime/streams/batch":svc.qaBatchSetupAPI(rec,req)
   default:t.Fatal("unexpected test path")
@@ -161,6 +162,11 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
   status,resp,_:=do(http.MethodPost,"/api/v1/connections/runtime/test",map[string]string{"id":id})
   if status!=200||resp["passed"]!=true{t.Fatalf("real driver test failed for verified disposable profile")}
  }
+ status,targetCatalog,targetBody:=do(http.MethodGet,"/api/v1/connections/runtime/destinations?target_connection_id="+targetID,nil)
+ if status!=200||targetCatalog["database"]!="scratch"||targetCatalog["can_create_typed"]!=true||
+  strings.Contains(targetBody,chPass){t.Fatalf("real destination grants/catalog rejected or leaked secret: code=%d",status)}
+ status,_,_=do(http.MethodGet,"/api/v1/connections/runtime/destinations?target_connection_id="+sourceID,nil)
+ if status!=409{t.Fatalf("source profile accepted as ClickHouse destination: code=%d",status)}
  // Metadata discovery is scoped to the selected encrypted, verified source profile.
  status,catalog,_:=do(http.MethodGet,"/api/v1/connections/runtime/discover?source_connection_id="+sourceID+"&schema=Erp",nil)
  if status!=200||catalog["tables"]==nil{t.Fatalf("scoped QA table discovery code=%d",status)}

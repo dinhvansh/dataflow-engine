@@ -133,6 +133,15 @@ func(s *server)qaBatchSetupAPI(w http.ResponseWriter,r *http.Request){
  if e!=nil||configured.Host!=net.JoinHostPort(target.Host,strconv.Itoa(target.Port)){
   http.Error(w,"target differs from verified QA worker",409);return
  }
+ // A verified ping does not prove table privileges. Check the selected
+ // profile's real ClickHouse grants before persisting any stream or binding.
+ liveTarget,secret,e:=s.readRuntimeProfile(ctx,target.ID)
+ if e!=nil||liveTarget.Revision!=target.Revision{
+  http.Error(w,"destination profile changed",409);return
+ }
+ grants,e:=labCHGrants(ctx,liveTarget,secret)
+ if e!=nil{http.Error(w,"destination grants unavailable",503);return}
+ if !grants.usable(){http.Error(w,"destination lacks required table privileges",403);return}
  sourceDB,e:=s.labSourceConnection(ctx,source.ID)
  if e!=nil{http.Error(w,"source unavailable",409);return}
  defer sourceDB.Close()
@@ -152,6 +161,7 @@ func(s *server)qaBatchSetupAPI(w http.ResponseWriter,r *http.Request){
  for _,original:=range input.Streams{
   item:=normalizeBatchIdentity(original)
   if !validBatchStream(item){http.Error(w,"invalid sync mode, target alias, columns or performance bounds",422);return}
+  if item.TargetDatabase!=target.Database{http.Error(w,"target database differs from verified destination",403);return}
   key:=item.SourceSchema+"."+item.SourceTable
   if seen[key]{http.Error(w,"duplicate table in batch",422);return}
   seen[key]=true
@@ -167,7 +177,7 @@ func(s *server)qaBatchSetupAPI(w http.ResponseWriter,r *http.Request){
    dest,e=safeQADestination(item.TargetTable,streamID)
    if e!=nil{http.Error(w,"invalid scratch target",422);return}
   }else{
-   if !approvedTypedDatabase(item.TargetDatabase)||!approvedTypedDatabase(target.Database){
+   if item.TargetDatabase!=target.Database||!approvedTypedDatabase(item.TargetDatabase){
     http.Error(w,"unapproved target database",403);return
    }
    catalog,metaErr:=sqlserver.DiscoverColumns(ctx,sourceDB,item.SourceSchema,item.SourceTable)
