@@ -6,6 +6,7 @@ They are NOT real SQL Server/PG/ClickHouse/dbt end-to-end acceptance.
 import json
 import os
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -105,6 +106,7 @@ def ui(browser, request):
                 if item["id"] == body.get("id"):
                     item["status"] = "verified"
                     item["revision"] = 2
+                    item["checked_at"] = datetime.now(timezone.utc).isoformat()
             result = {"id": body.get("id"), "passed": True,
                       "tested_at": "2026-10-19T10:00:00Z"}
         elif path == "/api/v1/connections/runtime/discover":
@@ -1332,6 +1334,65 @@ def test_qa_batch_full_refresh_custom_dest_and_multistream_save(ui):
         "abcdabcd-abcd-4bcd-8bcd-000000000001",
         "abcdabcd-abcd-4bcd-8bcd-000000000002",
     }
+
+
+def test_primary_four_step_wizard_saves_typed_mapping_and_full_to_incremental(ui):
+    page, state = ui
+    page.get_by_label("Lab API token (shared across modules)").fill(TOKEN)
+    page.get_by_role("button", name="Connections", exact=True).click()
+    manager = page.get_by_label("Live lab connection manager")
+    manager.get_by_label("Live connection admin credential").fill("synthetic-admin-token")
+    manager.get_by_role("button", name="Load connections").click()
+    for driver, name, host, port, db, user in [
+        ("sqlserver", "Typed source", "qa-sql", "1433", "DataFlowFixtureQA", "qa_erp_reader"),
+        ("clickhouse", "Typed destination", "qa-ch", "8123", "scratch", "qa_writer"),
+    ]:
+        manager.get_by_label("Live connection driver").select_option(driver)
+        manager.get_by_label("Live connection name").fill(name)
+        manager.get_by_label("Live connection host").fill(host)
+        manager.get_by_label("Live connection port").fill(port)
+        manager.get_by_label("Live connection database").fill(db)
+        manager.get_by_label("Live connection username").fill(user)
+        manager.get_by_label("Live connection password").fill("synthetic-qa-secret")
+        manager.get_by_role("button", name="Save encrypted draft").click()
+    tests = manager.get_by_role("button", name="Test real connection")
+    tests.nth(0).click()
+    tests.nth(1).click()
+    page.get_by_role("tab", name="Connections").click()
+    wizard = page.get_by_label("Wizard tạo connection QA")
+    wizard.locator('input[name="source-v2"]').first.check()
+    wizard.get_by_role("button", name="Tiếp tục").click()
+    wizard.locator('input[name="target-v2"]').first.check()
+    wizard.get_by_label("Destination layout").select_option("typed")
+    wizard.get_by_label("Target database").fill("scratch")
+    wizard.get_by_role("button", name="Tiếp tục").click()
+    wizard.get_by_role("button", name="Tải / làm mới schema").click()
+    wizard.get_by_label("Sync mode Part").select_option("full_then_incremental")
+    wizard.get_by_label("Target table Part").fill("typed_parts_qa")
+    wizard.get_by_role("button", name=re.compile("Chọn cột")).first.click()
+    wizard.get_by_label("Target column TranQty").fill("quantity")
+    wizard.get_by_label("Target column PartNum").fill("quantity")
+    wizard.get_by_role("dialog").get_by_role("button", name="Xong").click()
+    expect(wizard.get_by_role("button", name="Tiếp tục")).to_be_disabled()
+    expect(wizard.get_by_text("Tên cột đích bị trùng")).to_be_visible()
+    wizard.get_by_role("button", name=re.compile("Chọn cột")).first.click()
+    wizard.get_by_label("Target column PartNum").fill("part_number")
+    wizard.get_by_role("dialog").get_by_role("button", name="Xong").click()
+    wizard.get_by_label("Target table InvcHead").fill("typed_invoices_qa")
+    wizard.get_by_role("button", name="Tiếp tục").click()
+    wizard.get_by_label("Batch size").fill("500")
+    wizard.get_by_role("button", name="Save & Bind").click()
+    posts = [c for c in state["calls"] if c["path"] == "/api/v1/connections/runtime/streams/batch"]
+    assert len(posts) == 1
+    streams = posts[0]["body"]["streams"]
+    assert len(streams) == 2
+    assert streams[0]["mode"] == "full_then_incremental"
+    assert streams[0]["target_database"] == "scratch"
+    assert streams[0]["target_table"] == "typed_parts_qa"
+    assert streams[0]["destination_layout"] == "typed"
+    assert {m["source"]: m["target"] for m in streams[0]["column_mappings"]}["TranQty"] == "quantity"
+    assert streams[0]["batch_size"] == 500
+    assert streams[1]["target_table"] == "typed_invoices_qa"
 
 
 def test_guided_pipeline_interactive_ux_prototype_browser(browser):
