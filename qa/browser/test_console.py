@@ -1120,7 +1120,7 @@ def test_ui_runtime_connection_add_test_save_bind_uses_backend_and_hides_credent
 
 def test_ui_local_session_login_roles_and_logout(ui):
     """UI-only check: real credential/session RBAC is covered by Go tests."""
-    page, _ = ui
+    page, state = ui
     signed = {"role": None}
 
     def session_api(route):
@@ -1145,6 +1145,18 @@ def test_ui_local_session_login_roles_and_logout(ui):
             route.fulfill(status=204, body="")
 
     page.route("**/api/v1/auth/session", session_api)
+    # In session mode the backend authorizes the signed-in Administrator;
+    # the global legacy-token stub above deliberately requires a distinct admin token.
+    def session_runtime_api(route):
+        state["calls"].append({"method": route.request.method,
+                               "path": "/api/v1/connections/runtime", "body": {}})
+        if signed["role"] != "admin":
+            route.fulfill(status=403, body="admin permission required")
+            return
+        route.fulfill(status=200, content_type="application/json",
+                      body=json.dumps({"profiles": []}))
+
+    page.route("**/api/v1/connections/runtime", session_runtime_api)
     page.reload(wait_until="domcontentloaded")
     expect(page.get_by_label("DataFlow sign in")).to_be_visible()
     expect(page.get_by_label("Lab API token (shared across modules)")).to_have_count(0)
@@ -1161,6 +1173,9 @@ def test_ui_local_session_login_roles_and_logout(ui):
     page.get_by_role("button", name="Sign in", exact=True).click()
     page.get_by_role("button", name="Connections", exact=True).click()
     expect(page.get_by_label("Live lab connection manager")).to_have_count(0)
+    page.get_by_role("tab", name="Connections", exact=True).click()
+    expect(page.get_by_label("Saved connections access")).to_contain_text("Administrator access")
+    assert not any(c["path"] == "/api/v1/connections/runtime" for c in state["calls"])
     page.get_by_role("button", name="Sign out").click()
     expect(page.get_by_label("DataFlow sign in")).to_be_visible()
 
@@ -1171,6 +1186,9 @@ def test_ui_local_session_login_roles_and_logout(ui):
     expect(page.get_by_label("Live lab connection manager")).to_be_visible()
     expect(page.get_by_label("Live connection admin credential")).to_have_count(0)
     expect(page.get_by_label("Lab API token (shared across modules)")).to_have_count(0)
+    expect(page.get_by_label("Saved QA profiles")).to_be_visible()
+    expect(page.get_by_label("Saved QA profiles").get_by_text("No saved connections.")).to_be_visible()
+    assert any(c["path"] == "/api/v1/connections/runtime" and c["method"] == "GET" for c in state["calls"])
 
 
 def test_ui_airbyte_stream_columns_are_selected_and_saved(ui):

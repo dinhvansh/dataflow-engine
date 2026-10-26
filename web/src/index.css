@@ -279,7 +279,8 @@ body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
 .hub-tab.is-active{background:var(--signal-soft);color:var(--console-accent);box-shadow:inset 0 -2px var(--console-accent)}
 .hub-tab-count{border:1px solid var(--console-border);padding:2px 4px;border-radius:2px}
 .hub-filter-panel{background:var(--console-card)}
-.hub-search-icon{color:var(--console-muted)}
+.hub-search-icon{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--console-muted)}
+input.field.hub-search-field{padding-left:2.5rem;padding-right:2.25rem}
 .hub-clear-search{color:var(--console-muted)}.hub-clear-search:hover{background:var(--console-hover)}
 .hub-filter{color:var(--console-muted);background:var(--console-card);border-color:var(--console-border);transition:background .12s}
 .hub-filter:hover{background:var(--console-hover)}.hub-filter.is-active{background:var(--signal-soft);color:var(--console-accent);border-color:var(--console-accent)}
@@ -482,3 +483,12 @@ body,.console-shell{font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
 :root.theme-dark .df-pipeline-edit-canvas .react-flow__minimap-mask{fill:rgba(22,29,27,.60)}
 @media(max-width:640px){.df-pipeline-edit-canvas{height:420px}.df-pipeline-graph-node{width:215px;padding:10px}}
 @media(prefers-reduced-motion:reduce){.df-pipeline-palette-job{transition:none}}
+
+/* Carry-over #125: legacy .field shorthand overrides Tailwind input padding. */
+.sql-job-search-input{padding-left:2.75rem;padding-right:4.25rem}
+@media(min-width:768px){
+ .console-sidebar.is-collapsed .navbtn-collapsed{justify-content:center;padding:.65rem 0}
+ .console-sidebar.is-collapsed .navbtn-collapsed svg{flex-shrink:0}
+ .console-sidebar.is-collapsed .sidebar-caption{text-align:center;padding:0}
+ .console-sidebar.is-collapsed .sidebar-status{padding:.5rem}
+}
