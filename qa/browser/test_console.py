@@ -1145,6 +1145,18 @@ def test_ui_local_session_login_roles_and_logout(ui):
             route.fulfill(status=204, body="")
 
     page.route("**/api/v1/auth/session", session_api)
+    # In session mode the backend authorizes the signed-in Administrator;
+    # the global legacy-token stub above deliberately requires a distinct admin token.
+    def session_runtime_api(route):
+        state["calls"].append({"method": route.request.method,
+                               "path": "/api/v1/connections/runtime", "body": {}})
+        if signed["role"] != "admin":
+            route.fulfill(status=403, body="admin permission required")
+            return
+        route.fulfill(status=200, content_type="application/json",
+                      body=json.dumps({"profiles": []}))
+
+    page.route("**/api/v1/connections/runtime", session_runtime_api)
     page.reload(wait_until="domcontentloaded")
     expect(page.get_by_label("DataFlow sign in")).to_be_visible()
     expect(page.get_by_label("Lab API token (shared across modules)")).to_have_count(0)
