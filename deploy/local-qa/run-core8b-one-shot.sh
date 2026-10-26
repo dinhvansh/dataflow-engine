@@ -89,7 +89,7 @@ fresh(){
 case_run STATIC-SAFETY "$here/verify-reset-scope.sh"
 # Verify the fail-closed Docker reset behavior with a FAKE Docker binary.
 # No real network/volume can be changed by these negative safety tests.
-case_run STATIC-RESET-NEGATIVE python3 qa/local-acceptance/v8b/test_reset_scope_guard.py
+case_run STATIC-RESET-NEGATIVE bash -c 'python3 qa/local-acceptance/v8b/test_reset_scope_guard.py && python3 qa/local-acceptance/v8b/test_reset_postcondition.py'
 # Verify the canonical evidence schema before any test can modify QA volumes.
 case_run STATIC-EVIDENCE-CONTRACT python3 qa/local-acceptance/verify_core_final_evidence.py --contract
 case_run STATIC-GO bash -c 'go test -race ./... && go vet ./... && go build ./cmd/...'
