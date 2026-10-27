@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 )
@@ -79,6 +80,7 @@ func (s *server) runtimeOverviewAPI(w http.ResponseWriter, r *http.Request) {
   WHERE stream_id=s.id ORDER BY requested_at DESC,id DESC LIMIT 1) last_run ON true
  ORDER BY g.name,s.created_at DESC,s.id DESC LIMIT 501`)
 	if err != nil {
+		log.Printf("QA connection overview query failed: %v", err)
 		http.Error(w, "connection overview unavailable", http.StatusServiceUnavailable)
 		return
 	}
@@ -102,6 +104,7 @@ func (s *server) runtimeOverviewAPI(w http.ResponseWriter, r *http.Request) {
 			&stream.ID, &stream.SourceSchema, &stream.SourceTable, &stream.TargetDatabase, &stream.TargetTable, &stream.SyncMode,
 			&stream.BindingCurrent, &stream.ScheduleEnabled, &stream.ScheduleSeconds,
 			&runStatus, &rowsWritten, &requestedAt, &finishedAt); err != nil {
+			log.Printf("QA connection overview scan failed: %v", err)
 			http.Error(w, "connection overview unavailable", http.StatusServiceUnavailable)
 			return
 		}
@@ -122,6 +125,7 @@ func (s *server) runtimeOverviewAPI(w http.ResponseWriter, r *http.Request) {
 		out[index].Streams = append(out[index].Streams, stream)
 	}
 	if rows.Err() != nil {
+		log.Printf("QA connection overview rows failed: %v", rows.Err())
 		http.Error(w, "connection overview unavailable", http.StatusServiceUnavailable)
 		return
 	}
