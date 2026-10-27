@@ -49,33 +49,33 @@ function Metric({label,value,detail,icon:Icon}:{label:string;value:number;detail
 import {useEffect,type ReactNode} from "react";
 import {ConnectorHubShellV2} from "./ConnectorHubShellV2";
 import {ConnectionWizardV2} from "./ConnectionWizardV2";
-import {managedApi,type LabRuntimeConnection,type ManagedStream} from "../lib/api";
+import {managedApi,scheduleApi,type LabRuntimeConnection,type ManagedStream,type ManagedSchedule} from "../lib/api";
 
 function RunningConnectionsPanel({token}:{token:string}){
  const[streams,setStreams]=useState<ManagedStream[]|null>(null);
+ const[schedules,setSchedules]=useState<ManagedSchedule[]|null>(null);
+ const[query,setQuery]=useState("");
  const[error,setError]=useState("");
  const[loading,setLoading]=useState(false);
  const load=async()=>{
   if(!token){setStreams(null);setError("Cần phiên đăng nhập hợp lệ.");return}
   setLoading(true);setError("");
-  try{const response=await managedApi.list(token);setStreams(response.streams)}
+  try{const response=await managedApi.list(token);setStreams(response.streams);const scheduled=await scheduleApi.list(token).catch(()=>null);setSchedules(scheduled?.schedules??null)}
   catch(e){setStreams(null);setError("Không tải được streams từ API: "+String(e))}
   finally{setLoading(false)}
  };
  useEffect(()=>{void load()},[token]);
- return <div className="hub-workspace rounded-lg border p-4 space-y-3">
-  <div className="flex flex-wrap justify-between items-center gap-2">
-   <h3 className="font-semibold">Connections / Managed streams</h3>
-   <Button type="button" variant="outline" size="sm" disabled={loading} onClick={()=>void load()}>Làm mới</Button>
-  </div>
-  <p className="muted text-xs">API managed streams trả danh sách cấu hình, không trả trạng thái kết nối đang chạy. Không suy diễn trạng thái online.</p>
-  {error&&<p role="alert" className="df-text-error text-xs">{error}</p>}
-  {!error&&streams===null&&<p className="muted text-xs">{loading?"Đang tải…":"Chưa có dữ liệu"}</p>}
-  {!error&&streams?.length===0&&<p className="muted text-xs">API trả về danh sách trống.</p>}
-  {streams?.map(s=><div key={s.id} className="rounded-md border p-3 text-xs">
-   <strong>{s.source_schema}.{s.source_table}</strong><p className="muted">→ {s.target_database}.{s.target_table}</p>
-   <p className="muted">Stream ID: {s.id} · Trạng thái runtime: API chưa cung cấp</p>
-  </div>)}
+ const visible=streams?.filter(s=>(s.source_schema+"."+s.source_table+" "+s.target_database+"."+s.target_table).toLowerCase().includes(query.trim().toLowerCase()))||[];
+ return <div className="dfh-list">
+  <div className="dfh-list-tools"><label className="dfh-search"><Search size={17} aria-hidden="true"/><input type="search" aria-label="Tìm connection" placeholder="Tìm nguồn hoặc bảng đích…" value={query} onChange={e=>setQuery(e.target.value)}/></label>
+   <Button type="button" variant="outline" size="sm" disabled={loading} onClick={()=>void load()}>{loading?"Đang tải…":"Làm mới"}</Button></div>
+  {streams&&<p className="dfh-count">{visible.length} streams đã cấu hình</p>}
+  {error&&<p role="alert" className="df-text-error text-sm">{error}</p>}
+  {!error&&streams===null&&<p className="dfh-empty" role="status">{loading?"Đang tải danh sách…":"Chưa có dữ liệu."}</p>}
+  {!error&&streams?.length===0&&<p className="dfh-empty">Chưa có stream nào. Chọn New connection để bắt đầu.</p>}
+  {!error&&streams&&streams.length>0&&visible.length===0&&<p className="dfh-empty">Không có kết quả phù hợp.</p>}
+  {visible.length>0&&<div className="dfh-table-wrap"><table className="dfh-table"><thead><tr><th>Nguồn</th><th>Đích</th><th>Lịch chạy</th><th>Stream ID</th></tr></thead><tbody>{visible.map(s=>{const schedule=schedules?.find(x=>x.stream_id===s.id);return <tr key={s.id}><td><strong>{s.source_schema}.{s.source_table}</strong><small>SQL Server</small></td><td>{s.target_database}.{s.target_table}<small>ClickHouse</small></td><td>{schedules===null?"Chưa rõ":schedule?(schedule.enabled?`Mỗi ${schedule.interval_seconds/3600} giờ`:"Đã tắt"):"Thủ công"}</td><td><code title={s.id}>{s.id.slice(0,8)}…</code></td></tr>})}</tbody></table></div>}
+  <p className="dfh-data-note">Danh sách này là streams đã cấu hình. API hiện chưa trả trạng thái online hoặc lần đồng bộ gần nhất.</p>
  </div>;
 }
 
@@ -86,6 +86,7 @@ export function ConnectorHub({token,onTokenChange,sessionRole}:{token:string;onT
  const[selectedSource,setSelectedSource]=useState("sqlserver");
  const[selectedTarget,setSelectedTarget]=useState("clickhouse");
  const[qaState,setQAState]=useState<{profiles:LabRuntimeConnection[];adminToken:string}>({profiles:[],adminToken:""});
+ const[preferredDriver,setPreferredDriver]=useState<"sqlserver"|"clickhouse">("sqlserver");
  const[refreshKey,setRefreshKey]=useState(0);
  const sources=catalog.filter(c=>c.kind==="source");
  const targets=catalog.filter(c=>c.kind==="destination");
@@ -130,10 +131,10 @@ export function ConnectorHub({token,onTokenChange,sessionRole}:{token:string;onT
  </>;
  return <ConnectorHubShellV2
    sessionRole={sessionRole}
-   liveQAManager={<RuntimeConnectionManager token={token} sessionAdmin={sessionRole==="admin"}
+   liveQAManager={<RuntimeConnectionManager token={token} sessionAdmin={sessionRole==="admin"} preferredDriver={preferredDriver}
      refreshKey={refreshKey} onQAState={setQAState}/>}
    wizard={go=><ConnectionWizardV2 token={token} adminToken={qaState.adminToken}
-     profiles={qaState.profiles} onGoToTab={go} onCreated={()=>setRefreshKey(n=>n+1)}/>}
+     profiles={qaState.profiles} onGoToTab={tab=>{setPreferredDriver(tab==="sources"?"sqlserver":"clickhouse");go(tab)}} onCreated={()=>setRefreshKey(n=>n+1)}/>}
    runningConnections={<RunningConnectionsPanel token={token}/>}
    configuredConnections={<>{sessionRole==="operator"&&<section className="hub-workspace rounded-lg border p-4 sm:p-5" aria-label="Saved connections access"><h3 className="text-sm font-semibold">Saved QA connections require Administrator access</h3><p className="muted mt-2 text-xs leading-5">Signed in as Operator. Saved SQL Server and ClickHouse connection profiles are Administrator-managed; the connector catalog is not a saved connection list. Use Sync Jobs or Pipelines for approved, already bound streams.</p></section>}<ConfiguredConnections token={token} onTokenChange={onTokenChange}/></>}
    draftRegistry={<ConnectionDraftRegistry token={token} sessionAdmin={sessionRole==="admin"}/>}
