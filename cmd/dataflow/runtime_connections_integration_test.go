@@ -84,6 +84,9 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
  t.Setenv("DATAFLOW_QA_CLICKHOUSE_ALLOWED_ENDPOINT",chURL.Host)
  t.Setenv("DATAFLOW_QA_CONNECTION_KEY_B64",base64.StdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
  t.Setenv("DATAFLOW_CONNECTION_ADMIN_TOKEN","different-synthetic-qa-admin-only")
+ scheduleDDL,e:=os.ReadFile(filepath.Join("..","..","migrations","postgres","005_managed_schedules.sql"))
+ if e!=nil{t.Fatal(e)}
+ if _,e=svc.pg.Exec(ctx,string(scheduleDDL));e!=nil{t.Fatalf("isolated schedule migration unavailable: %v",e)}
  raw,e:=os.ReadFile(filepath.Join("..","..","migrations","postgres","031_connection_runtime_profiles.sql"))
  if e!=nil{t.Fatal(e)}
  if _,e=svc.pg.Exec(ctx,string(raw));e!=nil{t.Fatalf("isolated migration unavailable: %v",e)}
