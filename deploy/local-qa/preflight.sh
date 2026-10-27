@@ -18,8 +18,8 @@ declare -A ports=(
  [11433]="dataflow-localqa-mssql:1433"
  [15433]="dataflow-localqa-postgres:5432"
  [18123]="dataflow-localqa-clickhouse:8123"
- [18080]="dataflow-localqa-api:8080"
- [15173]="dataflow-localqa-web:8080"
+ [18080]="dataflow-localqa-api-1:8080"
+ [15173]="dataflow-localqa-web-1:8080"
 )
 if docker ps -a --format '{{.Names}}' | grep -E '^dataflow-localqa-' | grep -q .; then
  while IFS= read -r id; do

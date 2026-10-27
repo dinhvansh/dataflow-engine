@@ -11,8 +11,12 @@ printf 'DATAFLOW_TEST_TARGET_DATABASE=scratch\n' > .env.qa.local
 cat > "$fake/ss" <<'SCRIPT'
 #!/usr/bin/env bash
 printf 'State Recv-Q Send-Q Local Address:Port Peer Address:Port\n'
-if [[ "$*" == *:11433* && "${MOCK_PORT_OCCUPIED:-true}" == true ]]; then
- printf 'LISTEN 0 10 127.0.0.1:11433 0.0.0.0:*\n'
+if [[ "${MOCK_PORT_OCCUPIED:-true}" == true ]]; then
+ for port in 11433 18080 15173; do
+  if [[ "$*" == *:$port* ]]; then
+   printf 'LISTEN 0 10 127.0.0.1:%s 0.0.0.0:*\n' "$port"
+  fi
+ done
 fi
 SCRIPT
 cat > "$fake/docker" <<'SCRIPT'
@@ -20,11 +24,23 @@ cat > "$fake/docker" <<'SCRIPT'
 case "${1:-}" in
  info) exit 0;;
  ps)
-  if [[ "$*" == *--format* && "$*" == *Names* ]]; then echo dataflow-localqa-mssql; else echo mock-container-id; fi;;
+  if [[ "$*" == *--format* && "$*" == *Names* ]]; then
+   printf '%s\n' dataflow-localqa-mssql dataflow-localqa-api-1 dataflow-localqa-web-1
+  else echo mock-container-id; fi;;
  inspect)
+  container="${!#}"
+  case "$container" in
+   dataflow-localqa-mssql|dataflow-localqa-api-1|dataflow-localqa-web-1|mock-container-id) ;;
+   *) exit 3;;
+  esac
   if [[ "$*" == *Config.Labels* ]]; then echo "${MOCK_OWNER:-dataflow-localqa local-qa}"
   elif [[ "$*" == *State.Running* ]]; then echo "${MOCK_RUNNING:-true}"
-  elif [[ "$*" == *NetworkSettings.Ports* ]]; then echo "${MOCK_BINDING:-127.0.0.1:11433}"
+  elif [[ "$*" == *NetworkSettings.Ports* ]]; then
+   case "$container" in
+    dataflow-localqa-mssql) echo "${MOCK_BINDING:-127.0.0.1:11433}";;
+    dataflow-localqa-api-1) echo '127.0.0.1:18080';;
+    dataflow-localqa-web-1) echo '127.0.0.1:15173';;
+   esac
   else exit 3; fi;;
  *) echo "Unexpected fake Docker call: $*" >&2;exit 3;;
 esac

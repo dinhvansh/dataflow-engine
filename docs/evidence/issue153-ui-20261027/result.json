@@ -1,0 +1,42 @@
+{
+  "scope": "owner-local disposable QA; main base ab8fa984a5aec119071ad7730c89af35ccecfc53",
+  "date": "2026-10-27",
+  "connection_admin_login": "PASS",
+  "sqlserver_add_encrypted_save_real_test": "PASS",
+  "clickhouse_add_encrypted_save_real_test": "PASS",
+  "runtime_get_and_browser_storage_no_secrets": "PASS",
+  "primary_wizard_two_typed_streams_save_bind_run": "PASS",
+  "browser_reload_persistence": "PASS",
+  "incremental_zero_row_replay_from_sync_jobs": "PASS",
+  "wrong_login_and_operator_admin_denial": "PASS",
+  "streams": [
+    {
+      "id": "11579404-143c-44ae-96d3-d7653e27223a",
+      "source": "Erp.CustomOrders",
+      "target": "scratch.qa153_orders_5dee780e",
+      "configured_mode": "full_then_incremental",
+      "mode_after_success": "incremental_rowversion",
+      "key": "OrderID",
+      "cursor": "RowChanged",
+      "typed_column_rename": "Amount -> order_amount",
+      "source_rows": 2,
+      "target_final_rows": 2,
+      "target_unique_keys": 2,
+      "replay_rows_written": 0
+    },
+    {
+      "id": "89fa27e3-5000-44ce-b0a9-fa992a98ce10",
+      "source": "Erp.InvcHead",
+      "target": "scratch.qa153_invoices_5dee780e",
+      "configured_mode": "full_refresh",
+      "key": "SysRowID",
+      "cursor": "SysRevID",
+      "source_rows": 100,
+      "target_final_rows": 100,
+      "target_unique_keys": 100
+    }
+  ],
+  "initial_attempt": "FAIL: primary Wizard omitted SysRevID as Full Refresh cursor while selecting that physical column; real API returned 422 alias collision. Corrected and rerun PASS.",
+  "local_original_artifacts": "ignored qa-results/issue153-connections-679b285d and qa-results/issue153-wizard-5dee780e",
+  "production": "NO-GO"
+}
