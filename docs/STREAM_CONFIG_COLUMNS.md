@@ -1,4 +1,4 @@
-# Airbyte-style Stream Field Selection (isolated QA)
+# Stream Field Selection (isolated QA)
 
 This slice is a **working SQL Server RowVersion column projection** for the existing managed incremental stream; it is not yet a complete Airbyte connection/stream wizard.
 

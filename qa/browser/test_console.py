@@ -1244,7 +1244,7 @@ def test_qa_profile_edit_retest_and_revoke_from_real_manager_ui(ui):
     assert len(revokes) == 1 and revokes[0]["body"]["revision"] == 4
 
 
-def test_ui_airbyte_stream_columns_are_selected_and_saved(ui):
+def test_ui_source_stream_columns_are_selected_and_saved(ui):
     """A stream column selection must reach the API; read-only metadata GET is distinct."""
     page, state = ui
 
@@ -1261,7 +1261,7 @@ def test_ui_airbyte_stream_columns_are_selected_and_saved(ui):
 
     page.route("**/api/v1/source/columns*", columns)
     open_tab(page, "Sync Jobs")
-    panel = page.get_by_label("Airbyte-style source discovery and field projection")
+    panel = page.get_by_label("Source discovery and field selection")
     save = page.get_by_role("button", name="Save selected stream")
     expect(save).to_be_disabled()
     panel.get_by_role("button", name="Discover tables").click()

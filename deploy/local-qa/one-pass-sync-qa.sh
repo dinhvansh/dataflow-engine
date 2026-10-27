@@ -28,4 +28,4 @@ echo '[4/4] Run isolated real SQL Server + PostgreSQL + ClickHouse Connection/Fu
 DATAFLOW_LIVE_QA_OPT_IN=true bash deploy/local-qa/run-runtime-connections-real.sh
 echo 'ONE-PASS QA PASS: fixtures verified, API and browser healthy, connection and Full/Incremental acceptance passed.'
 echo 'Browse: http://127.0.0.1:15173'
-echo 'Open Connections > Airbyte-style Batch Sync Setup. Keep all streams in scratch.'
+echo 'Open Connections > Thiết lập đồng bộ nhiều bảng · QA. Keep all streams in scratch.'
