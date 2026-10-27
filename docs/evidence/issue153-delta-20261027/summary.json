@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-27",
+  "tested_base_commit": "b602cf3de97ebaf24eaa6742d26f073765398abb",
+  "scope": "owner-local ClickHouse scratch copy-on-write delta stage, simulated partial-stage restart, publish replay, physical rollback and rollback replay",
+  "sample_count": 18,
+  "groups": [
+    {
+      "baseline_rows": 100000,
+      "changed_rows": 1000,
+      "trials": 3,
+      "median_stage_ms": 188.98,
+      "median_recovery_ms": 154.538,
+      "max_publish_ms": 18.273,
+      "max_rollback_ms": 17.217,
+      "reconciliation": "PASS"
+    },
+    {
+      "baseline_rows": 100000,
+      "changed_rows": 10000,
+      "trials": 3,
+      "median_stage_ms": 143.249,
+      "median_recovery_ms": 157.685,
+      "max_publish_ms": 13.777,
+      "max_rollback_ms": 16.139,
+      "reconciliation": "PASS"
+    },
+    {
+      "baseline_rows": 100000,
+      "changed_rows": 50000,
+      "trials": 3,
+      "median_stage_ms": 188.002,
+      "median_recovery_ms": 162.28,
+      "max_publish_ms": 19.166,
+      "max_rollback_ms": 14.818,
+      "reconciliation": "PASS"
+    },
+    {
+      "baseline_rows": 1000000,
+      "changed_rows": 1000,
+      "trials": 3,
+      "median_stage_ms": 687.633,
+      "median_recovery_ms": 772.876,
+      "max_publish_ms": 127.851,
+      "max_rollback_ms": 48.748,
+      "reconciliation": "PASS"
+    },
+    {
+      "baseline_rows": 1000000,
+      "changed_rows": 10000,
+      "trials": 3,
+      "median_stage_ms": 333.698,
+      "median_recovery_ms": 299.616,
+      "max_publish_ms": 14.795,
+      "max_rollback_ms": 16.3,
+      "reconciliation": "PASS"
+    },
+    {
+      "baseline_rows": 1000000,
+      "changed_rows": 50000,
+      "trials": 3,
+      "median_stage_ms": 282.957,
+      "median_recovery_ms": 406.388,
+      "max_publish_ms": 25.616,
+      "max_rollback_ms": 33.584,
+      "reconciliation": "PASS"
+    }
+  ],
+  "resource": {
+    "peak_cpu_percent": {
+      "dataflow-localqa-clickhouse": 478.86,
+      "dataflow-localqa-postgres": 5.65
+    },
+    "peak_memory_bytes": {
+      "dataflow-localqa-clickhouse": 2326798532.608,
+      "dataflow-localqa-postgres": 39269171.2
+    }
+  },
+  "external_worker_sigkill": "NOT_RUN_IN_THIS_BENCHMARK",
+  "production": "NO-GO"
+}
