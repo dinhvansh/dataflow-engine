@@ -32,7 +32,7 @@ export function ConnectorHubShellV2(props:ConnectorHubShellV2Props){
    {view==="connections"&&canManage&&<Button type="button" onClick={()=>nav("new")}><Plus size={16}/> New connection</Button>}
   </header>
   <nav className="dfh-nav" aria-label="Điều hướng kết nối">
-   {([ ["connections","Connections"],["sources","Sources"],["destinations","Destinations"]] as const).map(([id,label])=><button type="button" key={id} className={view===id?"current":""} aria-current={view===id?"page":undefined} onClick={()=>nav(id)}>{label}</button>)}
+   {([ ["connections","Connections"],["sources","Sources"],["destinations","Destinations"]] as const).map(([id,label])=><button type="button" key={id} aria-label={id==="connections"?"All connections":undefined} className={view===id?"current":""} aria-current={view===id?"page":undefined} onClick={()=>nav(id)}>{label}</button>)}
    {canManage&&<button type="button" className={view==="profiles"?"current":""} aria-current={view==="profiles"?"page":undefined} onClick={()=>nav("profiles")}>Profiles</button>}
   </nav>
   {view==="new"&&<div className="dfh-breadcrumb"><button type="button" onClick={()=>nav("connections")}><ArrowLeft size={15}/> Connections</button><span>/</span><span>New connection</span></div>}

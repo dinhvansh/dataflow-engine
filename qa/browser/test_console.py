@@ -390,6 +390,7 @@ def open_tab(page, name):
 def test_ui01_source_metadata_read_only(ui):
     page, state = ui
     open_tab(page, "Connections")
+    page.get_by_role("button", name="Sources", exact=True).click()
     page.get_by_role("button", name="List", exact=True).click()
     expect(page.get_by_text("Available tables (1)")).to_be_visible()
     page.get_by_role("button", name="Inspect", exact=True).click()
@@ -475,7 +476,7 @@ def test_ui07_enterprise_overview_light_dark_persist_and_shortcuts(ui):
     page.get_by_role("button", name="Collapse sidebar").click()
     expect(page.get_by_role("button", name="Connections", exact=True)).to_be_visible()
     page.get_by_role("button", name="Connections", exact=True).click()
-    expect(page.get_by_text("Connector Hub", exact=True)).to_be_visible()
+    expect(page.get_by_role("button", name="New connection")).to_be_visible()
     assert all(c["method"] == "GET" for c in state["calls"])
 
 
@@ -549,8 +550,9 @@ def test_ui10_signalroom_design_tokens_in_both_themes(ui):
 def test_ui11_connector_hub_catalog_and_route_preview_only(ui):
     page, state = ui
     page.get_by_role("button", name="Connections", exact=True).click()
-    expect(page.get_by_text("Connector Hub", exact=True)).to_be_visible()
-    expect(page.get_by_role("tab", name=re.compile("Sources"))).to_have_attribute("aria-selected", "true")
+    expect(page.get_by_role("button", name="New connection")).to_be_visible()
+    page.get_by_role("button", name="Sources", exact=True).click()
+    expect(page.get_by_role("button", name="Sources", exact=True)).to_have_attribute("aria-current", "page")
 
     source_catalog = page.get_by_label("Source catalog")
     source_catalog.get_by_label("Search connectors").fill("mysql")
@@ -564,9 +566,9 @@ def test_ui11_connector_hub_catalog_and_route_preview_only(ui):
     source_catalog.get_by_role("button", name="Available", exact=True).click()
     expect(source_catalog.get_by_text("Microsoft SQL Server", exact=True)).to_be_visible()
 
-    page.get_by_role("tab", name=re.compile("Destinations")).click()
+    page.get_by_role("button", name="Destinations", exact=True).click()
     expect(page.get_by_label("Destination catalog").get_by_text("ClickHouse", exact=True)).to_be_visible()
-    page.get_by_role("tab", name="Connections", exact=True).click()
+    page.get_by_role("button", name="QA details & legacy tools").click()
     expect(page.get_by_text("Supported underlying path", exact=False)).to_be_visible()
     page.get_by_label("Route source").select_option("mysql")
     expect(page.get_by_text("Planned route", exact=False)).to_be_visible()
@@ -654,7 +656,7 @@ def test_ui17_all_ten_navigation_screens_mount_in_light_mode(ui):
     page.get_by_role("button", name="Switch to light mode").click()
     screens = [
         ("Overview", "One workspace for your data pipelines."),
-        ("Connections", "Connector Hub"),
+        ("Connections", "New connection"),
         ("Sync Jobs", "Experimental full-load / rowversion-window trial"),
         ("Transform Studio", "Data Preview"),
         ("Data Lineage", "Data Lineage & Impact Analysis"),
@@ -676,6 +678,7 @@ def test_ui18_sql_line_gutter_and_source_metadata_filters_are_local(ui):
     """Editing and filtering are browser-only; no ERP or backend mutations."""
     page, state = ui
     page.get_by_role("button", name="Connections", exact=True).click()
+    page.get_by_role("button", name="Sources", exact=True).click()
     page.get_by_label("Source API token").fill(TOKEN)
     page.get_by_role("button", name="List", exact=True).click()
     table_filter = page.get_by_label("Filter available tables")
@@ -976,7 +979,7 @@ def test_ui25_connection_inventory_requires_token_and_never_exposes_secrets(ui):
     """Authenticated GET-only configuration inventory; no live network test or credential leak."""
     page, state = ui
     page.get_by_role("button", name="Connections", exact=True).click()
-    page.get_by_role("tab", name="Connections", exact=True).click()
+    page.get_by_role("button", name="QA details & legacy tools").click()
     inventory = page.get_by_label("Configured connection inventory")
     expect(inventory).to_be_visible()
     load = page.get_by_role("button", name="Refresh configured connections")
@@ -1009,7 +1012,7 @@ def test_ui26_connection_draft_registry_admin_only_metadata(ui):
     """Draft registry persists names only; it cannot dial, bind or execute."""
     page, state = ui
     page.get_by_role("button", name="Connections", exact=True).click()
-    page.get_by_role("tab", name="Connections", exact=True).click()
+    page.get_by_role("button", name="QA details & legacy tools").click()
     panel = page.get_by_label("Connection draft registry", exact=True)
     expect(panel).to_be_visible()
     admin = page.get_by_label("Connection registry admin token")
@@ -1100,6 +1103,7 @@ def test_ui_runtime_connection_add_test_save_bind_uses_backend_and_hides_credent
     page, state = ui
     page.get_by_label("Lab API token (shared across modules)").fill(TOKEN)
     page.get_by_role("button", name="Connections", exact=True).click()
+    page.get_by_role("button", name="Profiles", exact=True).click()
     panel = page.get_by_label("Live lab connection manager")
     panel.get_by_label("Live connection admin credential").fill("synthetic-admin-token")
     panel.get_by_role("button", name="Load connections").click()
@@ -1195,8 +1199,7 @@ def test_ui_local_session_login_roles_and_logout(ui):
     page.get_by_role("button", name="Sign in", exact=True).click()
     page.get_by_role("button", name="Connections", exact=True).click()
     expect(page.get_by_label("Live lab connection manager")).to_have_count(0)
-    page.get_by_role("tab", name="Connections", exact=True).click()
-    expect(page.get_by_label("Saved connections access")).to_contain_text("Administrator access")
+    expect(page.get_by_text("Bạn đang ở vai trò Operator", exact=False)).to_be_visible()
     assert not any(c["path"] == "/api/v1/connections/runtime" for c in state["calls"])
     page.get_by_role("button", name="Sign out").click()
     expect(page.get_by_label("DataFlow sign in")).to_be_visible()
@@ -1205,6 +1208,7 @@ def test_ui_local_session_login_roles_and_logout(ui):
     page.get_by_label("Sign in password").fill("synthetic-admin-password")
     page.get_by_role("button", name="Sign in", exact=True).click()
     page.get_by_role("button", name="Connections", exact=True).click()
+    page.get_by_role("button", name="Profiles", exact=True).click()
     expect(page.get_by_label("Live lab connection manager")).to_be_visible()
     expect(page.get_by_label("Live connection admin credential")).to_have_count(0)
     expect(page.get_by_label("Lab API token (shared across modules)")).to_have_count(0)
@@ -1217,6 +1221,7 @@ def test_qa_profile_edit_retest_and_revoke_from_real_manager_ui(ui):
     page, state = ui
     page.get_by_label("Lab API token (shared across modules)").fill(TOKEN)
     page.get_by_role("button", name="Connections", exact=True).click()
+    page.get_by_role("button", name="Profiles", exact=True).click()
     manager = page.get_by_label("Live lab connection manager")
     manager.get_by_label("Live connection admin credential").fill("synthetic-admin-token")
     manager.get_by_role("button", name="Load connections").click()
@@ -1286,6 +1291,7 @@ def test_qa_sync_setup_uses_verified_profiles_to_discover_save_bind_and_run(ui):
     page, state = ui
     page.get_by_label("Lab API token (shared across modules)").fill(TOKEN)
     page.get_by_role("button", name="Connections", exact=True).click()
+    page.get_by_role("button", name="Profiles", exact=True).click()
     panel = page.get_by_label("Live lab connection manager")
     panel.get_by_label("Live connection admin credential").fill("synthetic-admin-token")
     panel.get_by_role("button", name="Load connections").click()
@@ -1334,6 +1340,7 @@ def test_qa_batch_full_refresh_custom_dest_and_multistream_save(ui):
     page,state=ui
     page.get_by_label("Lab API token (shared across modules)").fill(TOKEN)
     page.get_by_role("button",name="Connections",exact=True).click()
+    page.get_by_role("button", name="Profiles", exact=True).click()
     panel=page.get_by_label("Live lab connection manager")
     panel.get_by_label("Live connection admin credential").fill("synthetic-admin-token")
     panel.get_by_role("button",name="Load connections").click()
@@ -1391,6 +1398,7 @@ def test_primary_four_step_wizard_saves_typed_mapping_and_full_to_incremental(ui
     page, state = ui
     page.get_by_label("Lab API token (shared across modules)").fill(TOKEN)
     page.get_by_role("button", name="Connections", exact=True).click()
+    page.get_by_role("button", name="Profiles", exact=True).click()
     manager = page.get_by_label("Live lab connection manager")
     manager.get_by_label("Live connection admin credential").fill("synthetic-admin-token")
     manager.get_by_role("button", name="Load connections").click()
@@ -1409,7 +1417,7 @@ def test_primary_four_step_wizard_saves_typed_mapping_and_full_to_incremental(ui
     tests = manager.get_by_role("button", name="Test real connection")
     tests.nth(0).click()
     tests.nth(1).click()
-    page.get_by_role("tab", name="Connections").click()
+    page.get_by_role("button", name="Quay lại New connection").click()
     wizard = page.get_by_label("Wizard tạo connection QA")
     wizard.locator('input[name="source-v2"]').first.check()
     wizard.get_by_role("button", name="Tiếp tục").click()
@@ -1435,8 +1443,9 @@ def test_primary_four_step_wizard_saves_typed_mapping_and_full_to_incremental(ui
     wizard.get_by_role("dialog").get_by_role("button", name="Xong").click()
     wizard.get_by_label("Target table InvcHead").fill("typed_invoices_qa")
     wizard.get_by_role("button", name="Tiếp tục").click()
+    wizard.get_by_text("Thiết lập nâng cao").click()
     wizard.get_by_label("Batch size").fill("500")
-    wizard.get_by_role("button", name="Save & Bind").click()
+    wizard.get_by_role("button", name="Tạo connection").click()
     posts = [c for c in state["calls"] if c["path"] == "/api/v1/connections/runtime/streams/batch"]
     assert len(posts) == 1
     streams = posts[0]["body"]["streams"]

@@ -131,7 +131,7 @@ export function ConnectorHub({token,onTokenChange,sessionRole}:{token:string;onT
  </>;
  return <ConnectorHubShellV2
    sessionRole={sessionRole}
-   liveQAManager={<RuntimeConnectionManager token={token} sessionAdmin={sessionRole==="admin"} showLegacyWizards={false} preferredDriver={preferredDriver}
+   liveQAManager={<RuntimeConnectionManager token={token} sessionAdmin={sessionRole==="admin"} preferredDriver={preferredDriver}
      refreshKey={refreshKey} onQAState={setQAState}/>}
    wizard={go=><ConnectionWizardV2 token={token} adminToken={qaState.adminToken}
      profiles={qaState.profiles} onGoToTab={tab=>{setPreferredDriver(tab==="sources"?"sqlserver":"clickhouse");go(tab)}} onCreated={()=>setRefreshKey(n=>n+1)}/>}
