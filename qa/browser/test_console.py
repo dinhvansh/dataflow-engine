@@ -1418,6 +1418,10 @@ def test_primary_four_step_wizard_saves_typed_mapping_and_full_to_incremental(ui
     expect(wizard.get_by_label("Target database")).to_have_value("scratch")
     wizard.get_by_role("button", name="Tiếp tục").click()
     wizard.get_by_role("button", name="Tải / làm mới schema").click()
+    expect(wizard.get_by_label("Cursor InvcHead").first).to_have_value("SysRevID")
+    wizard.get_by_label("Cursor InvcHead").first.select_option("")
+    expect(wizard.get_by_text("SysRevID trùng tên cursor chuẩn", exact=False)).to_be_visible()
+    wizard.get_by_label("Cursor InvcHead").first.select_option("SysRevID")
     wizard.get_by_label("Sync mode Part").select_option("full_then_incremental")
     wizard.get_by_label("Target table Part").fill("typed_parts_qa")
     wizard.get_by_role("button", name=re.compile("Chọn cột")).first.click()
@@ -1444,6 +1448,8 @@ def test_primary_four_step_wizard_saves_typed_mapping_and_full_to_incremental(ui
     assert {m["source"]: m["target"] for m in streams[0]["column_mappings"]}["TranQty"] == "quantity"
     assert streams[0]["batch_size"] == 500
     assert streams[1]["target_table"] == "typed_invoices_qa"
+    assert streams[1]["mode"] == "full_refresh"
+    assert streams[1]["source_cursor_column"] == "SysRevID"
 
 
 def test_guided_pipeline_interactive_ux_prototype_browser(browser):
