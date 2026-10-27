@@ -54,7 +54,7 @@ export function ManagedStreams({token}:{token:string}){
   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
    {(["source_schema","source_table","target_database","target_table"] as const).map(k=><label key={k} className="space-y-1"><span className="muted text-xs">{k.replaceAll("_"," ")}</span><input className="field" value={config[k]} onChange={e=>edit(k,e.target.value)}/></label>)}
   </div>
-  <section className="rounded-md border p-4 space-y-3" aria-label="Airbyte-style source discovery and field projection">
+  <section className="rounded-md border p-4 space-y-3" aria-label="Source discovery and field selection">
    <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold text-sm">Discover source schema &amp; columns</h3><p className="muted text-xs">Read-only metadata. Select fields for this stream; cursor/key columns remain mandatory.</p></div>
     <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={!!busy||!token} onClick={discover}><RefreshCw size={14}/>Discover tables</Button><Button type="button" variant="outline" disabled={!!busy||!token||!config.source_table} onClick={inspect}><Search size={14}/>Inspect columns</Button></div>
    </div>

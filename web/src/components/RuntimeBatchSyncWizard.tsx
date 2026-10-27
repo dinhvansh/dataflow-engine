@@ -129,7 +129,7 @@ export function RuntimeBatchSyncWizard({token,adminToken,profiles,onCreated}:Pro
  const targets=profiles.filter(p=>p.driver==="clickhouse"&&p.status==="verified");
  return <section className="rounded-md border p-4 space-y-4" aria-label="Batch sync setup wizard">
   <div className="flex flex-wrap justify-between gap-2"><div>
-   <h4 className="font-semibold flex items-center gap-2"><Database size={16}/>Airbyte-style Batch Sync Setup · QA</h4>
+   <h4 className="font-semibold flex items-center gap-2"><Database size={16}/>Thiết lập đồng bộ nhiều bảng · QA</h4>
    <p className="muted text-xs mt-1">Select saved connections, configure up to 10 source tables, and choose Full Refresh or Incremental for each.</p>
   </div><span className="rounded border px-2 py-1 text-[11px]">Disposable scratch only</span></div>
   <div className="grid gap-3 md:grid-cols-2">
