@@ -87,7 +87,7 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
  raw,e:=os.ReadFile(filepath.Join("..","..","migrations","postgres","031_connection_runtime_profiles.sql"))
  if e!=nil{t.Fatal(e)}
  if _,e=svc.pg.Exec(ctx,string(raw));e!=nil{t.Fatalf("isolated migration unavailable: %v",e)}
- for _,name:=range []string{"032_sync_stream_selected_columns.sql","033_qa_stream_modes_destinations.sql","034_source_key_and_bootstrap_cursor.sql","035_typed_destinations.sql","036_runtime_profile_revocation.sql"}{
+ for _,name:=range []string{"032_sync_stream_selected_columns.sql","033_qa_stream_modes_destinations.sql","034_source_key_and_bootstrap_cursor.sql","035_typed_destinations.sql","036_runtime_profile_revocation.sql","037_qa_connections.sql"}{
   sqlText,readErr:=os.ReadFile(filepath.Join("..","..","migrations","postgres",name))
   if readErr!=nil{t.Fatal(readErr)}
   if _,e=svc.pg.Exec(ctx,string(sqlText));e!=nil{t.Fatalf("isolated migration %s unavailable: %v",name,e)}
@@ -114,6 +114,7 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
    for _,table:=range batchTables{if strings.HasPrefix(table,"dfqa_"){_,_=owned.Query(x,"DROP TABLE IF EXISTS scratch.`"+table+"`")}}
    for _,id:=range createdIDs{
    _,_=svc.pg.Exec(x,`DELETE FROM connection_runtime_bindings WHERE source_profile_id=$1::uuid OR target_profile_id=$1::uuid`,id)
+   _,_=svc.pg.Exec(x,`DELETE FROM qa_connections WHERE source_profile_id=$1::uuid OR target_profile_id=$1::uuid`,id)
    _,_=svc.pg.Exec(x,`DELETE FROM connection_runtime_profiles WHERE id=$1::uuid`,id)
   }
  }()
@@ -127,6 +128,7 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
   rec:=httptest.NewRecorder()
   switch req.URL.Path {
   case "/api/v1/connections/runtime":svc.runtimeProfilesAPI(rec,req)
+  case "/api/v1/connections/runtime/overview":svc.runtimeOverviewAPI(rec,req)
   case "/api/v1/connections/runtime/test":svc.runtimeTestAPI(rec,req)
   case "/api/v1/connections/runtime/bind":svc.runtimeBindAPI(rec,req)
   case "/api/v1/connections/runtime/discover":svc.runtimeDiscoverAPI(rec,req)
@@ -194,6 +196,22 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
  createdStreamID=streamID
  status,resp,_:=do(http.MethodPost,"/api/v1/connections/runtime/bind",connectionBindingInput{StreamID:streamID,SourceID:sourceID,TargetID:targetID})
  if status!=200||resp["bound"]!=true{t.Fatalf("binding refused in isolated QA")}
+ status,overview,overviewBody:=do(http.MethodGet,"/api/v1/connections/runtime/overview",nil)
+ if status!=200||strings.Contains(overviewBody,sqlPass)||strings.Contains(overviewBody,chPass){t.Fatalf("overview failed or leaked secret: %d",status)}
+ readOnlyRequest:=httptest.NewRequest(http.MethodGet,"/api/v1/connections/runtime/overview",nil)
+ readOnlyRequest.Header.Set("Authorization","Bearer "+svc.token)
+ readOnlyResponse:=httptest.NewRecorder()
+ svc.runtimeOverviewAPI(readOnlyResponse,readOnlyRequest)
+ if readOnlyResponse.Code!=http.StatusForbidden{t.Fatalf("overview allowed without independent admin authorization: %d",readOnlyResponse.Code)}
+ groups,ok:=overview["connections"].([]any)
+ if !ok||len(groups)==0{t.Fatal("bound connection absent from overview")}
+ found:=false
+ for _,entry:=range groups{
+  pair:=entry.(map[string]any)
+  if pair["source_connection_id"]!=sourceID||pair["target_connection_id"]!=targetID{continue}
+  for _,value:=range pair["streams"].([]any){if value.(map[string]any)["id"]==streamID{found=true}}
+ }
+ if !found{t.Fatal("bound stream absent from its QA connection")}
  var activeRunID string;var activeRevision int64
  if e=svc.pg.QueryRow(ctx,`SELECT revision FROM connection_runtime_profiles WHERE id=$1::uuid`,sourceID).Scan(&activeRevision);e!=nil{t.Fatal(e)}
  if e=svc.pg.QueryRow(ctx,`INSERT INTO managed_runs(stream_id,status) VALUES($1::uuid,'queued') RETURNING id::text`,streamID).Scan(&activeRunID);e!=nil{t.Fatal(e)}
@@ -229,7 +247,22 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
  if status!=422{t.Fatalf("duplicate batch allowed: %d",status)}
  status,created,_:=do("POST","/api/v1/connections/runtime/streams/batch",batch)
  if status!=201||created["count"]!=float64(4){t.Fatalf("batch config failed: %d %v",status,created)}
+ connectionID,_:=created["connection_id"].(string)
+ if !validUUID.MatchString(connectionID){t.Fatal("new QA connection identity missing")}
+ if connectionID==streamID{t.Fatal("batch must create a distinct saved connection")}
  items,ok:=created["streams"].([]any);if !ok||len(items)!=4{t.Fatalf("missing batch streams %v",created)}
+ additional:=qaStreamBatchInput{ConnectionID:connectionID,SourceConnectionID:sourceID,TargetConnectionID:targetID,
+  Streams:[]labStreamInput{{SourceSchema:"Erp",SourceTable:"PartTran",TargetDatabase:"scratch",TargetTable:"parttranextra",Mode:"full_refresh",
+   SelectedColumns:[]string{"SysRowID","SysRevID"},BatchSize:100,Workers:2,QueueCapacity:2}}}
+ status,added,_:=do("POST","/api/v1/connections/runtime/streams/batch",additional)
+ if status!=201||added["connection_id"]!=connectionID||added["count"]!=float64(1){t.Fatalf("adding stream to saved connection failed: %d",status)}
+ extraStream:=added["streams"].([]any)[0].(map[string]any)
+ var grouped int
+ if e=svc.pg.QueryRow(ctx,`SELECT count(*) FROM connection_runtime_bindings WHERE connection_id=$1::uuid`,connectionID).Scan(&grouped);e!=nil||grouped!=5{t.Fatalf("saved connection lost streams: %d %v",grouped,e)}
+ batchIDs=append(batchIDs,extraStream["stream_id"].(string))
+ batchTables=append(batchTables,strings.TrimPrefix(extraStream["destination"].(string),"scratch."))
+ status,_,_=do("POST","/api/v1/connections/runtime/streams/batch",additional)
+ if status!=409{t.Fatalf("same source table duplicated inside QA connection: %d",status)}
  cl:=safetable.Client{Endpoint:svc.chURL,User:chUser,Password:chPass}
  for i,record:=range items{
   row:=record.(map[string]any)

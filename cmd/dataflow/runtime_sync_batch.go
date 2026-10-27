@@ -23,6 +23,8 @@ import (
 )
 
 type qaStreamBatchInput struct{
+ ConnectionID string `json:"connection_id,omitempty"`
+ ConnectionName string `json:"connection_name,omitempty"`
  SourceConnectionID string `json:"source_connection_id"`
  TargetConnectionID string `json:"target_connection_id"`
  Streams []labStreamInput `json:"streams"`
@@ -106,6 +108,8 @@ func(s *server)qaBatchSetupAPI(w http.ResponseWriter,r *http.Request){
  if len(input.Streams)==0||len(input.Streams)>10||
   uuid.Validate(input.SourceConnectionID)!=nil||
   uuid.Validate(input.TargetConnectionID)!=nil||
+  (input.ConnectionID!=""&&uuid.Validate(input.ConnectionID)!=nil)||
+  (input.ConnectionID!=""&&input.ConnectionName!="")||
   input.SourceConnectionID==input.TargetConnectionID{
   http.Error(w,"1..10 QA streams and two distinct verified connection IDs required",422);return
  }
@@ -128,6 +132,23 @@ func(s *server)qaBatchSetupAPI(w http.ResponseWriter,r *http.Request){
  if source.Kind!="source"||source.Database!="DataFlowFixtureQA"||
     target.Kind!="destination"||!approvedTypedDatabase(target.Database){
   http.Error(w,"QA profiles only",403);return
+ }
+ connectionID:=input.ConnectionID
+ if connectionID!=""{
+  var savedSource,savedTarget string
+  e=tx.QueryRow(ctx,`SELECT source_profile_id::text,target_profile_id::text
+   FROM qa_connections WHERE id=$1::uuid AND workspace='lab' FOR UPDATE`,connectionID).Scan(&savedSource,&savedTarget)
+  if e!=nil||savedSource!=source.ID||savedTarget!=target.ID{
+   http.Error(w,"QA connection does not use selected profiles",409);return
+  }
+ }else{
+  connectionID=uuid.NewString()
+  var connectionName string
+  connectionName,e=qaConnectionName(input.ConnectionName,input.Streams[0].SourceSchema+"."+input.Streams[0].SourceTable,connectionID)
+  if e!=nil{http.Error(w,"invalid QA connection name",422);return}
+  if e=insertQAConnection(ctx,tx,connectionID,connectionName,source.ID,target.ID);e!=nil{
+   http.Error(w,"QA connection name already exists",409);return
+  }
  }
  configured,e:=url.Parse(s.chURL)
  if e!=nil||configured.Host!=net.JoinHostPort(target.Host,strconv.Itoa(target.Port)){
@@ -165,6 +186,12 @@ func(s *server)qaBatchSetupAPI(w http.ResponseWriter,r *http.Request){
   key:=item.SourceSchema+"."+item.SourceTable
   if seen[key]{http.Error(w,"duplicate table in batch",422);return}
   seen[key]=true
+  var alreadyInConnection bool
+  e=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM connection_runtime_bindings b
+   JOIN sync_streams s ON s.id=b.stream_id WHERE b.connection_id=$1::uuid
+   AND s.source_schema=$2 AND s.source_table=$3)`,connectionID,item.SourceSchema,item.SourceTable).Scan(&alreadyInConnection)
+  if e!=nil{http.Error(w,"QA connection unavailable",503);return}
+  if alreadyInConnection{http.Error(w,"stream already belongs to this connection",409);return}
   if e=verifyQASourceTable(ctx,sourceDB,item);e!=nil{
    http.Error(w,"source table rejected: "+e.Error(),422);return
   }
@@ -207,15 +234,15 @@ func(s *server)qaBatchSetupAPI(w http.ResponseWriter,r *http.Request){
    http.Error(w,"checkpoint unavailable",503);return
   }
   if _,e=tx.Exec(ctx,`INSERT INTO connection_runtime_bindings
-  (stream_id,source_profile_id,target_profile_id,source_revision,target_revision)
-  VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5)`,
-   streamID,source.ID,target.ID,source.Revision,target.Revision);e!=nil{
+  (stream_id,source_profile_id,target_profile_id,source_revision,target_revision,connection_id)
+  VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5,$6::uuid)`,
+   streamID,source.ID,target.ID,source.Revision,target.Revision,connectionID);e!=nil{
    http.Error(w,"connection binding unavailable",503);return
   }
   created=append(created,result{StreamID:streamID,Source:key,Mode:item.Mode,Destination:item.TargetDatabase+"."+dest})
  }
  if e=tx.Commit(ctx);e!=nil{http.Error(w,"batch commit failed",503);return}
- jsonResponse(w,201,map[string]any{"streams":created,"count":len(created)})
+ jsonResponse(w,201,map[string]any{"connection_id":connectionID,"streams":created,"count":len(created)})
 }
 
 func qaBatchPrintSafe(in qaStreamBatchInput)string{

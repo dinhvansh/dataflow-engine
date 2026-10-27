@@ -218,6 +218,7 @@ func main() {
 	mux.HandleFunc("/api/v1/connections/test-configured", svc.configuredConnectionTestAPI)
 	mux.HandleFunc("/api/v1/connections/definitions", svc.connectionDefinitionsAPI)
 	mux.HandleFunc("/api/v1/connections/runtime", svc.runtimeProfilesAPI)
+	mux.HandleFunc("/api/v1/connections/runtime/overview", svc.runtimeOverviewAPI)
 	mux.HandleFunc("/api/v1/connections/runtime/test", svc.runtimeTestAPI)
 	mux.HandleFunc("/api/v1/connections/runtime/bind", svc.runtimeBindAPI)
 	mux.HandleFunc("/api/v1/connections/runtime/discover", svc.runtimeDiscoverAPI)

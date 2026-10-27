@@ -1,12 +1,13 @@
 import {useEffect,useRef,useState} from "react";
 import {Button} from "./ui/button";
+import type {ReusedConnection} from "./QAConnectionBrowser";
 import {labQABatchSyncApi,labSyncSetupApi,managedApi,scheduleApi,type ColumnInfo,type TableInfo,type LabRuntimeConnection,type QABatchStream,type QABatchResult,type ManagedRun} from "../lib/api";
 import "./ConnectionWizardV2.css";
 
 type Mode=QABatchStream["mode"];
 type Layout="raw_event"|"typed";
 type Row={schema:string;name:string;enabled:boolean;status:"loading"|"ready"|"error";error:string;columns:ColumnInfo[];selected:string[];key:string;cursor:string;automatic:boolean;mode:Mode;targetTable:string;targetNames:Record<string,string>};
-type Props={token:string;adminToken:string;profiles:LabRuntimeConnection[];onCreated?:()=>void;onGoToTab?:(tab:"sources"|"destinations")=>void};
+type Props={token:string;adminToken:string;profiles:LabRuntimeConnection[];reusePair?:ReusedConnection|null;onCreated?:()=>void;onGoToTab?:(tab:"sources"|"destinations")=>void};
 type Frequency="manual"|"3600"|"21600"|"86400";
 type Filter="all"|"selected"|"unselected";
 const rowId=(r:Pick<Row,"schema"|"name">)=>r.schema+"."+r.name;
@@ -19,10 +20,11 @@ const effective=(r:Row)=>r.columns.filter(c=>r.selected.includes(c.name)||c.name
 const rowProblem=(r:Row,layout:Layout)=>{if(!r.enabled)return "";if(r.status!=="ready")return r.status==="error"?r.error:"Chưa tải metadata";const k=r.columns.find(c=>c.name===r.key);if(!k||k.nullable)return "Cần khóa chính không nullable";const names=effective(r);if(names.length<1||names.length>256)return "Cần 1–256 cột";if(r.key!=="SysRowID"&&names.includes("SysRowID"))return "SysRowID trùng tên cột khóa chuẩn; bỏ chọn cột này";if(r.cursor!=="SysRevID"&&names.includes("SysRevID"))return "SysRevID trùng tên cursor chuẩn; chọn SysRevID làm cursor hoặc bỏ chọn cột này";if(r.mode!=="full_refresh"&&!r.columns.some(c=>c.name===r.cursor&&nativeCursor(c)))return "Incremental bị chặn: thiếu rowversion/timestamp hợp lệ";if(layout==="typed"){if(!targetIdentifier.test(r.targetTable))return "Tên bảng đích không hợp lệ";const mapped=names.map(n=>r.targetNames[n]??n);if(mapped.some(n=>!targetIdentifier.test(n)))return "Tên cột đích không hợp lệ";if(new Set(mapped.map(n=>n.toLowerCase())).size!==mapped.length)return "Tên cột đích bị trùng"}return ""};
 const errorText=(e:unknown)=>e instanceof Error?e.message:String(e);
 const isLocked=(r:Row,c:string)=>c===r.key||!!r.cursor&&c===r.cursor;
-export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTab}:Props){
+export function ConnectionWizardV2({token,adminToken,profiles,reusePair,onCreated,onGoToTab}:Props){
  const[step,setStep]=useState<1|2|3|4>(1);
  const[sourceChoice,setSourceChoice]=useState<"existing"|"new">("existing");
  const[targetChoice,setTargetChoice]=useState<"existing"|"new">("existing");
+ const[connectionName,setConnectionName]=useState("");
  const[sourceID,setSourceID]=useState("");const[targetID,setTargetID]=useState("");
  const[layout,setLayout]=useState<Layout>("raw_event");const[targetDatabase,setTargetDatabase]=useState("scratch");
  const[destinationInfo,setDestinationInfo]=useState<Awaited<ReturnType<typeof labSyncSetupApi.destinations>>|null>(null);
@@ -37,6 +39,7 @@ export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTa
  const[modalId,setModalId]=useState("");const[query,setQuery]=useState("");const[filter,setFilter]=useState<Filter>("all");
  const generation=useRef(0);
  const src=profiles.find(p=>p.id===sourceID),dst=profiles.find(p=>p.id===targetID);
+ const existingTables=new Set(reusePair?.existingTables||[]);
  const srcOk=!!src&&src.driver==="sqlserver"&&verified(src),dstOk=!!dst&&dst.driver==="clickhouse"&&verified(dst);
  const selectedRows=rows.filter(r=>r.enabled);
  const problems=selectedRows.map(r=>({name:rowId(r),error:rowProblem(r,layout)})).filter(r=>r.error);
@@ -48,7 +51,7 @@ export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTa
  const shown=modal?.columns.filter(c=>{if(!(c.name+" "+c.sql_type).toLowerCase().includes(query.toLowerCase()))return false;const chosen=effective(modal).includes(c.name);return filter==="all"||filter==="selected"&&chosen||filter==="unselected"&&!chosen})||[];
  const update=(id:string,fn:(r:Row)=>Row)=>setRows(old=>old.map(r=>rowId(r)===id?fn(r):r));
  const invalidate=()=>{generation.current++;setLoaded(false);setRows([]);setLoadedAt("");setModalId("");setCreated([]);setRuns({});setScheduleErrors([]);setError("")};
- useEffect(()=>{invalidate();setSourceID("");setTargetID("");setStep(1)},[token,adminToken]);
+ useEffect(()=>{invalidate();setSourceID(reusePair?.sourceID||"");setTargetID(reusePair?.targetID||"");setConnectionName(reusePair?.connectionName||"");setSourceChoice("existing");setTargetChoice("existing");setStep(reusePair?3:1)},[token,adminToken,reusePair]);
  useEffect(()=>{let cancelled=false;setDestinationInfo(null);setDestinationError("");setDestinationLoading(!!targetID);
   if(!targetID)return;
   void labSyncSetupApi.destinations(targetID,token,adminToken).then(info=>{if(!cancelled){setDestinationInfo(info);setTargetDatabase(info.database)}})
@@ -67,20 +70,21 @@ export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTa
  };
  const discover=async()=>{if(!srcOk||loading||!schema.trim())return;invalidate();const seq=generation.current,activeSource=sourceID,activeSchema=schema.trim();setLoading(true);
   try{const result=await labSyncSetupApi.tables(activeSource,activeSchema,token,adminToken);if(seq!==generation.current)return;
-   const list:Row[]=result.tables.map((t:TableInfo,i)=>({schema:t.schema,name:t.name,enabled:i<10,status:"loading",error:"",columns:[],selected:[],key:"",cursor:"",automatic:false,mode:"full_refresh",targetTable:alias(t.schema,t.name),targetNames:{}}));
+   const initial=new Set(result.tables.filter((t:TableInfo)=>!existingTables.has(t.schema+"."+t.name)).slice(0,10).map((t:TableInfo)=>t.schema+"."+t.name));
+   const list:Row[]=result.tables.map((t:TableInfo)=>({schema:t.schema,name:t.name,enabled:initial.has(t.schema+"."+t.name),status:"loading",error:"",columns:[],selected:[],key:"",cursor:"",automatic:false,mode:"full_refresh",targetTable:alias(t.schema,t.name),targetNames:{}}));
    setRows(list);setLoaded(true);setLoadedAt(new Date().toLocaleString("vi-VN"));
-   for(const r of list.slice(0,10)){if(seq!==generation.current)break;await fetchColumns(r,seq,activeSource,activeSchema)}
+   for(const r of list.filter(x=>x.enabled)){if(seq!==generation.current)break;await fetchColumns(r,seq,activeSource,activeSchema)}
   }catch(e){if(seq===generation.current){setError("Discovery lỗi: "+errorText(e));setLoaded(false)}}
   finally{if(seq===generation.current)setLoading(false)}
  };
- const enable=(r:Row,yes:boolean)=>{if(yes&&selectedRows.length>=10){setError("Tối đa 10 bảng mỗi batch");return}setError("");update(rowId(r),x=>({...x,enabled:yes}));if(yes&&r.status==="error")void fetchColumns(r,generation.current,sourceID,schema.trim())};
+ const enable=(r:Row,yes:boolean)=>{if(existingTables.has(rowId(r)))return;if(yes&&selectedRows.length>=10){setError("Tối đa 10 bảng mỗi batch");return}setError("");update(rowId(r),x=>({...x,enabled:yes}));if(yes&&r.status==="error")void fetchColumns(r,generation.current,sourceID,schema.trim())};
  const setMode=(r:Row,mode:Mode)=>{if(mode!=="full_refresh"&&!r.columns.some(nativeCursor))return;update(rowId(r),x=>{const first=x.columns.find(nativeCursor);const auto=mode!=="full_refresh"&&!x.cursor&&!!first;const cursor=auto?first!.name:x.cursor;return {...x,mode,cursor,automatic:auto||x.automatic,selected:Array.from(new Set([...x.selected,...(cursor?[cursor]:[])]))}})};
  const changeCursor=(r:Row,name:string)=>update(rowId(r),x=>({...x,cursor:name,automatic:false,selected:Array.from(new Set([...x.selected,...(name?[name]:[])]))}));
  const changeKey=(r:Row,name:string)=>update(rowId(r),x=>({...x,key:name,selected:Array.from(new Set([...x.selected,...(name?[name]:[])]))}));
  const choose=(r:Row,names:string[],yes:boolean)=>update(rowId(r),x=>{const editable=names.filter(n=>!isLocked(x,n));return {...x,selected:yes?Array.from(new Set([...x.selected,...editable])):x.selected.filter(n=>!editable.includes(n))}});
  const create=async()=>{if(!canCreate||busy||created.length)return;setBusy(true);setError("");setScheduleErrors([]);
   const streams:QABatchStream[]=selectedRows.map(r=>({source_schema:r.schema,source_table:r.name,target_database:layout==="typed"?targetDatabase:"scratch",target_table:layout==="typed"?r.targetTable:alias(r.schema,r.name),destination_layout:layout,column_mappings:layout==="typed"?effective(r).map(source=>({source,target:r.targetNames[source]??source})):undefined,selected_columns:effective(r),source_key_column:r.key,source_cursor_column:r.cursor,mode:r.mode,batch_size:batchSize,workers,queue_capacity:queueSize}));
-  try{const result=await labQABatchSyncApi.create({source_connection_id:sourceID,target_connection_id:targetID,streams},token,adminToken);setCreated(result.streams);onCreated?.();
+  try{const result=await labQABatchSyncApi.create({...(reusePair?{connection_id:reusePair.connectionID}:{connection_name:connectionName.trim()||undefined}),source_connection_id:sourceID,target_connection_id:targetID,streams},token,adminToken);setCreated(result.streams);onCreated?.();
    if(frequency!=="manual"){const outcomes=await Promise.allSettled(result.streams.map(item=>scheduleApi.save({stream_id:item.stream_id,interval_seconds:Number(frequency),enabled:true},token)));
     setScheduleErrors(outcomes.flatMap((o,i)=>o.status==="rejected"?[result.streams[i].source+": "+errorText(o.reason)]:[]))}
   }catch(e){setError("Tạo batch lỗi: "+errorText(e))}finally{setBusy(false)}
@@ -94,7 +98,7 @@ export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTa
   {r.columns.filter(c=>nativeCursor(c)||dateCursor(c)).map(c=><option key={c.name} value={c.name} disabled={!nativeCursor(c)}>{c.name} ({c.sql_type}){dateCursor(c)?" · API chưa hỗ trợ":""}</option>)}</select>
   {r.automatic&&r.cursor&&<small className="dfw-note">Cursor tự chọn</small>}</>;
  return <section className="dfw-root space-y-4" aria-label="Wizard tạo connection QA">
-  <header><h3 className="font-semibold text-lg">Thiết lập connection</h3><p className="muted text-sm">SQL Server → ClickHouse · tối đa 10 streams mỗi lần tạo</p></header>
+  <header><h3 className="font-semibold text-lg">{reusePair?"Thêm streams vào connection":"Thiết lập connection"}</h3><p className="muted text-sm">{reusePair?`${reusePair.connectionName} · ${reusePair.sourceName} → ${reusePair.targetName}`:"SQL Server → ClickHouse · tối đa 10 streams mỗi lần tạo"}</p></header>
   <nav className="dfw-steps" aria-label="Các bước tạo connection">{["Chọn nguồn","Chọn đích","Chọn streams","Cấu hình"].map((x,i)=><div key={x} className={step===i+1?"dfw-step current":"dfw-step"} aria-current={step===i+1?"step":undefined}><b>{i+1}</b>{x}</div>)}</nav>
   {error&&<p role="alert" className="dfw-alert">{error}</p>}
   {step===1&&<div className="space-y-3"><h4 className="font-semibold">Nguồn dữ liệu</h4><p className="muted text-sm">Chọn SQL Server đã kiểm tra hoặc tạo profile QA mới.</p>
@@ -115,12 +119,12 @@ export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTa
    {targetProblem&&<p role="alert" className="dfw-warning">{targetProblem}</p>}
    </>}
   </div>}
-  {step===3&&<div className="space-y-4"><div className="dfw-discovery space-y-3"><h4 className="font-semibold">3. Discovery schema</h4><div className="flex gap-3 flex-wrap items-end"><label className="flex-1 min-w-[180px]">SQL schema<input className="field mt-1" aria-label="Discovery schema" value={schema} onChange={e=>{setSchema(e.target.value);invalidate()}}/></label>
+  {step===3&&<div className="space-y-4"><div className="dfw-discovery space-y-3"><h4 className="font-semibold">3. Chọn streams</h4>{reusePair&&<p className="muted text-sm">Các bảng đã có trong connection được khóa để tránh đồng bộ trùng. Chọn bảng mới từ cùng nguồn SQL Server.</p>}{reusePair&&(!srcOk||!dstOk)&&<div className="dfw-warning" role="alert">Profile nguồn hoặc đích cần Test lại trước khi thêm stream. {onGoToTab&&<Button type="button" variant="outline" size="sm" onClick={()=>onGoToTab("sources")}>Mở Profiles</Button>}</div>}<div className="flex gap-3 flex-wrap items-end"><label className="flex-1 min-w-[180px]">SQL schema<input className="field mt-1" aria-label="Discovery schema" value={schema} onChange={e=>{setSchema(e.target.value);invalidate()}}/></label>
    <Button variant="outline" type="button" disabled={!srcOk||loading||!schema.trim()} onClick={()=>void discover()}>{loading?"Đang tải…":"Tải / làm mới schema"}</Button></div>
    <p className="muted text-xs">Chỉ đọc metadata bằng SELECT. Đổi schema phải tải lại. Không dùng ERP thật.</p>
    {loaded&&<p role="status">{rows.length} bảng · {rows.reduce((n,r)=>n+(r.status==="ready"?r.columns.length:0),0)} cột đã tải · {loadedAt}</p>}</div>
    {!loaded?<p className="dfw-empty">Chưa tải schema. Streams chưa được hiển thị.</p>:<div className="dfw-streams">{rows.map(r=><div className="dfw-stream" key={rowId(r)}>
-    <label className="flex gap-2 items-center"><input type="checkbox" checked={r.enabled} aria-label={"Chọn stream "+rowId(r)} onChange={e=>enable(r,e.target.checked)}/><strong>{rowId(r)}</strong></label>
+    <label className="flex gap-2 items-center"><input type="checkbox" checked={r.enabled} disabled={existingTables.has(rowId(r))} aria-label={"Chọn stream "+rowId(r)} onChange={e=>enable(r,e.target.checked)}/><strong>{rowId(r)}</strong>{existingTables.has(rowId(r))&&<small className="muted">Đã trong connection</small>}</label>
     <div className="dfw-stream-fields"><label>Sync mode<select className="field" aria-label={"Sync mode "+r.name} value={r.mode} disabled={!r.enabled||r.status!=="ready"} onChange={e=>setMode(r,e.target.value as Mode)}>
      <option value="full_refresh">Full refresh</option><option value="incremental_rowversion" disabled={!r.columns.some(nativeCursor)}>Incremental - RowVersion</option><option value="full_then_incremental" disabled={!r.columns.some(nativeCursor)}>Full một lần → Incremental</option></select></label>
      <label>Cursor{cursorSelect(r)}</label><label>Khóa chính<select className="field" value={r.key} aria-label={"Khóa chính "+r.name} disabled={!r.enabled||r.status!=="ready"} onChange={e=>changeKey(r,e.target.value)}><option value="">Chưa chọn</option>{r.columns.filter(c=>!c.nullable).map(c=><option key={c.name} value={c.name}>{c.name}</option>)}</select></label>
@@ -133,7 +137,7 @@ export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTa
     </div>)}</div>}
    {targetProblem&&<p role="alert" className="dfw-warning">{targetProblem}</p>}
   </div>}
-  {step===4&&<div className="space-y-3"><h4 className="font-semibold">4. Review & tạo</h4><p>Nguồn: <b>{src?.name||"Chưa chọn"}</b> · Đích: <b>{dst?.name||"Chưa chọn"} / {layout==="typed"?targetDatabase+" typed":"scratch RAW"}</b></p>
+  {step===4&&<div className="space-y-3"><h4 className="font-semibold">4. Review & tạo</h4>{reusePair?<p>Thêm vào connection <b>{reusePair.connectionName}</b></p>:<label className="block">Tên connection<input className="field mt-1" aria-label="Tên connection" maxLength={80} value={connectionName} onChange={e=>setConnectionName(e.target.value)} placeholder="Ví dụ: ERP Finance & Reference"/><small className="muted block">Để trống sẽ đặt tên theo stream đầu tiên.</small></label>}<p>Nguồn: <b>{src?.name||"Chưa chọn"}</b> · Đích: <b>{dst?.name||"Chưa chọn"} / {layout==="typed"?targetDatabase+" typed":"scratch RAW"}</b></p>
    {selectedRows.map(r=><div className="dfw-review" key={rowId(r)}><div><b>{rowId(r)}</b><small>{r.mode} · key {r.key} · cursor {r.cursor||"không có"} · {effective(r).length} cột</small>{layout==="typed"&&<small>{effective(r).map(n=>n+" → "+(r.targetNames[n]??n)).join(", ")}</small>}</div><small>{layout==="typed"?targetDatabase+"."+r.targetTable:"scratch.dfqa_"+alias(r.schema,r.name)+"_<stream-id>"}</small></div>)}
    <p className="muted text-xs">{layout==="raw_event"?"Server thêm stream ID vào tên bảng RAW.":"Kiểu dữ liệu được server suy từ SQL catalog và kiểm tra trước khi tạo stream; bảng không thuộc DataFlow bị từ chối."}</p>
    {problems.length>0&&<div role="alert" className="dfw-alert"><b>Các stream cần sửa:</b><ul className="list-disc pl-6">{problems.map(p=><li key={p.name}>{p.name}: {p.error}</li>)}</ul></div>}
@@ -146,7 +150,7 @@ export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTa
     {created.map(c=><div key={c.stream_id} className="dfw-review"><div><b>{c.source}</b><small>{c.destination} · {c.mode}</small>{runs[c.stream_id]?.run&&<small>Run: {runs[c.stream_id].run?.status}</small>}{runs[c.stream_id]?.error&&<small role="alert">{runs[c.stream_id].error}</small>}</div>
      <Button type="button" size="sm" variant="outline" disabled={!!runs[c.stream_id]?.run&&["queued","running"].includes(runs[c.stream_id].run!.status)} onClick={()=>void run(c.stream_id)}>Run</Button></div>)}</div>}
   </div>}
-  <footer className="flex justify-between gap-3 border-t pt-3"><Button variant="outline" type="button" disabled={step===1||busy||created.length>0} onClick={()=>setStep((step-1) as 1|2|3|4)}>Quay lại</Button>
+  <footer className="flex justify-between gap-3 border-t pt-3"><Button variant="outline" type="button" disabled={step===1||!!reusePair&&step===3||busy||created.length>0} onClick={()=>setStep((step-1) as 1|2|3|4)}>Quay lại</Button>
    {step<4&&<Button type="button" disabled={loading||busy||step===1&&(sourceChoice==="new"||!srcOk)||step===2&&(targetChoice==="new"||!dstOk||!!targetProblem)||step===3&&!canCreate} onClick={()=>setStep((step+1) as 1|2|3|4)}>Tiếp tục</Button>}</footer>
   {modal&&<div className="dfw-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setModalId("")}}><div role="dialog" aria-modal="true" aria-label={"Chọn cột "+rowId(modal)} className="dfw-modal">
    <div className="dfw-modal-head"><div><h3 className="font-semibold">Chọn cột · {rowId(modal)}</h3><small className="muted">{effective(modal).length}/{modal.columns.length} cột được sync</small></div><Button type="button" variant="outline" onClick={()=>setModalId("")}>Đóng</Button></div>

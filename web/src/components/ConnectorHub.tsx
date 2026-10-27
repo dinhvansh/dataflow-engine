@@ -49,6 +49,7 @@ function Metric({label,value,detail,icon:Icon}:{label:string;value:number;detail
 import {useEffect,type ReactNode} from "react";
 import {ConnectorHubShellV2} from "./ConnectorHubShellV2";
 import {ConnectionWizardV2} from "./ConnectionWizardV2";
+import {QAConnectionBrowser} from "./QAConnectionBrowser";
 import {managedApi,scheduleApi,type LabRuntimeConnection,type ManagedStream,type ManagedSchedule} from "../lib/api";
 
 function RunningConnectionsPanel({token}:{token:string}){
@@ -87,6 +88,7 @@ export function ConnectorHub({token,onTokenChange,sessionRole}:{token:string;onT
  const[selectedTarget,setSelectedTarget]=useState("clickhouse");
  const[qaState,setQAState]=useState<{profiles:LabRuntimeConnection[];adminToken:string}>({profiles:[],adminToken:""});
  const[preferredDriver,setPreferredDriver]=useState<"sqlserver"|"clickhouse">("sqlserver");
+ const[showAllStreams,setShowAllStreams]=useState(false);
  const[refreshKey,setRefreshKey]=useState(0);
  const sources=catalog.filter(c=>c.kind==="source");
  const targets=catalog.filter(c=>c.kind==="destination");
@@ -133,9 +135,9 @@ export function ConnectorHub({token,onTokenChange,sessionRole}:{token:string;onT
    sessionRole={sessionRole}
    liveQAManager={<RuntimeConnectionManager token={token} sessionAdmin={sessionRole==="admin"} preferredDriver={preferredDriver}
      refreshKey={refreshKey} onQAState={setQAState}/>}
-   wizard={go=><ConnectionWizardV2 token={token} adminToken={qaState.adminToken}
+   wizard={(go,reusePair)=><ConnectionWizardV2 token={token} adminToken={qaState.adminToken} reusePair={reusePair}
      profiles={qaState.profiles} onGoToTab={tab=>{setPreferredDriver(tab==="sources"?"sqlserver":"clickhouse");go(tab)}} onCreated={()=>setRefreshKey(n=>n+1)}/>}
-   runningConnections={<RunningConnectionsPanel token={token}/>}
+   runningConnections={(selected,onSelect,onAddStreams,onManageProfiles)=>sessionRole==="operator"?<RunningConnectionsPanel token={token}/>:<div className="space-y-4"><QAConnectionBrowser token={token} adminToken={qaState.adminToken} refreshKey={refreshKey} selected={selected} onSelect={onSelect} onAddStreams={onAddStreams} onManageProfiles={onManageProfiles}/><details className="dfh-legacy" onToggle={e=>setShowAllStreams(e.currentTarget.open)}><summary>Xem toàn bộ managed streams (kể cả chưa gắn profile)</summary>{showAllStreams&&<RunningConnectionsPanel token={token}/>}</details></div>}
    configuredConnections={<>{sessionRole==="operator"&&<section className="hub-workspace rounded-lg border p-4 sm:p-5" aria-label="Saved connections access"><h3 className="text-sm font-semibold">Saved QA connections require Administrator access</h3><p className="muted mt-2 text-xs leading-5">Signed in as Operator. Saved SQL Server and ClickHouse connection profiles are Administrator-managed; the connector catalog is not a saved connection list. Use Sync Jobs or Pipelines for approved, already bound streams.</p></section>}<ConfiguredConnections token={token} onTokenChange={onTokenChange}/></>}
    draftRegistry={<ConnectionDraftRegistry token={token} sessionAdmin={sessionRole==="admin"}/>}
    routePreview={routePreview} roadmap={roadmap}
