@@ -259,8 +259,8 @@ func (s *server) runtimeBindAPI(w http.ResponseWriter,r *http.Request){
  if src.Driver!="sqlserver"||src.Kind!="source"||src.Database!="DataFlowFixtureQA"||
  tgt.Driver!="clickhouse"||tgt.Kind!="destination"||tgt.Database!="scratch"{
  http.Error(w,"only isolated SQL Server to scratch ClickHouse may bind",403);return}
- var db,table string
- e=tx.QueryRow(ctx,`SELECT target_database,target_table FROM sync_streams WHERE id=$1::uuid FOR SHARE`,b.StreamID).Scan(&db,&table)
+ var db,table,sourceSchema,sourceTable string
+ e=tx.QueryRow(ctx,`SELECT target_database,target_table,source_schema,source_table FROM sync_streams WHERE id=$1::uuid FOR SHARE`,b.StreamID).Scan(&db,&table,&sourceSchema,&sourceTable)
  if e!=nil||db!="scratch"||table!="dataflow_raw_events"{http.Error(w,"only scratch sync stream allowed",403);return}
  // Binding cannot mutate the identity of a stream already checkpointed or
  // running: doing so would silently reuse a cursor against a different source.
@@ -273,13 +273,29 @@ func (s *server) runtimeBindAPI(w http.ResponseWriter,r *http.Request){
  var active bool
  e=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM managed_runs WHERE stream_id=$1::uuid AND status IN ('queued','running'))`,b.StreamID).Scan(&active)
  if e!=nil||active{http.Error(w,"cannot rebind an active stream",409);return}
- _,e=tx.Exec(ctx,`INSERT INTO connection_runtime_bindings(stream_id,source_profile_id,target_profile_id,source_revision,target_revision)
- VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5)
+ var connectionID string
+ e=tx.QueryRow(ctx,`SELECT COALESCE((SELECT connection_id::text FROM connection_runtime_bindings WHERE stream_id=$1::uuid),'')`,b.StreamID).Scan(&connectionID)
+ if e!=nil{http.Error(w,"connection lookup unavailable",503);return}
+ if connectionID!=""{
+  var groupSource,groupTarget string
+  e=tx.QueryRow(ctx,`SELECT source_profile_id::text,target_profile_id::text FROM qa_connections WHERE id=$1::uuid`,connectionID).Scan(&groupSource,&groupTarget)
+  if e!=nil{http.Error(w,"connection group unavailable",503);return}
+  if groupSource!=src.ID||groupTarget!=tgt.ID{connectionID=""}
+ }
+ if connectionID==""{
+  connectionID=uuid.NewString()
+  connectionName,nameErr:=qaConnectionName("",sourceSchema+"."+sourceTable,connectionID)
+  if nameErr!=nil||insertQAConnection(ctx,tx,connectionID,connectionName,src.ID,tgt.ID)!=nil{
+   http.Error(w,"connection group unavailable",503);return
+  }
+ }
+ _,e=tx.Exec(ctx,`INSERT INTO connection_runtime_bindings(stream_id,source_profile_id,target_profile_id,source_revision,target_revision,connection_id)
+ VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5,$6::uuid)
  ON CONFLICT(stream_id) DO UPDATE SET
  source_profile_id=EXCLUDED.source_profile_id,target_profile_id=EXCLUDED.target_profile_id,
  source_revision=EXCLUDED.source_revision,target_revision=EXCLUDED.target_revision,
- created_at=now()`,b.StreamID,src.ID,tgt.ID,src.Revision,tgt.Revision)
+ connection_id=EXCLUDED.connection_id,created_at=now()`,b.StreamID,src.ID,tgt.ID,src.Revision,tgt.Revision,connectionID)
  if e!=nil||tx.Commit(ctx)!=nil{http.Error(w,"could not bind stream",503);return}
  w.Header().Set("Content-Type","application/json")
- _ = json.NewEncoder(w).Encode(map[string]any{"bound":true,"stream_id":b.StreamID,"source_connection_id":src.ID,"target_connection_id":tgt.ID})
+ _ = json.NewEncoder(w).Encode(map[string]any{"bound":true,"stream_id":b.StreamID,"source_connection_id":src.ID,"target_connection_id":tgt.ID,"connection_id":connectionID})
 }

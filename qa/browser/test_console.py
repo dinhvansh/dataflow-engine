@@ -48,6 +48,7 @@ def ui(browser, request):
         ],
         "draft_connections": [],
         "runtime_connections": [],
+        "overview_connections": [],
         "pipelines": [
             {"id": "33333333-3333-4333-8333-333333333333", "name": "revenue_reporting",
              "enabled": True, "nodes": [
@@ -125,6 +126,11 @@ def ui(browser, request):
                     item["checked_at"] = datetime.now(timezone.utc).isoformat()
             result = {"id": body.get("id"), "passed": True,
                       "tested_at": "2026-10-19T10:00:00Z"}
+        elif path == "/api/v1/connections/runtime/overview":
+            if req.headers.get("x-dataflow-connection-admin") != "synthetic-admin-token":
+                route.fulfill(status=403, body="independent admin required")
+                return
+            result = {"connections": state["overview_connections"]}
         elif path == "/api/v1/connections/runtime/discover":
             if "table=" in req.url:
                 result = {"columns": [
@@ -142,7 +148,8 @@ def ui(browser, request):
                       "select": True, "drop": True, "alter": True},
                       "can_create_typed": True, "owned_tables": []}
         elif path == "/api/v1/connections/runtime/streams/batch":
-            result = {"count": len(body.get("streams", [])), "streams": [
+            result = {"connection_id": body.get("connection_id", "a0000000-0000-4000-8000-000000000001"),
+                      "count": len(body.get("streams", [])), "streams": [
                 {"stream_id": f"abcdabcd-abcd-4bcd-8bcd-{i+1:012d}",
                  "source": x.get("source_schema", "")+"."+x.get("source_table", ""),
                  "mode": x.get("mode", ""),
@@ -1459,6 +1466,59 @@ def test_primary_four_step_wizard_saves_typed_mapping_and_full_to_incremental(ui
     assert streams[1]["target_table"] == "typed_invoices_qa"
     assert streams[1]["mode"] == "full_refresh"
     assert streams[1]["source_cursor_column"] == "SysRevID"
+
+
+def test_connection_detail_reuses_verified_pair_for_additional_stream(ui):
+    page, state = ui
+    checked = datetime.now(timezone.utc).isoformat()
+    source_id = "b0000000-0000-4000-8000-000000000001"
+    target_id = "b0000000-0000-4000-8000-000000000002"
+    state["runtime_connections"] = [
+        {"id": source_id, "name": "QA SQL", "driver": "sqlserver", "kind": "source",
+         "host": "qa-sql", "port": 1433, "database": "DataFlowFixtureQA", "username": "qa_erp_reader",
+         "status": "verified", "revision": 2, "checked_at": checked},
+        {"id": target_id, "name": "QA CH", "driver": "clickhouse", "kind": "destination",
+         "host": "qa-ch", "port": 8123, "database": "scratch", "username": "qa_writer",
+         "status": "verified", "revision": 2, "checked_at": checked},
+    ]
+    connection_id = "a0000000-0000-4000-8000-000000000001"
+    state["overview_connections"] = [{
+        "id": connection_id, "name": "QA Finance",
+        "source_connection_id": source_id, "source_name": "QA SQL", "source_status": "verified",
+        "source_checked_at": checked, "target_connection_id": target_id, "target_name": "QA CH",
+        "target_status": "verified", "target_checked_at": checked,
+        "streams": [{"id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc", "source_schema": "Erp",
+                     "source_table": "Part", "target_database": "scratch", "target_table": "dfqa_erp_part_123",
+                     "sync_mode": "full_refresh", "binding_current": True,
+                     "schedule_enabled": False, "schedule_seconds": 0,
+                     "latest_run": {"status": "succeeded", "rows_written": 200,
+                                    "requested_at": checked, "finished_at": checked}}],
+    }]
+    page.get_by_label("Lab API token (shared across modules)").fill(TOKEN)
+    page.get_by_role("button", name="Connections", exact=True).click()
+    page.get_by_role("button", name="Profiles", exact=True).click()
+    manager = page.get_by_label("Live lab connection manager")
+    manager.get_by_label("Live connection admin credential").fill("synthetic-admin-token")
+    manager.get_by_role("button", name="Load connections").click()
+    page.get_by_role("button", name="All connections").click()
+    browser = page.get_by_label("QA connections")
+    browser.get_by_role("button", name="QA Finance").click()
+    expect(browser.get_by_text("Erp.Part", exact=True)).to_be_visible()
+    expect(browser.get_by_text("200 dòng")).to_be_visible()
+    browser.get_by_role("button", name="Thêm stream").click()
+    wizard = page.get_by_label("Wizard tạo connection QA")
+    expect(wizard.get_by_text("QA Finance · QA SQL → QA CH", exact=False)).to_be_visible()
+    wizard.get_by_role("button", name="Tải / làm mới schema").click()
+    expect(wizard.get_by_label("Chọn stream Erp.Part")).to_be_disabled()
+    expect(wizard.get_by_label("Chọn stream Erp.InvcHead")).to_be_checked()
+    wizard.get_by_role("button", name="Tiếp tục").click()
+    wizard.get_by_role("button", name="Tạo connection").click()
+    calls = [c for c in state["calls"] if c["path"] == "/api/v1/connections/runtime/streams/batch"]
+    assert len(calls) == 1
+    assert calls[0]["body"]["source_connection_id"] == source_id
+    assert calls[0]["body"]["target_connection_id"] == target_id
+    assert calls[0]["body"]["connection_id"] == connection_id
+    assert [s["source_table"] for s in calls[0]["body"]["streams"]] == ["InvcHead"]
 
 
 def test_guided_pipeline_interactive_ux_prototype_browser(browser):

@@ -208,9 +208,14 @@ export type QABatchStream={
  batch_size:number;workers:number;queue_capacity:number
 };
 export type QABatchResult={stream_id:string;source:string;mode:string;destination:string};
+export type QAConnectionStream={id:string;source_schema:string;source_table:string;target_database:string;target_table:string;sync_mode:string;binding_current:boolean;schedule_enabled:boolean;schedule_seconds:number;latest_run?:{status:string;rows_written:number;requested_at:string;finished_at?:string}};
+export type QAConnectionOverview={id:string;name:string;source_connection_id:string;source_name:string;source_status:string;source_checked_at?:string;target_connection_id:string;target_name:string;target_status:string;target_checked_at?:string;streams:QAConnectionStream[]};
+export const labConnectionOverviewApi={
+ list:(token:string,adminToken:string)=>parse<{connections:QAConnectionOverview[]}>(fetch("/api/v1/connections/runtime/overview",{headers:runtimeHeaders(token,adminToken)}))
+};
 export const labQABatchSyncApi={
- create:(request:{source_connection_id:string;target_connection_id:string;streams:QABatchStream[]},token:string,adminToken:string)=>
-  parse<{streams:QABatchResult[];count:number}>(fetch("/api/v1/connections/runtime/streams/batch",{
+ create:(request:{connection_id?:string;connection_name?:string;source_connection_id:string;target_connection_id:string;streams:QABatchStream[]},token:string,adminToken:string)=>
+  parse<{connection_id:string;streams:QABatchResult[];count:number}>(fetch("/api/v1/connections/runtime/streams/batch",{
    method:"POST",headers:runtimeHeaders(token,adminToken),body:JSON.stringify(request)}))
 };
 export const labRuntimeConnectionsApi={

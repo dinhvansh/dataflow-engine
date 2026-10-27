@@ -163,14 +163,18 @@ func(s *server)runtimeStreamSetupAPI(w http.ResponseWriter,r *http.Request){
  if _,err=tx.Exec(ctx,`INSERT INTO sync_checkpoints(stream_id) VALUES($1::uuid)`,streamID);err!=nil{
   http.Error(w,"checkpoint unavailable",503);return
  }
+ connectionName,err:=qaConnectionName("",in.SourceSchema+"."+in.SourceTable,streamID)
+ if err!=nil||insertQAConnection(ctx,tx,streamID,connectionName,source.ID,target.ID)!=nil{
+  http.Error(w,"QA connection unavailable",503);return
+ }
  if _,err=tx.Exec(ctx,`INSERT INTO connection_runtime_bindings
- (stream_id,source_profile_id,target_profile_id,source_revision,target_revision)
- VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5)`,
- streamID,source.ID,target.ID,source.Revision,target.Revision);err!=nil{
+ (stream_id,source_profile_id,target_profile_id,source_revision,target_revision,connection_id)
+ VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5,$6::uuid)`,
+ streamID,source.ID,target.ID,source.Revision,target.Revision,streamID);err!=nil{
   http.Error(w,"binding unavailable",503);return
  }
  if err=tx.Commit(ctx);err!=nil{http.Error(w,"stream transaction unavailable",503);return}
  w.Header().Set("Content-Type","application/json");w.WriteHeader(http.StatusCreated)
  _=json.NewEncoder(w).Encode(map[string]any{"stream_id":streamID,"bound":true,
- "mode":in.Mode,"source_connection_id":source.ID,"target_connection_id":target.ID})
+ "mode":in.Mode,"source_connection_id":source.ID,"target_connection_id":target.ID,"connection_id":streamID})
 }
