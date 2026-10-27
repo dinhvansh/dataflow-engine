@@ -24,6 +24,7 @@ type runtimeOverviewStream struct {
 	TargetDatabase  string              `json:"target_database"`
 	TargetTable     string              `json:"target_table"`
 	SyncMode        string              `json:"sync_mode"`
+	RevisionCurrent bool                `json:"revision_current"`
 	BindingCurrent  bool                `json:"binding_current"`
 	ScheduleEnabled bool                `json:"schedule_enabled"`
 	ScheduleSeconds int                 `json:"schedule_seconds"`
@@ -65,6 +66,7 @@ func (s *server) runtimeOverviewAPI(w http.ResponseWriter, r *http.Request) {
  b.source_profile_id::text,sp.name,sp.status,sp.checked_at,
  b.target_profile_id::text,tp.name,tp.status,tp.checked_at,
  s.id::text,s.source_schema,s.source_table,s.target_database,s.target_table,COALESCE(s.sync_mode,''),
+	COALESCE(b.source_revision=sp.revision AND b.target_revision=tp.revision,false),
  COALESCE((b.source_revision=sp.revision AND b.target_revision=tp.revision AND sp.status='verified' AND tp.status='verified'
   AND sp.checked_at BETWEEN now()-interval '30 minutes' AND now()+interval '1 minute'
   AND tp.checked_at BETWEEN now()-interval '30 minutes' AND now()+interval '1 minute'),false),
@@ -102,7 +104,7 @@ func (s *server) runtimeOverviewAPI(w http.ResponseWriter, r *http.Request) {
 		if err = rows.Scan(&c.ID, &c.Name, &c.SourceID, &c.SourceName, &c.SourceStatus, &c.SourceCheckedAt,
 			&c.TargetID, &c.TargetName, &c.TargetStatus, &c.TargetCheckedAt,
 			&stream.ID, &stream.SourceSchema, &stream.SourceTable, &stream.TargetDatabase, &stream.TargetTable, &stream.SyncMode,
-			&stream.BindingCurrent, &stream.ScheduleEnabled, &stream.ScheduleSeconds,
+			&stream.RevisionCurrent, &stream.BindingCurrent, &stream.ScheduleEnabled, &stream.ScheduleSeconds,
 			&runStatus, &rowsWritten, &requestedAt, &finishedAt); err != nil {
 			log.Printf("QA connection overview scan failed: %v", err)
 			http.Error(w, "connection overview unavailable", http.StatusServiceUnavailable)

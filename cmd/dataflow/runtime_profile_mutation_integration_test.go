@@ -110,6 +110,20 @@ func TestRuntimeProfileMutationRealDisposableQA(t *testing.T) {
 	if err := svc.pg.QueryRow(ctx, `SELECT revision FROM connection_runtime_profiles WHERE id=$1::uuid`, id).Scan(&revision); err != nil {
 		t.Fatal(err)
 	}
+	for i := 0; i < 2; i++ {
+		rec = httptest.NewRecorder()
+		svc.runtimeTestAPI(rec, request())
+		if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"passed":true`) {
+			t.Fatalf("successful verification repeat %d failed: %d", i, rec.Code)
+		}
+		var after int64
+		if err := svc.pg.QueryRow(ctx, `SELECT revision FROM connection_runtime_profiles WHERE id=$1::uuid`, id).Scan(&after); err != nil {
+			t.Fatal(err)
+		}
+		if after != revision {
+			t.Fatalf("successful verification changed profile revision: %d to %d", revision, after)
+		}
+	}
 	change := changeRuntimeConnection{ID: id, Revision: revision, Name: name + " edited",
 		Host: host, Port: port, Database: "DataFlowFixtureQA", Username: "qa_erp_reader"}
 	code, updated, body := call(http.MethodPatch, change)

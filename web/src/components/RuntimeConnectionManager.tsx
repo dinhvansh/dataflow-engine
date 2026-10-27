@@ -9,9 +9,9 @@ import {RuntimeBatchSyncWizard} from "./RuntimeBatchSyncWizard";
 // Credential values never appear in API GET payloads, URL or localStorage.
 // The owner must configure exact approved endpoints and encryption key server-side.
 type WizardQAState={profiles:LabRuntimeConnection[];adminToken:string};
-export function RuntimeConnectionManager({token,sessionAdmin=false,onQAState,refreshKey=0,showLegacyWizards=true,preferredDriver}:{
+export function RuntimeConnectionManager({token,sessionAdmin=false,onQAState,refreshKey=0,showLegacyWizards=true,preferredDriver,driverFilter}:{
  token:string;sessionAdmin?:boolean;onQAState?:(state:WizardQAState)=>void;
- refreshKey?:number;showLegacyWizards?:boolean;preferredDriver?:LabRuntimeInput["driver"];
+ refreshKey?:number;showLegacyWizards?:boolean;preferredDriver?:LabRuntimeInput["driver"];driverFilter?:LabRuntimeInput["driver"];
 }){
  const[adminToken,setAdminToken]=useState(sessionAdmin?"session":"");
  const[profiles,setProfiles]=useState<LabRuntimeConnection[]>([]);
@@ -21,9 +21,9 @@ export function RuntimeConnectionManager({token,sessionAdmin=false,onQAState,ref
  const[busy,setBusy]=useState("");
  const[error,setError]=useState("");
  const[notice,setNotice]=useState("");
- const[form,setForm]=useState<LabRuntimeInput>({name:"",driver:"sqlserver",host:"",port:1433,database:"DataFlowFixtureQA",username:"qa_erp_reader",password:""});
+ const[form,setForm]=useState<LabRuntimeInput>({name:"",driver:"sqlserver",host:"mssql",port:1433,database:"DataFlowFixtureQA",username:"qa_erp_reader",password:""});
  const[editing,setEditing]=useState<LabRuntimeConnection|null>(null);
- useEffect(()=>{if(!preferredDriver||editing)return;setForm(p=>({...p,driver:preferredDriver,port:preferredDriver==="sqlserver"?1433:8123,database:preferredDriver==="sqlserver"?"DataFlowFixtureQA":"scratch",username:preferredDriver==="sqlserver"?"qa_erp_reader":"default",password:""}))},[preferredDriver,editing]);
+ useEffect(()=>{if(!preferredDriver)return;setEditing(null);setForm(p=>({...p,driver:preferredDriver,host:preferredDriver==="sqlserver"?"mssql":"clickhouse",port:preferredDriver==="sqlserver"?1433:8123,database:preferredDriver==="sqlserver"?"DataFlowFixtureQA":"scratch",username:preferredDriver==="sqlserver"?"qa_erp_reader":"qa_dbt_writer",password:""}))},[preferredDriver]);
  const[confirmRevoke,setConfirmRevoke]=useState("");
  const[streamID,setStreamID]=useState("");
  const[sourceID,setSourceID]=useState("");
@@ -83,8 +83,8 @@ export function RuntimeConnectionManager({token,sessionAdmin=false,onQAState,ref
  };
  return <section className="hub-workspace rounded-lg border p-4 sm:p-5 space-y-4" aria-label="Live lab connection manager">
   <div className="flex flex-wrap items-start justify-between gap-3">
-   <div><p className="hub-eyebrow mb-2">CONNECTION MANAGER / LIVE QA</p><h3 className="text-lg font-semibold flex items-center gap-2"><Database size={18}/> SQL Server / ClickHouse connections</h3>
-    <p className="muted mt-1 text-xs leading-5">Add, encrypted Save, real driver Test and Bind to a managed scratch stream. Strictly isolated QA-only; host:port must be approved in the backend. Never use production ERP credentials.</p></div>
+    <div><p className="hub-eyebrow mb-2">SAVED PROFILES / LOCAL QA</p><h3 className="text-lg font-semibold flex items-center gap-2"><Database size={18}/> {driverFilter==="sqlserver"?"SQL Server sources":driverFilter==="clickhouse"?"ClickHouse destinations":"SQL Server / ClickHouse profiles"}</h3>
+     <p className="muted mt-1 text-sm leading-5">Lưu profile, bấm Test, rồi dùng profile đã xác minh khi tạo connection. Chỉ dùng máy QA và endpoint được backend cho phép.</p></div>
    <span className="df-pipeline-stat">ISOLATED QA · ADMIN ONLY</span>
   </div>
   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -96,11 +96,11 @@ export function RuntimeConnectionManager({token,sessionAdmin=false,onQAState,ref
   {error&&<p className="df-text-error text-xs" role="alert">{error}</p>}
   {notice&&<p className="df-text-success text-xs" role="status">{notice}</p>}
   {loaded&&<>
-   <div className="grid gap-3 lg:grid-cols-2">
-    <div className="space-y-3 rounded-md border p-3">
-     <h4 className="font-semibold text-sm">{editing?"Edit connection · revision "+editing.revision:"Add connection"}</h4>
+   <div className="dfh-profile-layout">
+    <details className="dfh-profile-form" open={!!editing}>
+     <summary>{editing?"Edit profile · revision "+editing.revision:"+ New "+(driverFilter==="sqlserver"?"source":"destination")}</summary><div className="dfh-profile-form-fields">
      <label className="block text-xs space-y-1">Connection name<input className="field" aria-label="Live connection name" value={form.name} maxLength={80} onChange={e=>modify("name",e.target.value)}/></label>
-     <label className="block text-xs space-y-1">Database type<select className="field" aria-label="Live connection driver" value={form.driver} disabled={!!editing} onChange={e=>{const driver=e.target.value as LabRuntimeInput["driver"];setForm(p=>({...p,driver,port:driver==="sqlserver"?1433:8123,database:driver==="sqlserver"?"DataFlowFixtureQA":"scratch",username:driver==="sqlserver"?"qa_erp_reader":"default",password:""}))}}>
+      <label className="block text-xs space-y-1">Database type<select className="field" aria-label="Live connection driver" value={form.driver} disabled={!!editing||!!driverFilter} onChange={e=>{const driver=e.target.value as LabRuntimeInput["driver"];setForm(p=>({...p,driver,host:driver==="sqlserver"?"mssql":"clickhouse",port:driver==="sqlserver"?1433:8123,database:driver==="sqlserver"?"DataFlowFixtureQA":"scratch",username:driver==="sqlserver"?"qa_erp_reader":"qa_dbt_writer",password:""}))}}>
       <option value="sqlserver">Microsoft SQL Server · source</option><option value="clickhouse">ClickHouse · scratch destination</option>
      </select></label>
      <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
@@ -113,11 +113,11 @@ export function RuntimeConnectionManager({token,sessionAdmin=false,onQAState,ref
      </div>
      <label className="block text-xs space-y-1">Password{editing?" · optional replacement":""}<input className="field" aria-label="Live connection password" type="password" autoComplete="new-password" value={form.password} onChange={e=>modify("password",e.target.value)}/></label>
      <div className="flex gap-2"><Button type="button" disabled={!!busy||!form.name.trim()||!form.host||(!editing&&!form.password)} onClick={()=>void create()}><Plus size={15}/>{busy==="save"?"Saving…":editing?"Save revision":"Save encrypted draft"}</Button>{editing&&<Button type="button" variant="outline" onClick={()=>{setEditing(null);setForm(p=>({...p,name:"",password:""}))}}>Cancel edit</Button>}</div>
-    </div>
-    <div className="space-y-3 rounded-md border p-3" aria-label="Saved QA profiles">
-     <h4 className="font-semibold text-sm">Saved profiles ({profiles.length})</h4>
-     {profiles.length===0&&<p className="muted text-xs">No saved connections.</p>}
-     {profiles.map(p=><div key={p.id} className="rounded border p-3 space-y-2">
+    </div></details>
+    <div className="dfh-profile-list" aria-label="Saved QA profiles">
+      <h4 className="font-semibold text-sm">{driverFilter==="sqlserver"?"Sources":"Destinations"} ({profiles.filter(p=>!driverFilter||p.driver===driverFilter).length})</h4>
+      {profiles.filter(p=>!driverFilter||p.driver===driverFilter).length===0&&<p className="muted text-xs">Chưa có profile. Điền biểu mẫu, lưu, rồi Test.</p>}
+      {profiles.filter(p=>!driverFilter||p.driver===driverFilter).map(p=><div key={p.id} className="rounded border p-3 space-y-2">
       <div className="flex items-start justify-between gap-2"><strong className="text-sm">{p.name}</strong><span className={p.status==="verified"?"df-text-success text-xs":"muted text-xs"}>{p.status==="verified"?"Verified":p.status==="revoked"?"Revoked":"Draft"}</span></div>
       <p className="muted text-xs">{p.driver} · {p.database} · revision {p.revision}</p>
       {p.status!=="revoked"&&<div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" disabled={!!busy} onClick={()=>void test(p.id)}><TestTube2 size={15}/>{busy===p.id?"Testing…":"Test real connection"}</Button><Button type="button" size="sm" variant="outline" disabled={!!busy} onClick={()=>edit(p)}><Pencil size={14}/>Edit</Button><Button type="button" size="sm" variant="outline" disabled={!!busy} onClick={()=>setConfirmRevoke(p.id)}><Ban size={14}/>Revoke</Button></div>}
@@ -129,16 +129,16 @@ export function RuntimeConnectionManager({token,sessionAdmin=false,onQAState,ref
     <RuntimeBatchSyncWizard token={token} adminToken={adminToken} profiles={profiles} onCreated={()=>void reload()}/>
     <RuntimeSyncSetupWizard token={token} adminToken={adminToken} profiles={profiles} onCreated={()=>void reload()}/>
    </>}
-   <div className="rounded-md border p-3 space-y-3">
+    {showLegacyWizards&&!driverFilter&&<div className="rounded-md border p-3 space-y-3">
     <h4 className="font-semibold text-sm flex items-center gap-2"><Link2 size={16}/> Bind verified connections to scratch pipeline</h4>
     <div className="grid gap-2 md:grid-cols-3">
      <label className="text-xs space-y-1">Managed scratch stream<select aria-label="Runtime bind stream" className="field" value={streamID} onChange={e=>setStreamID(e.target.value)}><option value="">Select stream</option>{streams.filter(s=>s.target_database==="scratch"&&s.target_table==="dataflow_raw_events").map(s=><option key={s.id} value={s.id}>{s.source_schema}.{s.source_table} · {s.id.slice(0,8)}</option>)}</select></label>
      <label className="text-xs space-y-1">SQL Server source<select aria-label="Runtime bind source" className="field" value={sourceID} onChange={e=>setSourceID(e.target.value)}><option value="">Select source</option>{profiles.filter(p=>p.driver==="sqlserver"&&p.status==="verified").map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
      <label className="text-xs space-y-1">ClickHouse destination<select aria-label="Runtime bind target" className="field" value={targetID} onChange={e=>setTargetID(e.target.value)}><option value="">Select target</option>{profiles.filter(p=>p.driver==="clickhouse"&&p.status==="verified").map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
-    </div>
+     </div>
     <Button type="button" disabled={!!busy||!streamID||!sourceID||!targetID} onClick={()=>void bind()}><CheckCircle2 size={15}/> Bind to pipeline</Button>
     <p className="muted text-xs">The Core pipeline executes the same saved stream ID. Only recently verified QA profiles are allowed; changing a profile invalidates the saved binding.</p>
-   </div>
+    </div>}
   </>}
   <p className="muted text-xs flex items-start gap-2"><ShieldAlert size={15}/>Backend must have isolated QA flags, exact host:port allowlists and a private AES-256 key set. No production-grade IdP or Vault certification is claimed.</p>
  </section>

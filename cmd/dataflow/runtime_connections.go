@@ -223,12 +223,14 @@ func (s *server) runtimeTestAPI(w http.ResponseWriter,r *http.Request){
  if p.Driver=="sqlserver"{
   db,e:=openLabSQLServer(ctx,p,secret);if e==nil{passed=checkLabSQLSource(ctx,db);db.Close()}
  }else{passed=checkLabCH(ctx,p,secret)}
- // Every re-test invalidates previous binding snapshots, including failures.
- // Never let an old successful status survive a failed credential check.
+ // A successful probe of the same saved profile refreshes its verification
+ // without changing its identity revision. Profile edits already advance the
+ // revision; failed probes advance it here so old bindings remain invalid.
  status:="draft";if passed{status="verified"}
  tag,e:=s.pg.Exec(ctx,`UPDATE connection_runtime_profiles SET
  status=$2,checked_at=CASE WHEN $2='verified' THEN now() ELSE NULL END,
- revision=revision+1 WHERE id=$1::uuid AND revision=$3 AND status IN ('draft','verified')`,p.ID,status,p.Revision)
+ revision=revision+CASE WHEN $2='verified' THEN 0 ELSE 1 END
+ WHERE id=$1::uuid AND revision=$3 AND status IN ('draft','verified')`,p.ID,status,p.Revision)
  if e!=nil{http.Error(w,"test evidence persistence unavailable",503);return}
  if tag.RowsAffected()!=1{http.Error(w,"profile changed during test",409);return}
  w.Header().Set("Content-Type","application/json")

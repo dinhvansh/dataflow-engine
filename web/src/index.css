@@ -29,6 +29,19 @@ body{background:var(--console-bg);color:var(--console-text);transition:backgroun
 @media(max-width:767px){.console-sidebar{min-height:auto}.console-sidebar nav{display:flex;gap:.2rem;overflow-x:auto;margin-top:.75rem;padding-bottom:.25rem}.console-sidebar .sidebar-caption,.console-sidebar .sidebar-status{display:none}.console-sidebar .navbtn{white-space:nowrap;width:auto;padding:.65rem .8rem}.console-header{align-items:flex-start}}
 @media(prefers-reduced-motion:reduce){.console-sidebar,.navbtn,.field,body{transition:none}}
 
+.mobile-view-select{display:none}
+@media(max-width:767px){
+  .console-sidebar{padding-bottom:.75rem}
+  .console-sidebar nav{display:none}
+  .mobile-view-select{display:grid;gap:.35rem;margin-top:.75rem;color:var(--console-muted);font-size:.75rem;font-weight:700}
+  .mobile-view-select select{width:100%;min-height:44px;padding:.5rem .75rem;border:1px solid var(--console-border);border-radius:.4rem;background:var(--console-field);color:var(--console-text);font-size:1rem}
+  .console-header{margin-bottom:1rem;padding:.7rem!important}
+  .console-header h1{font-size:1.25rem}
+  .console-shell[data-view="connections"] .console-header>div:first-child{display:none}
+  .console-shell[data-view="connections"] .console-header>div:last-child{width:100%;justify-content:space-between}
+  .console-main{padding:1rem}
+}
+
 
 /* Enterprise UI primitives layered over the existing shadcn-style console. */
 .enterprise-card{background:var(--console-card);color:var(--console-text);border-color:var(--console-border);box-shadow:var(--console-shadow)}

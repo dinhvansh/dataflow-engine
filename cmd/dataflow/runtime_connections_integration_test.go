@@ -212,9 +212,34 @@ func TestRuntimeProfilesRealDisposableQA(t *testing.T) {
  for _,entry:=range groups{
   pair:=entry.(map[string]any)
   if pair["source_connection_id"]!=sourceID||pair["target_connection_id"]!=targetID{continue}
-  for _,value:=range pair["streams"].([]any){if value.(map[string]any)["id"]==streamID{found=true}}
+  for _,value:=range pair["streams"].([]any){if stream:=value.(map[string]any);stream["id"]==streamID{
+   found=true
+   if stream["revision_current"]!=true||stream["binding_current"]!=true{t.Fatalf("new binding reported stale: %v",stream)}
+  }}
  }
  if !found{t.Fatal("bound stream absent from its QA connection")}
+ if _,e=svc.pg.Exec(ctx,`UPDATE connection_runtime_profiles SET checked_at=now()-interval '31 minutes' WHERE id=$1::uuid`,sourceID);e!=nil{t.Fatal(e)}
+ status,expired,_:=do(http.MethodGet,"/api/v1/connections/runtime/overview",nil)
+ if status!=200{t.Fatalf("expired overview failed: %d",status)}
+ for _,entry:=range expired["connections"].([]any){for _,value:=range entry.(map[string]any)["streams"].([]any){
+  stream:=value.(map[string]any)
+  if stream["id"]==streamID&&(stream["revision_current"]!=true||stream["binding_current"]!=false){
+   t.Fatalf("expired verification confused with stale revision: %v",stream)
+  }
+ }}
+ // Re-testing unchanged credentials must refresh verification without
+ // invalidating an already saved stream binding.
+ for _,id:=range []string{sourceID,targetID}{
+  var before,after int64
+  if e=svc.pg.QueryRow(ctx,`SELECT revision FROM connection_runtime_profiles WHERE id=$1::uuid`,id).Scan(&before);e!=nil{t.Fatal(e)}
+  status,tested,_:=do(http.MethodPost,"/api/v1/connections/runtime/test",map[string]string{"id":id})
+  if status!=200||tested["passed"]!=true{t.Fatalf("retest of unchanged profile failed: %d",status)}
+  if e=svc.pg.QueryRow(ctx,`SELECT revision FROM connection_runtime_profiles WHERE id=$1::uuid`,id).Scan(&after);e!=nil{t.Fatal(e)}
+  if after!=before{t.Fatalf("successful retest changed profile revision: %d to %d",before,after)}
+ }
+ if _,_,_,_,releaseAfter,e:=svc.runtimeForManagedStream(ctx,streamID);e!=nil{
+  t.Fatalf("successful retest invalidated saved binding: %v",e)
+ }else{releaseAfter()}
  var activeRunID string;var activeRevision int64
  if e=svc.pg.QueryRow(ctx,`SELECT revision FROM connection_runtime_profiles WHERE id=$1::uuid`,sourceID).Scan(&activeRevision);e!=nil{t.Fatal(e)}
  if e=svc.pg.QueryRow(ctx,`INSERT INTO managed_runs(stream_id,status) VALUES($1::uuid,'queued') RETURNING id::text`,streamID).Scan(&activeRunID);e!=nil{t.Fatal(e)}
