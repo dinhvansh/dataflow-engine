@@ -62,4 +62,4 @@ with open(sys.argv[1],newline='') as f:
     peak_mem[name]=max(peak_mem.get(name,0),float(value)*scale[unit])
 with open(sys.argv[2],'w') as f: json.dump({'peak_cpu_percent':peak_cpu,'peak_memory_bytes':peak_mem},f,indent=2)
 PY
-echo "Saved 18 measured scratch-only samples plus publish, rollback, CPU, RAM and ClickHouse I/O under $out"
+echo "Saved 18 scratch-only stage, partial-stage recovery, publish and rollback samples plus CPU, RAM and ClickHouse I/O under $out"

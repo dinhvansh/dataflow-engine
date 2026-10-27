@@ -1,0 +1,10 @@
+{
+  "peak_cpu_percent": {
+    "dataflow-localqa-clickhouse": 478.86,
+    "dataflow-localqa-postgres": 5.65
+  },
+  "peak_memory_bytes": {
+    "dataflow-localqa-clickhouse": 2326798532.608,
+    "dataflow-localqa-postgres": 39269171.2
+  }
+}

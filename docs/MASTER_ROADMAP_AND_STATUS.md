@@ -1,8 +1,12 @@
 # DataFlow Engine — Master Roadmap, Status & Acceptance Gates
 
+## 2026-10-27 — Measured delta and simulated recovery QA
+
+The owner-local guarded ClickHouse benchmark completed **18/18 PASS** across 1k/10k/50k changed-row workloads at 100k and 1m baselines. New checks rebuild a partially written stage, validate target UUID and row/key/checksum invariants through physical publish/replay and rollback/replay, and record stage/recovery latency. See [metrics and exact scope](evidence/issue153-delta-20261027/README.md). Real worker SIGKILL at each size, full SQL-to-ClickHouse latency and production performance/SLO approval remain unmeasured. Issue #153 remains **PARTIAL/OPEN**; production **NO-GO**.
+
 ## 2026-10-27 — Connection and Wizard owner-local QA
 
-The disposable nonmock local admin browser workflow passed Add → encrypted Save → real Test → Wizard Discover → two typed streams Save & Bind → Run → persisted reload → zero-row incremental replay. SQL Server/ClickHouse read-only reconciliation: `Erp.CustomOrders` 2/2 unique target keys and `Erp.InvcHead` 100/100; Operator admin access and wrong login were denied. The Wizard Full Refresh cursor and running QA port preflight fixes were verified locally on a branch based on `main@ab8fa984`; merge and exact-head CI remain pending. See [sanitized QA evidence](evidence/issue153-ui-20261027/result.json). Issue #153 remains **PARTIAL/OPEN** and production **NO-GO**. Remaining gates: 1k/10k/50k delta/recovery, cross-stream typed target reuse, source-consistent late events and physical-delete/CDC, external IdP/Vault/TLS/security and owner release sign-off. The 7m benchmark was not rerun.
+The disposable nonmock local admin browser workflow passed Add → encrypted Save → real Test → Wizard Discover → two typed streams Save & Bind → Run → persisted reload → zero-row incremental replay. SQL Server/ClickHouse read-only reconciliation: `Erp.CustomOrders` 2/2 unique target keys and `Erp.InvcHead` 100/100; Operator admin access and wrong login were denied. The Wizard Full Refresh cursor and running QA port preflight fixes merged in [PR #160](https://github.com/dinhvansh/dataflow-engine/pull/160) at `main@b602cf3`, with 8/8 exact-head and 5/5 post-merge main checks PASS. See [sanitized QA evidence](evidence/issue153-ui-20261027/result.json). Issue #153 remains **PARTIAL/OPEN** and production **NO-GO**. Remaining gates: full delta/recovery acceptance, cross-stream typed target reuse, source-consistent late events and physical-delete/CDC, external IdP/Vault/TLS/security and owner release sign-off. The 7m benchmark was not rerun.
 
 ## 2026-10-26 — Current owner-local Core8B technical QA result
 
