@@ -9,9 +9,9 @@ import {RuntimeBatchSyncWizard} from "./RuntimeBatchSyncWizard";
 // Credential values never appear in API GET payloads, URL or localStorage.
 // The owner must configure exact approved endpoints and encryption key server-side.
 type WizardQAState={profiles:LabRuntimeConnection[];adminToken:string};
-export function RuntimeConnectionManager({token,sessionAdmin=false,onQAState,refreshKey=0,showLegacyWizards=true}:{
+export function RuntimeConnectionManager({token,sessionAdmin=false,onQAState,refreshKey=0,showLegacyWizards=true,preferredDriver}:{
  token:string;sessionAdmin?:boolean;onQAState?:(state:WizardQAState)=>void;
- refreshKey?:number;showLegacyWizards?:boolean;
+ refreshKey?:number;showLegacyWizards?:boolean;preferredDriver?:LabRuntimeInput["driver"];
 }){
  const[adminToken,setAdminToken]=useState(sessionAdmin?"session":"");
  const[profiles,setProfiles]=useState<LabRuntimeConnection[]>([]);
@@ -23,6 +23,7 @@ export function RuntimeConnectionManager({token,sessionAdmin=false,onQAState,ref
  const[notice,setNotice]=useState("");
  const[form,setForm]=useState<LabRuntimeInput>({name:"",driver:"sqlserver",host:"",port:1433,database:"DataFlowFixtureQA",username:"qa_erp_reader",password:""});
  const[editing,setEditing]=useState<LabRuntimeConnection|null>(null);
+ useEffect(()=>{if(!preferredDriver||editing)return;setForm(p=>({...p,driver:preferredDriver,port:preferredDriver==="sqlserver"?1433:8123,database:preferredDriver==="sqlserver"?"DataFlowFixtureQA":"scratch",username:preferredDriver==="sqlserver"?"qa_erp_reader":"default",password:""}))},[preferredDriver,editing]);
  const[confirmRevoke,setConfirmRevoke]=useState("");
  const[streamID,setStreamID]=useState("");
  const[sourceID,setSourceID]=useState("");

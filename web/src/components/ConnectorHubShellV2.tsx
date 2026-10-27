@@ -1,6 +1,9 @@
 import {useState,type ReactNode} from "react";
+import {ArrowLeft,Plus} from "lucide-react";
+import {Button} from "./ui/button";
 import "./ConnectorHubShellV2.css";
-type Tab="connections"|"sources"|"destinations";
+
+type View="connections"|"new"|"profiles"|"sources"|"destinations"|"advanced";
 type Jump=(tab:"sources"|"destinations")=>void;
 export type ConnectorHubShellV2Props={
  sessionRole?:"admin"|"operator"|null;
@@ -15,32 +18,47 @@ export type ConnectorHubShellV2Props={
  routePreview:ReactNode;
  roadmap:ReactNode;
 };
-/** All tab panels remain mounted; switching tabs preserves wizard state. */
+
+/** Keep the manager and wizard mounted so verified profiles and the draft survive navigation. */
 export function ConnectorHubShellV2(props:ConnectorHubShellV2Props){
- const[tab,setTab]=useState<Tab>("sources");
- const go:Jump=next=>setTab(next);
- return <div className="dfh-shell" aria-label="Connector Hub">
-  <header className="dfh-heading"><h2>Connector Hub</h2><p>Quản lý kết nối SQL Server → ClickHouse trong môi trường QA/lab.</p></header>
-  {props.sessionRole!=="operator"&&<div className="dfh-live-qa">{props.liveQAManager}</div>}
-  <div className="dfh-tabs" role="tablist" aria-label="Các phần kết nối">
-   {([["connections","Connections"],["sources","Sources"],["destinations","Destinations"]] as const).map(([id,label])=>
-    <button key={id} type="button" role="tab" id={"dfh-tab-"+id} aria-controls={"dfh-panel-"+id}
-     aria-selected={tab===id} className={tab===id?"dfh-tab current":"dfh-tab"} onClick={()=>setTab(id)}>{label}</button>)}
+ const[view,setView]=useState<View>("connections");
+ const canManage=props.sessionRole!=="operator";
+ const go:Jump=()=>setView("profiles");
+ const nav=(next:View)=>setView(next);
+ return <div className="dfh-shell" aria-label="Connections">
+  <header className="dfh-heading">
+   <div><h2>{view==="new"?"New connection":view==="profiles"?"Connection profiles":view==="sources"?"Sources":view==="destinations"?"Destinations":view==="advanced"?"QA tools":"Connections"}</h2>
+    <p>{view==="new"?"Thiết lập nguồn, đích, streams và lịch chạy.":"Đồng bộ dữ liệu SQL Server → ClickHouse trong môi trường QA."}</p></div>
+   {view==="connections"&&canManage&&<Button type="button" onClick={()=>nav("new")}><Plus size={16}/> New connection</Button>}
+  </header>
+  <nav className="dfh-nav" aria-label="Điều hướng kết nối">
+   {([ ["connections","Connections"],["sources","Sources"],["destinations","Destinations"]] as const).map(([id,label])=><button type="button" key={id} className={view===id?"current":""} aria-current={view===id?"page":undefined} onClick={()=>nav(id)}>{label}</button>)}
+   {canManage&&<button type="button" className={view==="profiles"?"current":""} aria-current={view==="profiles"?"page":undefined} onClick={()=>nav("profiles")}>Profiles</button>}
+  </nav>
+  {view==="new"&&<div className="dfh-breadcrumb"><button type="button" onClick={()=>nav("connections")}><ArrowLeft size={15}/> Connections</button><span>/</span><span>New connection</span></div>}
+  <div className="dfh-content" hidden={view!=="connections"}>
+   {view==="connections"&&<section aria-label="Danh sách streams">{props.runningConnections}</section>}
+   {!canManage&&<p className="dfh-access">Bạn đang ở vai trò Operator. Administrator quản lý và tạo QA connections; bạn có thể xem streams đã cấu hình.</p>}
   </div>
-  <div id="dfh-panel-connections" className="dfh-content" role="tabpanel" aria-labelledby="dfh-tab-connections" hidden={tab!=="connections"}>
-   {props.sessionRole!=="operator"&&<section aria-label="Wizard tạo connection">{props.wizard(go)}</section>}
-   {tab==="connections"&&<section aria-label="Connections đang chạy">{props.runningConnections}</section>}
+  {canManage&&<div className="dfh-content dfh-create" hidden={view!=="new"}><section aria-label="Wizard tạo connection">{props.wizard(go)}</section></div>}
+  {canManage&&<div className="dfh-content" hidden={view!=="profiles"}>
+   <p className="dfh-help">Tạo hoặc kiểm tra profile SQL Server và ClickHouse tại đây. Sau khi Test thành công, quay lại New connection để chọn profile.</p>
+   <div className="dfh-live-qa">{props.liveQAManager}</div>
+   <Button type="button" variant="outline" onClick={()=>nav("new")}>Quay lại New connection</Button>
+  </div>}
+  <div className="dfh-content" hidden={view!=="sources"}>
+   {view==="sources"&&<section aria-label="Source catalog">{props.sourceCatalog}</section>}
+   {view==="sources"&&<section aria-label="Source explorer">{props.sourceExplorer}</section>}
+  </div>
+  <div className="dfh-content" hidden={view!=="destinations"}>
+   {view==="destinations"&&<section aria-label="Destination catalog">{props.destinationCatalog}</section>}
+  </div>
+  <div className="dfh-content" hidden={view!=="advanced"}>
    <section aria-label="Configured connections">{props.configuredConnections}</section>
-   {props.sessionRole!=="operator"&&<section aria-label="Draft registry">{props.draftRegistry}</section>}
+   {canManage&&<section aria-label="Draft registry">{props.draftRegistry}</section>}
    <section aria-label="Route preview">{props.routePreview}</section>
    <section aria-label="Roadmap">{props.roadmap}</section>
   </div>
-  <div id="dfh-panel-sources" className="dfh-content" role="tabpanel" aria-labelledby="dfh-tab-sources" hidden={tab!=="sources"}>
-   {tab==="sources"&&<section aria-label="Source catalog">{props.sourceCatalog}</section>}
-   {tab==="sources"&&<section aria-label="SourceExplorer">{props.sourceExplorer}</section>}
-  </div>
-  <div id="dfh-panel-destinations" className="dfh-content" role="tabpanel" aria-labelledby="dfh-tab-destinations" hidden={tab!=="destinations"}>
-   {tab==="destinations"&&<section aria-label="Destination catalog">{props.destinationCatalog}</section>}
-  </div>
+  <footer className="dfh-footer"><button type="button" onClick={()=>nav("advanced")}>QA details &amp; legacy tools</button></footer>
  </div>;
 }

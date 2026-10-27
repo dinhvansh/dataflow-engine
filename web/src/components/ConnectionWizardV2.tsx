@@ -21,6 +21,8 @@ const errorText=(e:unknown)=>e instanceof Error?e.message:String(e);
 const isLocked=(r:Row,c:string)=>c===r.key||!!r.cursor&&c===r.cursor;
 export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTab}:Props){
  const[step,setStep]=useState<1|2|3|4>(1);
+ const[sourceChoice,setSourceChoice]=useState<"existing"|"new">("existing");
+ const[targetChoice,setTargetChoice]=useState<"existing"|"new">("existing");
  const[sourceID,setSourceID]=useState("");const[targetID,setTargetID]=useState("");
  const[layout,setLayout]=useState<Layout>("raw_event");const[targetDatabase,setTargetDatabase]=useState("scratch");
  const[destinationInfo,setDestinationInfo]=useState<Awaited<ReturnType<typeof labSyncSetupApi.destinations>>|null>(null);
@@ -92,22 +94,26 @@ export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTa
   {r.columns.filter(c=>nativeCursor(c)||dateCursor(c)).map(c=><option key={c.name} value={c.name} disabled={!nativeCursor(c)}>{c.name} ({c.sql_type}){dateCursor(c)?" · API chưa hỗ trợ":""}</option>)}</select>
   {r.automatic&&r.cursor&&<small className="dfw-note">Cursor tự chọn</small>}</>;
  return <section className="dfw-root space-y-4" aria-label="Wizard tạo connection QA">
-  <header><h3 className="font-semibold text-lg">Tạo Sync streams · QA</h3><p className="muted text-xs">SQL Server → ClickHouse RAW hoặc typed · tối đa 10 streams</p></header>
-  <nav className="dfw-steps">{["Source","Destination","Schema & Streams","Lịch & tạo"].map((x,i)=><div key={x} className={step===i+1?"dfw-step current":"dfw-step"}><b>{i+1}</b>{x}</div>)}</nav>
+  <header><h3 className="font-semibold text-lg">Thiết lập connection</h3><p className="muted text-sm">SQL Server → ClickHouse · tối đa 10 streams mỗi lần tạo</p></header>
+  <nav className="dfw-steps" aria-label="Các bước tạo connection">{["Chọn nguồn","Chọn đích","Chọn streams","Cấu hình"].map((x,i)=><div key={x} className={step===i+1?"dfw-step current":"dfw-step"} aria-current={step===i+1?"step":undefined}><b>{i+1}</b>{x}</div>)}</nav>
   {error&&<p role="alert" className="dfw-alert">{error}</p>}
-  {step===1&&<div className="space-y-3"><h4 className="font-semibold">1. Chọn Source SQL Server đã Test</h4><p className="muted text-xs">Chỉ profile verified mới được dùng. Profile khác cần Test trong Live QA manager.</p>
-   {!choices("sqlserver").length&&<p className="dfw-empty">Chưa có SQL Server profile từ API.</p>}
-   {choices("sqlserver").map(p=><label className="dfw-profile" key={p.id}><input type="radio" name="source-v2" checked={sourceID===p.id} disabled={!verified(p)} onChange={()=>{invalidate();setSourceID(p.id)}}/><span><strong>{p.name}</strong><small>{p.database} · {p.host}:{p.port}</small></span><small>{verified(p)?"Verified":"cần Test"}</small></label>)}
-   {onGoToTab&&<Button variant="outline" type="button" onClick={()=>onGoToTab("sources")}>Đi tới Sources</Button>}
+  {step===1&&<div className="space-y-3"><h4 className="font-semibold">Nguồn dữ liệu</h4><p className="muted text-sm">Chọn SQL Server đã kiểm tra hoặc tạo profile QA mới.</p>
+   <div className="dfw-choice-grid"><button type="button" className={sourceChoice==="existing"?"dfw-choice selected":"dfw-choice"} aria-pressed={sourceChoice==="existing"} onClick={()=>setSourceChoice("existing")}><strong>Chọn nguồn có sẵn</strong><small>Dùng profile SQL Server đã Test</small></button><button type="button" className={sourceChoice==="new"?"dfw-choice selected":"dfw-choice"} aria-pressed={sourceChoice==="new"} onClick={()=>setSourceChoice("new")}><strong>Tạo nguồn mới</strong><small>Lưu và Test profile SQL Server QA</small></button></div>
+   {sourceChoice==="existing"&&<>{!choices("sqlserver").length&&<p className="dfw-empty">Chưa có SQL Server profile. Hãy tạo nguồn mới.</p>}
+   {choices("sqlserver").map(p=><label className="dfw-profile" key={p.id}><input type="radio" name="source-v2" checked={sourceID===p.id} disabled={!verified(p)} onChange={()=>{invalidate();setSourceID(p.id)}}/><span><strong>{p.name}</strong><small>{p.database} · {p.host}:{p.port}</small></span><small>{verified(p)?"Đã Test":"Cần Test lại"}</small></label>)}</>}
+   {sourceChoice==="new"&&<div className="dfw-empty dfw-new-profile"><p>Hiện chỉ hỗ trợ Microsoft SQL Server trong QA.</p><p>Tạo profile, lưu rồi Test kết nối thật trước khi chọn ở bước này.</p>{onGoToTab&&<Button type="button" onClick={()=>onGoToTab("sources")}>Mở quản lý profiles</Button>}</div>}
   </div>}
-  {step===2&&<div className="space-y-3"><h4 className="font-semibold">2. Chọn Destination ClickHouse đã Test</h4><p className="muted text-xs">Đích phải được Test và được server cho phép; typed chỉ ghi vào database QA allowlist.</p>
-   {!choices("clickhouse").length&&<p className="dfw-empty">Chưa có ClickHouse profile từ API.</p>}
-   {choices("clickhouse").map(p=><label className="dfw-profile" key={p.id}><input type="radio" name="target-v2" checked={targetID===p.id} disabled={!verified(p)} onChange={()=>{invalidate();setTargetID(p.id)}}/><span><strong>{p.name}</strong><small>{p.database} · {p.host}:{p.port}</small></span><small>{verified(p)?"Verified":"cần Test"}</small></label>)}
+  {step===2&&<div className="space-y-3"><h4 className="font-semibold">Đích dữ liệu</h4><p className="muted text-sm">Chọn ClickHouse đã kiểm tra hoặc tạo profile QA mới.</p>
+   <div className="dfw-choice-grid"><button type="button" className={targetChoice==="existing"?"dfw-choice selected":"dfw-choice"} aria-pressed={targetChoice==="existing"} onClick={()=>setTargetChoice("existing")}><strong>Chọn đích có sẵn</strong><small>Dùng profile ClickHouse đã Test</small></button><button type="button" className={targetChoice==="new"?"dfw-choice selected":"dfw-choice"} aria-pressed={targetChoice==="new"} onClick={()=>setTargetChoice("new")}><strong>Tạo đích mới</strong><small>Lưu và Test profile ClickHouse QA</small></button></div>
+   {targetChoice==="existing"&&<>{!choices("clickhouse").length&&<p className="dfw-empty">Chưa có ClickHouse profile. Hãy tạo đích mới.</p>}
+   {choices("clickhouse").map(p=><label className="dfw-profile" key={p.id}><input type="radio" name="target-v2" checked={targetID===p.id} disabled={!verified(p)} onChange={()=>{invalidate();setTargetID(p.id)}}/><span><strong>{p.name}</strong><small>{p.database} · {p.host}:{p.port}</small></span><small>{verified(p)?"Đã Test":"Cần Test lại"}</small></label>)}</>}
+   {targetChoice==="new"&&<div className="dfw-empty dfw-new-profile"><p>Hiện chỉ hỗ trợ ClickHouse trong QA.</p><p>Tạo profile, lưu rồi Test kết nối thật trước khi chọn ở bước này.</p>{onGoToTab&&<Button type="button" onClick={()=>onGoToTab("destinations")}>Mở quản lý profiles</Button>}</div>}
+   {targetChoice==="existing"&&<>
    <label className="block">Kiểu destination<select className="field mt-1" aria-label="Destination layout" value={layout} onChange={e=>setLayout(e.target.value as Layout)}><option value="raw_event">RAW events · bảng riêng trong scratch</option><option value="typed">Typed columns · bảng DataFlow sở hữu</option></select></label>
    {layout==="typed"&&<label className="block">Database đích đã được cấp quyền<select className="field mt-1" aria-label="Target database" value={destinationInfo?.database||""} disabled={!destinationInfo} onChange={e=>setTargetDatabase(e.target.value)}><option value={destinationInfo?.database||""}>{destinationInfo?.database||"Chọn và kiểm tra profile trước"}</option></select><small className="muted block">Quyền được đọc từ ClickHouse bằng profile đã chọn; server kiểm tra lại khi lưu stream.</small></label>}
    {destinationInfo&&<p className="muted text-xs" role="status">Quyền {destinationInfo.database}: {Object.entries(destinationInfo.grants).map(([name,yes])=>name+" "+(yes?"✓":"✗")).join(" · ")}. {destinationInfo.owned_tables.length} bảng DataFlow hiện có; bảng đã cấp cho stream khác không được chọn cho stream mới.</p>}
    {targetProblem&&<p role="alert" className="dfw-warning">{targetProblem}</p>}
-   {onGoToTab&&<Button variant="outline" type="button" onClick={()=>onGoToTab("destinations")}>Đi tới Destinations</Button>}
+   </>}
   </div>}
   {step===3&&<div className="space-y-4"><div className="dfw-discovery space-y-3"><h4 className="font-semibold">3. Discovery schema</h4><div className="flex gap-3 flex-wrap items-end"><label className="flex-1 min-w-[180px]">SQL schema<input className="field mt-1" aria-label="Discovery schema" value={schema} onChange={e=>{setSchema(e.target.value);invalidate()}}/></label>
    <Button variant="outline" type="button" disabled={!srcOk||loading||!schema.trim()} onClick={()=>void discover()}>{loading?"Đang tải…":"Tải / làm mới schema"}</Button></div>
@@ -131,17 +137,17 @@ export function ConnectionWizardV2({token,adminToken,profiles,onCreated,onGoToTa
    {selectedRows.map(r=><div className="dfw-review" key={rowId(r)}><div><b>{rowId(r)}</b><small>{r.mode} · key {r.key} · cursor {r.cursor||"không có"} · {effective(r).length} cột</small>{layout==="typed"&&<small>{effective(r).map(n=>n+" → "+(r.targetNames[n]??n)).join(", ")}</small>}</div><small>{layout==="typed"?targetDatabase+"."+r.targetTable:"scratch.dfqa_"+alias(r.schema,r.name)+"_<stream-id>"}</small></div>)}
    <p className="muted text-xs">{layout==="raw_event"?"Server thêm stream ID vào tên bảng RAW.":"Kiểu dữ liệu được server suy từ SQL catalog và kiểm tra trước khi tạo stream; bảng không thuộc DataFlow bị từ chối."}</p>
    {problems.length>0&&<div role="alert" className="dfw-alert"><b>Các stream cần sửa:</b><ul className="list-disc pl-6">{problems.map(p=><li key={p.name}>{p.name}: {p.error}</li>)}</ul></div>}
-   <div className="grid gap-2 sm:grid-cols-3">{([["Batch size",batchSize,setBatchSize,100,100000],["Workers",workers,setWorkers,1,32],["Queue",queueSize,setQueueSize,1,100]] as const).map(([name,value,setter,min,max])=><label key={name}>{name}<input className="field mt-1" aria-label={name} type="number" min={min} max={max} value={value} onChange={e=>setter(Number(e.target.value))}/></label>)}</div>
+   <details className="dfw-advanced"><summary>Thiết lập nâng cao</summary><div className="grid gap-2 sm:grid-cols-3">{([["Batch size",batchSize,setBatchSize,100,100000],["Workers",workers,setWorkers,1,32],["Queue",queueSize,setQueueSize,1,100]] as const).map(([name,value,setter,min,max])=><label key={name}>{name}<input className="field mt-1" aria-label={name} type="number" min={min} max={max} value={value} onChange={e=>setter(Number(e.target.value))}/></label>)}</div></details>
    {runtimeProblem&&<p role="alert" className="dfw-warning">{runtimeProblem}</p>}
    <label className="block">Lịch chạy<select className="field mt-1" value={frequency} onChange={e=>setFrequency(e.target.value as Frequency)}><option value="manual">Thủ công</option><option value="3600">Mỗi giờ</option><option value="21600">Mỗi 6 giờ</option><option value="86400">Hằng ngày</option></select></label>
-   <Button type="button" disabled={!canCreate||busy||created.length>0} onClick={()=>void create()}>{busy?"Đang tạo…":"Save & Bind"}</Button>
+   <Button type="button" disabled={!canCreate||busy||created.length>0} onClick={()=>void create()}>{busy?"Đang tạo…":"Tạo connection"}</Button>
    {created.length>0&&<div role="status" className="space-y-2"><b>Đã tạo {created.length} streams</b>
     {scheduleErrors.length>0&&<div className="dfw-warning" role="alert">Lưu lịch lỗi nhưng batch đã được tạo: {scheduleErrors.join("; ")}</div>}
     {created.map(c=><div key={c.stream_id} className="dfw-review"><div><b>{c.source}</b><small>{c.destination} · {c.mode}</small>{runs[c.stream_id]?.run&&<small>Run: {runs[c.stream_id].run?.status}</small>}{runs[c.stream_id]?.error&&<small role="alert">{runs[c.stream_id].error}</small>}</div>
      <Button type="button" size="sm" variant="outline" disabled={!!runs[c.stream_id]?.run&&["queued","running"].includes(runs[c.stream_id].run!.status)} onClick={()=>void run(c.stream_id)}>Run</Button></div>)}</div>}
   </div>}
   <footer className="flex justify-between gap-3 border-t pt-3"><Button variant="outline" type="button" disabled={step===1||busy||created.length>0} onClick={()=>setStep((step-1) as 1|2|3|4)}>Quay lại</Button>
-   {step<4&&<Button type="button" disabled={loading||busy||step===1&&!srcOk||step===2&&(!dstOk||!!targetProblem)||step===3&&!canCreate} onClick={()=>setStep((step+1) as 1|2|3|4)}>Tiếp tục</Button>}</footer>
+   {step<4&&<Button type="button" disabled={loading||busy||step===1&&(sourceChoice==="new"||!srcOk)||step===2&&(targetChoice==="new"||!dstOk||!!targetProblem)||step===3&&!canCreate} onClick={()=>setStep((step+1) as 1|2|3|4)}>Tiếp tục</Button>}</footer>
   {modal&&<div className="dfw-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setModalId("")}}><div role="dialog" aria-modal="true" aria-label={"Chọn cột "+rowId(modal)} className="dfw-modal">
    <div className="dfw-modal-head"><div><h3 className="font-semibold">Chọn cột · {rowId(modal)}</h3><small className="muted">{effective(modal).length}/{modal.columns.length} cột được sync</small></div><Button type="button" variant="outline" onClick={()=>setModalId("")}>Đóng</Button></div>
    <div className="dfw-modal-tools"><label>Cursor{cursorSelect(modal)}</label><input type="search" aria-label="Tìm kiếm cột" className="field" placeholder="Tìm tên cột…" value={query} onChange={e=>setQuery(e.target.value)}/>
